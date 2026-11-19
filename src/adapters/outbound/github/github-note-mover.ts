@@ -1,6 +1,7 @@
 import { ConcurrentChange } from "../../../domain/errors/concurrent-change";
 import { NoteAlreadyExists } from "../../../domain/errors/note-already-exists";
 import { NoteNotFound } from "../../../domain/errors/note-not-found";
+import { NotesUnavailable } from "../../../domain/errors/notes-unavailable";
 import { Note } from "../../../domain/note";
 import type { NotePath } from "../../../domain/note-path";
 import type { NoteVersion } from "../../../domain/note-version";
@@ -89,6 +90,7 @@ export class GitHubNoteMover implements NoteMover {
     const { data } = await this.github.send(BRANCH_LEVEL, (client, repo) =>
       client.rest.git.getTree({ ...repo, tree_sha: tree, recursive: RECURSIVE }),
     );
+    if (data.truncated) throw new NotesUnavailable();
     const entry = data.tree.find((candidate) => candidate.path === path.value);
     return entry?.mode === EXECUTABLE_MODE ? EXECUTABLE_MODE : FILE_MODE;
   }
