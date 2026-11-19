@@ -1,4 +1,5 @@
 import { Octokit } from "@octokit/rest";
+import { SILENT_LOG } from "../../../../../src/adapters/outbound/github/silent-log";
 import { ContentsRoutes } from "./contents-routes";
 import { FakeGitStore } from "./fake-git-store";
 import type { FakeLimits, FakeRepoParts, FakeRoute } from "./fake-route";
@@ -27,8 +28,10 @@ const CORE_RESOURCE = "core";
 const SEED_MESSAGE = "Initial commit";
 const NETWORK_FAILURE = "fetch failed";
 const RETRY_AFTER = "retry-after";
+const PATCH = "PATCH";
+const REF_UPDATE = /^git\/refs\/heads\/(.+)$/;
+const RACING_MESSAGE = "A concurrent commit";
 const AUTHORIZATION = "authorization";
-const SILENT_LOG = { debug: () => {}, info: () => {}, warn: () => {}, error: () => {} };
 
 type HttpOutage = "secondary" | "secondaryForbidden" | "forbidden" | "server";
 type Outage = HttpOutage | "network";
@@ -40,6 +43,7 @@ export class FakeGitHubApi {
   private remaining = RATE_LIMIT;
   private outage?: Outage;
   private tokenRevoked = false;
+  private refRaces = 0;
   private readonly limits: FakeLimits = { truncateTrees: false };
   readonly served: number[] = [];
 
@@ -87,6 +91,10 @@ export class FakeGitHubApi {
     this.tokenRevoked = true;
   }
 
+  commitBeforeRefUpdates(times: number): void {
+    this.refRaces = times;
+  }
+
   truncateTrees(): void {
     this.limits.truncateTrees = true;
   }
@@ -99,6 +107,7 @@ export class FakeGitHubApi {
     this.remaining -= 1;
     if (this.outage && this.outage !== "network") return this.outageReply(this.outage, headers);
     if (route === undefined) return this.notFound(headers);
+    this.raceRefUpdate(request.method, route);
     return this.dispatch(request, route, body, headers);
   }
 
@@ -116,6 +125,13 @@ export class FakeGitHubApi {
     if (!match?.params) return this.notFound(headers);
     const params = match.params.slice(1);
     return match.candidate.reply({ params, query, body, headers });
+  }
+
+  private raceRefUpdate(method: string, route: string): void {
+    const branch = REF_UPDATE.exec(route)?.[1];
+    if (method !== PATCH || !branch || this.refRaces <= 0) return;
+    this.refRaces -= 1;
+    this.store.advance(branch, this.store.filesAt(branch) ?? new Map(), RACING_MESSAGE);
   }
 
   private routeOf(url: URL): string | undefined {

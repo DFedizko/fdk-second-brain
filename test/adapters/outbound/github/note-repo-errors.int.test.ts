@@ -15,7 +15,6 @@ const PLAN = NotePath.of("plan.md");
 const TODO = NotePath.of("todo.md");
 const DONE = NotePath.of("done.md");
 const ARCHIVE = NotePath.of("archive.md");
-const LATER = NotePath.of("later.md");
 const CONTENT = "# Inbox\n";
 const FIRST_EDIT = "# Inbox\n\n- first\n";
 const SECOND_EDIT = "# Inbox\n\n- second\n";
@@ -24,6 +23,7 @@ const ROOT = NoteFolder.of("");
 const RETRY_AFTER_SECONDS = 60;
 const SERVER_ERROR = 500;
 const CONFLICT = 409;
+const ALWAYS = Number.POSITIVE_INFINITY;
 
 async function failureOf(action: Promise<unknown>): Promise<unknown> {
   return action.then(
@@ -94,17 +94,47 @@ describe("GitHubNoteRepo maps GitHub errors", () => {
     expect(paths.map((path) => path.value)).toEqual([DONE.value, PLAN.value]);
   });
 
+  it("retries a move once when another commit lands on the branch", async () => {
+    const repository = connectRepo(api);
+    await repository.create(INBOX, CONTENT);
+    api.commitBeforeRefUpdates(1);
+
+    const moved = await repository.move(INBOX, PLAN);
+
+    expect(moved.path).toEqual(PLAN);
+  });
+
   it("gives up with NotesUnavailable when the branch keeps moving", async () => {
     const repository = connectRepo(api);
-    await Promise.all([INBOX, TODO, ARCHIVE].map((path) => repository.create(path, CONTENT)));
+    await repository.create(INBOX, CONTENT);
+    api.commitBeforeRefUpdates(ALWAYS);
 
-    const moves = Promise.all([
-      repository.move(INBOX, PLAN),
-      repository.move(TODO, DONE),
-      repository.move(ARCHIVE, LATER),
-    ]);
+    const move = repository.move(INBOX, PLAN);
 
-    await expect(moves).rejects.toThrow(NotesUnavailable);
+    await expect(move).rejects.toThrow(NotesUnavailable);
+  });
+
+  it("reports the winning version when a racing delete meets a 409", async () => {
+    const repository = connectRepo(api);
+    const created = await repository.create(INBOX, CONTENT);
+
+    const error = await failureOf(
+      Promise.all([repository.write(INBOX, FIRST_EDIT, created.version), repository.delete(INBOX)]),
+    );
+
+    const winner = await repository.read(INBOX);
+    expect(error).toEqual(
+      new VersionConflict(INBOX.value, created.version.value, winner.version.value),
+    );
+  });
+
+  it("maps a 404 from a delete that lost the race to NoteNotFound", async () => {
+    const repository = connectRepo(api);
+    await repository.create(INBOX, CONTENT);
+
+    const deletes = Promise.all([repository.delete(INBOX), repository.delete(INBOX)]);
+
+    await expect(deletes).rejects.toThrow(NoteNotFound);
   });
 
   it("maps 401 Bad credentials to NotesAccessDenied", async () => {

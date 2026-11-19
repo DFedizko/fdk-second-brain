@@ -10,6 +10,7 @@ import type { NoteFolder } from "../../../domain/note-folder";
 import { NotePath } from "../../../domain/note-path";
 import { NoteVersion } from "../../../domain/note-version";
 import { decodeBase64, encodeBase64 } from "./base64-text";
+import { BranchMoved } from "./branch-moved";
 import type { GitHubConfig } from "./github-config";
 import type { FailureContext, GitHubErrorMapper } from "./github-error-translator";
 
@@ -92,10 +93,9 @@ export class GitHubNoteRepo implements NoteRepository {
 
   private async moveWithRetry(from: NotePath, to: NotePath, attempts: number): Promise<Note> {
     return this.moveOnce(from, to).catch((error: unknown) => {
-      if (attempts > 1 && this.isBranchMoved(error)) {
-        return this.moveWithRetry(from, to, attempts - 1);
-      }
-      throw error;
+      if (!(error instanceof BranchMoved)) throw error;
+      if (attempts <= 1) throw new NotesUnavailable(UNPROCESSABLE);
+      return this.moveWithRetry(from, to, attempts - 1);
     });
   }
 
@@ -106,6 +106,11 @@ export class GitHubNoteRepo implements NoteRepository {
     const tree = await this.movedTree(from, to, note.version, head);
     const message = `${MOVE} ${from.value} ${MOVE_TO} ${to.value}`;
     const commit = await this.commitTree(tree, head, message);
+    await this.updateBranch(commit);
+    return new Note(to, note.content, note.version);
+  }
+
+  private async updateBranch(commit: string): Promise<void> {
     await this.call(BRANCH_LEVEL, () =>
       this.client.rest.git.updateRef({
         ...this.repo(),
@@ -113,11 +118,12 @@ export class GitHubNoteRepo implements NoteRepository {
         sha: commit,
         force: false,
       }),
-    );
-    return new Note(to, note.content, note.version);
+    ).catch((error: unknown) => {
+      throw this.isRejectedUpdate(error) ? new BranchMoved() : error;
+    });
   }
 
-  private isBranchMoved(error: unknown): boolean {
+  private isRejectedUpdate(error: unknown): boolean {
     return error instanceof NotesUnavailable && error.status === UNPROCESSABLE;
   }
 

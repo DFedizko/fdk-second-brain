@@ -4,9 +4,7 @@ import type { GitHubConfig } from "./github-config";
 import { GitHubErrorTranslator, type GitHubErrorMapper } from "./github-error-translator";
 import { GitHubNoteRepo } from "./github-note-repo";
 import { GITHUB } from "./github.symbols";
-
-// Octokit logs failed requests with their URLs, which hold private note paths.
-const SILENT_LOG = { debug: () => {}, info: () => {}, warn: () => {}, error: () => {} };
+import { SILENT_LOG } from "./silent-log";
 
 export function githubContainer(config: GitHubConfig): ContainerModule {
   return new ContainerModule(({ bind }) => {
