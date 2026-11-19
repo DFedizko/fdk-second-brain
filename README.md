@@ -1,15 +1,5 @@
 # fdk-second-brain
 
-To install dependencies:
+A remote MCP server on Cloudflare Workers in front of a private GitHub repository of Markdown notes.
 
-```bash
-bun install
-```
-
-To run:
-
-```bash
-bun run index.ts
-```
-
-This project was created using `bun init` in bun v1.4.2. [Bun](https://bun.com) is a fast all-in-one JavaScript runtime.
+See [`TECHNOLOGIES.md`](TECHNOLOGIES.md) for the stack and the commands, and [`CLAUDE.md`](CLAUDE.md) for the rules.
