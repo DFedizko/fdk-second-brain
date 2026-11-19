@@ -51,7 +51,7 @@ export class D1SearchIndex implements SearchIndex {
     const guard = [path.value, expected?.value ?? null] as const;
     const results = await this.database.batch([
       this.database.prepare(DELETE_CHUNKS).bind(...guard),
-      ...chunks.map((chunk) => this.insertChunk(guard, version, chunk)),
+      ...chunks.map((chunk) => this.insertChunk(guard, chunk)),
       this.database.prepare(UPSERT_VERSION).bind(...guard, version.value),
     ]);
     return this.lastApplied(results);
@@ -74,8 +74,8 @@ export class D1SearchIndex implements SearchIndex {
     return Array.from(term).length < MIN_PREFIX_CHARS ? `"${term}"` : `"${term}"*`;
   }
 
-  private insertChunk(guard: Guard, version: NoteVersion, chunk: MarkdownChunk) {
-    const values = [chunk.heading, chunk.seq, chunk.text, version.value];
+  private insertChunk(guard: Guard, chunk: MarkdownChunk) {
+    const values = [chunk.heading, chunk.seq, chunk.text];
     return this.database.prepare(INSERT_CHUNK).bind(...guard, ...values);
   }
 

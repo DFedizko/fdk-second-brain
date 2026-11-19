@@ -28,8 +28,8 @@ export const SELECT_VERSION = "SELECT version FROM index_manifest WHERE path = ?
 export const DELETE_CHUNKS = `DELETE FROM note_chunks WHERE path = ?1 AND ${HOLDS_EXPECTED}`;
 
 export const INSERT_CHUNK = `
-  INSERT INTO note_chunks (path, heading, seq, text, version)
-  SELECT ?1, ?3, ?4, ?5, ?6 WHERE ${HOLDS_EXPECTED}`;
+  INSERT INTO note_chunks (path, heading, seq, text)
+  SELECT ?1, ?3, ?4, ?5 WHERE ${HOLDS_EXPECTED}`;
 
 export const UPSERT_VERSION = `
   INSERT INTO index_manifest (path, version) SELECT ?1, ?3 WHERE ${HOLDS_EXPECTED}
