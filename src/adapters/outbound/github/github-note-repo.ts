@@ -1,4 +1,5 @@
 import type { NoteRepository } from "../../../application/ports/note-repository";
+import { ConcurrentChange } from "../../../domain/errors/concurrent-change";
 import { InvalidPath } from "../../../domain/errors/invalid-path";
 import { NoteNotFound } from "../../../domain/errors/note-not-found";
 import { NotesUnavailable } from "../../../domain/errors/notes-unavailable";
@@ -62,6 +63,7 @@ export class GitHubNoteRepo implements NoteRepository {
 
   async create(path: NotePath, content: string): Promise<Note> {
     return this.retryFileWrite(
+      path,
       () => this.putFile(path, content, `${CREATE} ${path.value}`),
       async (error) => this.isBranchConflict(error),
     );
@@ -71,6 +73,7 @@ export class GitHubNoteRepo implements NoteRepository {
     const current = await this.read(path);
     current.ensureVersion(expected);
     return this.retryFileWrite(
+      path,
       () => this.putFile(path, content, `${UPDATE} ${path.value}`, expected),
       (error) => this.isStillCurrent(error, path, expected),
     );
@@ -79,6 +82,7 @@ export class GitHubNoteRepo implements NoteRepository {
   async delete(path: NotePath): Promise<void> {
     const current = await this.read(path);
     await this.retryFileWrite(
+      path,
       () => this.deleteFile(path, current.version),
       (error) => this.isStillCurrent(error, path, current.version),
     );
@@ -89,14 +93,15 @@ export class GitHubNoteRepo implements NoteRepository {
   }
 
   private async retryFileWrite<T>(
+    path: NotePath,
     attempt: () => Promise<T>,
     branchMoved: BranchMoveCheck,
     attemptsLeft = FILE_WRITE_ATTEMPTS,
   ): Promise<T> {
     return attempt().catch(async (error: unknown) => {
       if (!(await branchMoved(error))) throw error;
-      if (attemptsLeft <= 1) throw new NotesUnavailable(CONFLICT);
-      return this.retryFileWrite(attempt, branchMoved, attemptsLeft - 1);
+      if (attemptsLeft <= 1) throw new ConcurrentChange(path.value);
+      return this.retryFileWrite(path, attempt, branchMoved, attemptsLeft - 1);
     });
   }
 
