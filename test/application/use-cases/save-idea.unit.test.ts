@@ -4,7 +4,8 @@ import { InMemoryNoteRepo } from "../__fake__/in-memory-note-repo";
 import { FixedClock } from "./__stub__/fixed-clock";
 
 const NOW = new Date("2026-11-19T15:30:00Z");
-const LATE_EVENING_UTC = new Date("2026-11-19T23:59:59Z");
+const EARLY_UTC = new Date("2026-11-19T00:00:01Z");
+const LATE_UTC = new Date("2026-11-19T23:59:59Z");
 const TITLE = "Grow tomatoes indoors";
 const BODY = "Use a grow light in the kitchen.";
 const IDEA_PATH = "ideas/2026-11-19-grow-tomatoes-indoors.md";
@@ -52,10 +53,10 @@ describe("SaveIdea", () => {
     expect(idea.path).toBe(THIRD_PATH);
   });
 
-  it("dates the idea by the clock in UTC", async () => {
-    const lateIdea = new SaveIdea(repository, new FixedClock(LATE_EVENING_UTC));
+  it.each([EARLY_UTC, LATE_UTC])("dates the idea by the clock in UTC at %s", async (instant) => {
+    const dated = new SaveIdea(repository, new FixedClock(instant));
 
-    const idea = await lateIdea.execute({ title: TITLE, content: BODY });
+    const idea = await dated.execute({ title: TITLE, content: BODY });
 
     expect(idea.path).toBe(IDEA_PATH);
   });

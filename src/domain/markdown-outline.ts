@@ -22,10 +22,13 @@ export class MarkdownOutline {
 
   constructor(content: string) {
     this.lines = content.split(LINE_BREAK);
-    this.headings = this.lines.reduce<Scan>((scan, line, index) => this.scanLine(scan, line, index), {
-      inFence: false,
-      headings: [],
-    }).headings;
+    this.headings = this.lines.reduce<Scan>(
+      (scan, line, index) => this.scanLine(scan, line, index),
+      {
+        inFence: false,
+        headings: [],
+      },
+    ).headings;
   }
 
   section(heading: string): string {
