@@ -106,11 +106,27 @@ export class GitHubShapes {
     const download = `${RAW}/${this.owner}/${this.repo}/${ref}/${path}`;
     const name = path.split(SEPARATOR).at(-1) ?? path;
     const links = { self, git, html };
-    return { name, path, sha, url: self, git_url: git, html_url: html, download_url: download, _links: links };
+    return {
+      name,
+      path,
+      sha,
+      url: self,
+      git_url: git,
+      html_url: html,
+      download_url: download,
+      _links: links,
+    };
   }
 
   private blobEntry(path: string, sha: string, size: number): TreeEntry {
-    return { path, mode: FILE_MODE, type: "blob", sha, size, url: `${this.api()}/git/blobs/${sha}` };
+    return {
+      path,
+      mode: FILE_MODE,
+      type: "blob",
+      sha,
+      size,
+      url: `${this.api()}/git/blobs/${sha}`,
+    };
   }
 
   private folderEntry(path: string): TreeEntry {

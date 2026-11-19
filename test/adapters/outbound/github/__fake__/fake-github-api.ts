@@ -39,7 +39,12 @@ export class FakeGitHubApi {
   constructor(private readonly setup: FakeRepoSetup) {
     const shapes = new GitHubShapes(setup.owner, setup.repo);
     const defaultBranch = setup.branches[0] ?? "";
-    const parts: FakeRepoParts = { store: this.store, shapes, replies: this.replies, defaultBranch };
+    const parts: FakeRepoParts = {
+      store: this.store,
+      shapes,
+      replies: this.replies,
+      defaultBranch,
+    };
     this.routes = [...new ContentsRoutes(parts).all(), ...new GitDataRoutes(parts).all()];
     this.seedBranches();
   }
@@ -79,7 +84,12 @@ export class FakeGitHubApi {
     return this.dispatch(request, route, body, headers);
   }
 
-  private dispatch(request: Request, route: string, body: Record<string, unknown>, headers: Headers) {
+  private dispatch(
+    request: Request,
+    route: string,
+    body: Record<string, unknown>,
+    headers: Headers,
+  ) {
     const query = new URL(request.url).searchParams;
     const match = this.routes
       .filter((candidate) => candidate.method === request.method)
@@ -93,7 +103,7 @@ export class FakeGitHubApi {
   private routeOf(url: URL): string | undefined {
     const repoPrefix = `${API_PREFIX}${this.setup.owner}${SEPARATOR}${this.setup.repo}${SEPARATOR}`;
     if (!url.pathname.startsWith(repoPrefix)) return undefined;
-    return url.pathname.slice(repoPrefix.length);
+    return decodeURIComponent(url.pathname.slice(repoPrefix.length));
   }
 
   private isAuthorized(request: Request): boolean {

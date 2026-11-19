@@ -42,7 +42,11 @@ export class ContentsRoutes {
     const commit = this.commitFiles(call, branch, new Map(files).set(path, sha));
     const status = current ? STATUS.ok : STATUS.created;
     const file = { path, sha, size: Buffer.byteLength(content, UTF8) };
-    return this.parts.replies.json(status, this.parts.shapes.fileCommit(commit, file), call.headers);
+    return this.parts.replies.json(
+      status,
+      this.parts.shapes.fileCommit(commit, file),
+      call.headers,
+    );
   }
 
   private deleteFile(call: FakeCall): Response {
@@ -95,7 +99,12 @@ export class ContentsRoutes {
   }
 
   private unprocessable(call: FakeCall, message: string): Response {
-    return this.parts.replies.error(STATUS.unprocessable, message, DOCS_PAGE.contents, call.headers);
+    return this.parts.replies.error(
+      STATUS.unprocessable,
+      message,
+      DOCS_PAGE.contents,
+      call.headers,
+    );
   }
 
   private notFound(call: FakeCall, message: string): Response {
@@ -107,6 +116,6 @@ export class ContentsRoutes {
   }
 
   private pathOf(call: FakeCall): string {
-    return decodeURIComponent(call.params[0] ?? "");
+    return call.params[0] ?? "";
   }
 }

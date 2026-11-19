@@ -130,6 +130,6 @@ export class GitDataRoutes {
   }
 
   private param(call: FakeCall): string {
-    return decodeURIComponent(call.params[0] ?? "");
+    return call.params[0] ?? "";
   }
 }
