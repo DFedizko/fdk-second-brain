@@ -67,5 +67,6 @@ This repository holds only the server code. Notes never go here; the notes repos
 - Typecheck: `bunx tsc --noEmit` (or `bun run typecheck`)
 - Format: `bun run format` · check only: `bun run format:check`
 - Workers runtime and binding types: `bun install` generates `worker-configuration.d.ts` (`postinstall` runs `wrangler types`); after changing `wrangler.jsonc`, run `bun run types`. The file is generated and gitignored: never edit or commit it
+- D1 schema: SQL migrations in `migrations/` (wired as `migrations_dir` in `wrangler.jsonc`). Apply them locally with `bunx wrangler d1 migrations apply second-brain --local`; integration tests apply them with `LocalRuntime.migrate()`
 - Local dev server: `bun run dev` (`wrangler dev`)
 - Deploy: `bun run deploy` (`wrangler deploy`). Not ready yet: `wrangler.jsonc` still has a placeholder D1 `database_id` until the deploy task creates the real resources
