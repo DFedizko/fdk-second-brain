@@ -29,6 +29,8 @@ const MOVE = "Move";
 const MOVE_TO = "to";
 const MOVE_ATTEMPTS = 2;
 const UNPROCESSABLE = 422;
+const CONFLICT = 409;
+const FILE_WRITE_ATTEMPTS = 3;
 const BRANCH_LEVEL: FailureContext = {};
 
 type GitFileMode = typeof FILE_MODE | typeof EXECUTABLE_MODE;
@@ -64,20 +66,31 @@ export class GitHubNoteRepo implements NoteRepository {
   }
 
   async create(path: NotePath, content: string): Promise<Note> {
-    return this.putFile(path, content, `${CREATE} ${path.value}`);
+    return this.retryFileWrite(
+      () => this.putFile(path, content, `${CREATE} ${path.value}`),
+      async (error) => this.isBranchConflict(error),
+    );
   }
 
   async write(path: NotePath, content: string, expected: NoteVersion): Promise<Note> {
     const current = await this.read(path);
     current.ensureVersion(expected);
-    return this.putFile(path, content, `${UPDATE} ${path.value}`, expected).catch(
-      (error: unknown) => this.reportActualVersion(error, path, expected),
+    return this.retryFileWrite(
+      () => this.putFile(path, content, `${UPDATE} ${path.value}`, expected),
+      (error) => this.isStillCurrent(error, path, expected),
     );
   }
 
   async delete(path: NotePath): Promise<void> {
     const current = await this.read(path);
-    const sha = current.version.value;
+    await this.retryFileWrite(
+      () => this.deleteFile(path, current.version),
+      (error) => this.isStillCurrent(error, path, current.version),
+    );
+  }
+
+  private async deleteFile(path: NotePath, version: NoteVersion): Promise<void> {
+    const sha = version.value;
     const context = { path: path.value, expected: sha, mayBeMissing: true };
     await this.call(context, () =>
       this.client.rest.repos.deleteFile({
@@ -87,7 +100,23 @@ export class GitHubNoteRepo implements NoteRepository {
         sha,
         branch: this.config.branch,
       }),
-    ).catch((error: unknown) => this.reportActualVersion(error, path, current.version));
+    );
+  }
+
+  private async retryFileWrite<T>(
+    attempt: () => Promise<T>,
+    branchMoved: (error: unknown) => Promise<boolean>,
+    attemptsLeft = FILE_WRITE_ATTEMPTS,
+  ): Promise<T> {
+    return attempt().catch(async (error: unknown) => {
+      if (!(await branchMoved(error))) throw error;
+      if (attemptsLeft <= 1) throw new NotesUnavailable(CONFLICT);
+      return this.retryFileWrite(attempt, branchMoved, attemptsLeft - 1);
+    });
+  }
+
+  private isBranchConflict(error: unknown): boolean {
+    return error instanceof NotesUnavailable && error.status === CONFLICT;
   }
 
   async move(from: NotePath, to: NotePath): Promise<Note> {
@@ -147,13 +176,14 @@ export class GitHubNoteRepo implements NoteRepository {
     throw error;
   }
 
-  private async reportActualVersion(
+  private async isStillCurrent(
     error: unknown,
     path: NotePath,
     expected: NoteVersion,
-  ): Promise<never> {
-    if (!(error instanceof VersionConflict)) throw error;
+  ): Promise<boolean> {
+    if (!(error instanceof VersionConflict)) return false;
     const current = await this.read(path);
+    if (current.version.equals(expected)) return true;
     throw new VersionConflict(path.value, expected.value, current.version.value);
   }
 
