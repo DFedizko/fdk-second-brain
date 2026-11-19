@@ -28,7 +28,8 @@ export class SearchNotes {
   }
 
   private clampLimit(limit: number | undefined): number {
-    const wanted = Number.isFinite(limit) ? Math.floor(limit!) : DEFAULT_SEARCH_LIMIT;
+    if (limit === undefined || !Number.isFinite(limit)) return DEFAULT_SEARCH_LIMIT;
+    const wanted = Math.floor(limit);
     return Math.min(MAX_SEARCH_LIMIT, Math.max(MIN_SEARCH_LIMIT, wanted));
   }
 
