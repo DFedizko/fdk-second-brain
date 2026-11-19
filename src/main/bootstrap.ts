@@ -12,13 +12,13 @@ export class Bootstrap {
   ) {}
 
   start(env: object): Container {
-    const container = this.containers.get(env) ?? this.compose(env);
-    this.containers.set(env, container);
-    return container;
+    return this.containers.get(env) ?? this.compose(env);
   }
 
   private compose(env: object): Container {
     const config = this.parser.parse(env);
-    return createRootContainer(this.buildModules(config));
+    const container = createRootContainer(this.buildModules(config));
+    this.containers.set(env, container);
+    return container;
   }
 }

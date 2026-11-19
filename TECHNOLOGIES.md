@@ -41,6 +41,7 @@ This repository holds only the server code. Notes never go here; the notes repos
 - **No decorators.** Classes in every layer stay free of Inversify. Every binding is a factory: `bind<Port>(SYMBOL).toResolvedValue((dep: Dep) => new Impl(dep), [DEP_SYMBOL])`. This works in Inversify 8 with no decorators and no `reflect-metadata`.
 - **One container module per module, next to the code it wires.** Each module has a `<name>.container.ts` exporting a `ContainerModule`, and beside it a `<name>.symbols.ts` with the symbols that container binds. Keep each container small; split it before it grows.
 - **Containers live only in outer layers** (`adapters/` or `main/`), never in `domain/` or `application/`.
+- **A module built from runtime values** (such as the parsed config) exports a `create<Name>Module(value)` factory from its `<name>.container.ts` instead of a constant. `main/app-modules.ts` builds the full module list from the config.
 - **The root container** in `main/` only loads the modules; it holds no bindings of its own.
 - **A symbol is declared once**, in the symbols file of the container that binds it. Other containers import it from there.
 
