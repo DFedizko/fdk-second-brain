@@ -1,0 +1,17 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "second-brain-mcp",
+  "main": "src/main/worker.ts",
+  "compatibility_date": "2026-11-19",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "second-brain",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+    },
+  ],
+  "queues": {
+    "producers": [{ "binding": "INDEX_QUEUE", "queue": "second-brain-index" }],
+    "consumers": [{ "queue": "second-brain-index" }],
+  },
+}

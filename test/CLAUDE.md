@@ -33,13 +33,13 @@ Run one level by filtering on its suffix (the exact commands are in [`TECHNOLOGI
 
 Constructors take ports, so every collaborator can be swapped for a double. Every double goes in a folder named after its kind, next to the test that uses it:
 
-| Folder | Kind | Use it for |
-|---|---|---|
-| `__dummy__/` | Dummy | Filling a parameter the test doesn't care about |
-| `__stub__/` | Stub | Returning fixed answers |
-| `__spy__/` | Spy | Recording calls so the test can assert on them |
-| `__mock__/` | Mock | Pre-programmed expectations, verified by the double itself |
-| `__fake__/` | Fake | A working, simplified implementation of a port (e.g. an in-memory note repository) |
+| Folder       | Kind  | Use it for                                                                         |
+| ------------ | ----- | ---------------------------------------------------------------------------------- |
+| `__dummy__/` | Dummy | Filling a parameter the test doesn't care about                                    |
+| `__stub__/`  | Stub  | Returning fixed answers                                                            |
+| `__spy__/`   | Spy   | Recording calls so the test can assert on them                                     |
+| `__mock__/`  | Mock  | Pre-programmed expectations, verified by the double itself                         |
+| `__fake__/`  | Fake  | A working, simplified implementation of a port (e.g. an in-memory note repository) |
 
 ```
 test/application/use-cases/
@@ -64,11 +64,11 @@ Each test has three blocks in this order, separated by a blank line, with no com
 
 ## The test pyramid
 
-| Level | Suffix | How many | What it covers | Doubles |
-|---|---|---|---|---|
-| Unit | `.unit.test.ts` | Most | Domain and use cases, one class at a time | Every port is a double |
-| Integration | `.int.test.ts` | Some | The main flows through real adapters, and the errors that only appear at the integration boundary (bad responses, conflicts, timeouts) | Real local infrastructure; external APIs faked (see below) |
-| E2E | `.e2e.test.ts` | Few | The app from the outside: real MCP tool calls and HTTP requests against the composed application | Only external APIs are faked |
+| Level       | Suffix          | How many | What it covers                                                                                                                         | Doubles                                                    |
+| ----------- | --------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| Unit        | `.unit.test.ts` | Most     | Domain and use cases, one class at a time                                                                                              | Every port is a double                                     |
+| Integration | `.int.test.ts`  | Some     | The main flows through real adapters, and the errors that only appear at the integration boundary (bad responses, conflicts, timeouts) | Real local infrastructure; external APIs faked (see below) |
+| E2E         | `.e2e.test.ts`  | Few      | The app from the outside: real MCP tool calls and HTTP requests against the composed application                                       | Only external APIs are faked                               |
 
 For each feature's e2e tests, cover the happy path, then add whatever else proves the feature works from the client's point of view. Decide per feature: auth failures, invalid input, and conflict responses are common candidates.
 
