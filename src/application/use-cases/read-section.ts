@@ -19,11 +19,7 @@ export class ReadSection {
 
   async execute(input: ReadSectionInput): Promise<SectionView> {
     const note = await this.repository.read(NotePath.of(input.path));
-    return {
-      path: note.path.value,
-      heading: input.heading,
-      content: new MarkdownOutline(note.content).section(input.heading),
-      version: note.version.value,
-    };
+    const section = new MarkdownOutline(note.content).section(input.heading);
+    return { path: note.path.value, ...section, version: note.version.value };
   }
 }

@@ -1,4 +1,4 @@
-import { PATH_SEPARATOR, SEGMENT_RULES, rejectBrokenRule, type PathRule } from "./path-rules";
+import { SEGMENT_RULES, rejectBrokenRule, type PathRule } from "./path-rules";
 
 const NOTE_EXTENSION = ".md";
 
@@ -13,13 +13,5 @@ export class NotePath {
   static of(raw: string): NotePath {
     rejectBrokenRule(raw, NOTE_PATH_RULES);
     return new NotePath(raw);
-  }
-
-  get folder(): string {
-    return this.value.split(PATH_SEPARATOR).slice(0, -1).join(PATH_SEPARATOR);
-  }
-
-  equals(other: NotePath): boolean {
-    return this.value === other.value;
   }
 }

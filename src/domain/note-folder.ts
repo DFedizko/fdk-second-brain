@@ -8,7 +8,7 @@ export class NoteFolder {
 
   static of(raw: string): NoteFolder {
     const trimmed = NoteFolder.dropTrailingSlash(raw);
-    if (trimmed !== ROOT) rejectBrokenRule(trimmed, SEGMENT_RULES);
+    if (raw !== ROOT) rejectBrokenRule(trimmed || raw, SEGMENT_RULES);
     return new NoteFolder(trimmed);
   }
 

@@ -5,6 +5,8 @@ import { NoteNotFound } from "../../../src/domain/errors/note-not-found";
 import { InMemoryNoteRepo } from "../__fake__/in-memory-note-repo";
 
 const PATH = "projects/plan.md";
+const CONTENT = "# Plan\n";
+const OUTSIDE_PATH = "/etc/passwd";
 
 describe("DeleteNote", () => {
   let repository: InMemoryNoteRepo;
@@ -16,7 +18,7 @@ describe("DeleteNote", () => {
   });
 
   it("deletes the note", async () => {
-    await repository.create(NotePath.of(PATH), "# Plan\n");
+    await repository.create(NotePath.of(PATH), CONTENT);
     await deleteNote.execute({ path: PATH });
 
     const read = repository.read(NotePath.of(PATH));
@@ -31,7 +33,7 @@ describe("DeleteNote", () => {
   });
 
   it("rejects an invalid path", async () => {
-    const remove = deleteNote.execute({ path: "/etc/passwd" });
+    const remove = deleteNote.execute({ path: OUTSIDE_PATH });
 
     await expect(remove).rejects.toThrow(InvalidPath);
   });

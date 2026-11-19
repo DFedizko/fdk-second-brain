@@ -42,28 +42,4 @@ describe("NotePath", () => {
 
     expect(build).toThrow("/etc/passwd");
   });
-
-  it("exposes the folder of a nested note", () => {
-    const path = NotePath.of(VALID_PATH);
-
-    expect(path.folder).toBe("projects/second-brain");
-  });
-
-  it("has an empty folder at the root", () => {
-    const path = NotePath.of(ROOT_NOTE);
-
-    expect(path.folder).toBe("");
-  });
-
-  it("equals another path with the same value", () => {
-    const path = NotePath.of(VALID_PATH);
-
-    expect(path.equals(NotePath.of(VALID_PATH))).toBe(true);
-  });
-
-  it("differs from a path with another value", () => {
-    const path = NotePath.of(VALID_PATH);
-
-    expect(path.equals(NotePath.of(ROOT_NOTE))).toBe(false);
-  });
 });

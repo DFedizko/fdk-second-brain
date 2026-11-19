@@ -9,6 +9,9 @@ import { InMemoryNoteRepo } from "../__fake__/in-memory-note-repo";
 const PATH = "projects/plan.md";
 const CONTENT = "# Plan\n\n- buy milk\n- call Ana\n";
 const EDITED = "# Plan\n\n- buy bread\n- call Ana\n";
+const PASSAGE = "buy milk";
+const REPLACEMENT = "buy bread";
+const REPEATED = "- ";
 
 describe("EditNote", () => {
   let repository: InMemoryNoteRepo;
@@ -21,7 +24,7 @@ describe("EditNote", () => {
   });
 
   it("replaces a passage that appears exactly once", async () => {
-    await editNote.execute({ path: PATH, passage: "buy milk", replacement: "buy bread" });
+    await editNote.execute({ path: PATH, passage: PASSAGE, replacement: REPLACEMENT });
 
     const note = await repository.read(NotePath.of(PATH));
 
@@ -31,8 +34,8 @@ describe("EditNote", () => {
   it("returns the edited note with its new version", async () => {
     const edited = await editNote.execute({
       path: PATH,
-      passage: "buy milk",
-      replacement: "buy bread",
+      passage: PASSAGE,
+      replacement: REPLACEMENT,
     });
 
     const note = await repository.read(NotePath.of(PATH));
@@ -45,8 +48,8 @@ describe("EditNote", () => {
 
     const edited = await editNote.execute({
       path: PATH,
-      passage: "buy milk",
-      replacement: "buy bread",
+      passage: PASSAGE,
+      replacement: REPLACEMENT,
       expectedVersion: current.version.value,
     });
 
@@ -56,8 +59,8 @@ describe("EditNote", () => {
   it("refuses to edit with a stale version", async () => {
     const edit = editNote.execute({
       path: PATH,
-      passage: "buy milk",
-      replacement: "buy bread",
+      passage: PASSAGE,
+      replacement: REPLACEMENT,
       expectedVersion: "stale",
     });
 
@@ -71,13 +74,15 @@ describe("EditNote", () => {
   });
 
   it("rejects a passage that appears more than once", async () => {
-    const edit = editNote.execute({ path: PATH, passage: "- ", replacement: "* " });
+    const edit = editNote.execute({ path: PATH, passage: REPEATED, replacement: "* " });
 
     await expect(edit).rejects.toThrow(PassageNotUnique);
   });
 
   it("leaves the note untouched when the passage is ambiguous", async () => {
-    await editNote.execute({ path: PATH, passage: "- ", replacement: "* " }).catch(() => undefined);
+    await editNote
+      .execute({ path: PATH, passage: REPEATED, replacement: "* " })
+      .catch(() => undefined);
 
     const note = await repository.read(NotePath.of(PATH));
 
