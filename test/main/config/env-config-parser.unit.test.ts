@@ -42,8 +42,8 @@ describe("EnvConfigParser", () => {
     const error = captureError(() => parser.parse(BROKEN_ENV));
 
     expect((error as InvalidEnvError).problems).toEqual([
-      expect.stringStartingWith(TOKEN_MISSING),
-      expect.stringStartingWith(KEY_INVALID),
+      expect.stringMatching(new RegExp(`^${TOKEN_MISSING}`)),
+      expect.stringMatching(new RegExp(`^${KEY_INVALID}`)),
     ]);
   });
 
