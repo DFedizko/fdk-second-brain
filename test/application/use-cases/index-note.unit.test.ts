@@ -1,66 +1,118 @@
 import { IndexNote } from "../../../src/application/use-cases/index-note";
-import { MarkdownChunker } from "../../../src/domain/markdown-chunker";
+import { IndexWriteConflict } from "../../../src/domain/errors/index-write-conflict";
 import { InvalidPath } from "../../../src/domain/errors/invalid-path";
+import { MarkdownChunker } from "../../../src/domain/markdown-chunker";
+import { NotePath } from "../../../src/domain/note-path";
+import { NoteVersion } from "../../../src/domain/note-version";
+import { InMemoryNoteRepo } from "../__fake__/in-memory-note-repo";
 import { InMemorySearchIndex } from "./__fake__/in-memory-search-index";
 
 const PATH = "projects/plan.md";
-const FIRST_VERSION = "aaa111";
-const SECOND_VERSION = "bbb222";
+const NOTE = NotePath.of(PATH);
 const FIRST_CONTENT = "# Plan\nship the search";
 const SECOND_CONTENT = "# Plan\nship the sync";
+const STALE_VERSION = NoteVersion.of("aaa111");
+const STALE_CHUNKS = [{ heading: "Plan", seq: 0, text: "stale words" }];
+const MAX_ATTEMPTS = 3;
+const RACER_PREFIX = "bbb00";
 
 describe("IndexNote", () => {
   let index: InMemorySearchIndex;
+  let notes: InMemoryNoteRepo;
   let indexNote: IndexNote;
 
   beforeEach(() => {
     index = new InMemorySearchIndex();
-    indexNote = new IndexNote(index, new MarkdownChunker());
+    notes = new InMemoryNoteRepo();
+    indexNote = new IndexNote(index, notes, new MarkdownChunker());
   });
 
-  it("stores the note's chunks", async () => {
-    await indexNote.execute({ path: PATH, content: FIRST_CONTENT, version: FIRST_VERSION });
+  const writeStale = async () => {
+    await index.replace(NOTE, STALE_VERSION, STALE_CHUNKS, null);
+  };
+
+  const overwrite = (attempt: number) => async () => {
+    const current = await index.versionOf(NOTE);
+    await index.replace(NOTE, NoteVersion.of(`${RACER_PREFIX}${attempt}`), STALE_CHUNKS, current);
+  };
+
+  it("stores the chunks of the note as it is now in the repository", async () => {
+    await notes.create(NOTE, FIRST_CONTENT);
+
+    await indexNote.execute({ path: PATH });
 
     expect(index.chunksOf(PATH)).toEqual([{ heading: "Plan", seq: 0, text: "ship the search" }]);
   });
 
   it("reports a note it indexed", async () => {
-    const result = await indexNote.execute({
-      path: PATH,
-      content: FIRST_CONTENT,
-      version: FIRST_VERSION,
-    });
+    await notes.create(NOTE, FIRST_CONTENT);
+
+    const result = await indexNote.execute({ path: PATH });
 
     expect(result).toEqual({ path: PATH, status: "indexed" });
   });
 
-  it("skips a note whose version is already indexed", async () => {
-    await indexNote.execute({ path: PATH, content: FIRST_CONTENT, version: FIRST_VERSION });
+  it("skips a note whose current version is already indexed", async () => {
+    await notes.create(NOTE, FIRST_CONTENT);
+    await indexNote.execute({ path: PATH });
 
-    const result = await indexNote.execute({
-      path: PATH,
-      content: SECOND_CONTENT,
-      version: FIRST_VERSION,
-    });
+    const result = await indexNote.execute({ path: PATH });
 
     expect(result).toEqual({ path: PATH, status: "unchanged" });
-    expect(index.chunksOf(PATH)[0]?.text).toBe("ship the search");
   });
 
-  it("replaces the chunks of a note whose version changed", async () => {
-    await indexNote.execute({ path: PATH, content: FIRST_CONTENT, version: FIRST_VERSION });
+  it("replaces the chunks of a note that changed", async () => {
+    const created = await notes.create(NOTE, FIRST_CONTENT);
+    await indexNote.execute({ path: PATH });
+    await notes.write(NOTE, SECOND_CONTENT, created.version);
 
-    await indexNote.execute({ path: PATH, content: SECOND_CONTENT, version: SECOND_VERSION });
+    await indexNote.execute({ path: PATH });
 
     expect(index.chunksOf(PATH)).toEqual([{ heading: "Plan", seq: 0, text: "ship the sync" }]);
   });
 
-  it("rejects a path that is not a note", async () => {
-    const run = indexNote.execute({
-      path: "plan.txt",
-      content: FIRST_CONTENT,
-      version: FIRST_VERSION,
+  it("does not bring back a note that was deleted", async () => {
+    await notes.create(NOTE, FIRST_CONTENT);
+    await notes.delete(NOTE);
+
+    await indexNote.execute({ path: PATH });
+
+    expect(index.chunksOf(PATH)).toEqual([]);
+  });
+
+  it("removes the index of a note that no longer exists", async () => {
+    await notes.create(NOTE, FIRST_CONTENT);
+    await indexNote.execute({ path: PATH });
+    await notes.delete(NOTE);
+
+    const result = await indexNote.execute({ path: PATH });
+
+    expect({ result, chunks: index.chunksOf(PATH) }).toEqual({
+      result: { path: PATH, status: "removed" },
+      chunks: [],
     });
+  });
+
+  it("writes again when a slower indexer stored an older version first", async () => {
+    await notes.create(NOTE, SECOND_CONTENT);
+    index.beforeNextWrites(writeStale);
+
+    await indexNote.execute({ path: PATH });
+
+    expect(index.chunksOf(PATH)).toEqual([{ heading: "Plan", seq: 0, text: "ship the sync" }]);
+  });
+
+  it("gives up with IndexWriteConflict when every write loses a race", async () => {
+    await notes.create(NOTE, SECOND_CONTENT);
+    index.beforeNextWrites(...Array.from({ length: MAX_ATTEMPTS }, (_, n) => overwrite(n)));
+
+    const run = indexNote.execute({ path: PATH });
+
+    await expect(run).rejects.toThrow(IndexWriteConflict);
+  });
+
+  it("rejects a path that is not a note", async () => {
+    const run = indexNote.execute({ path: "plan.txt" });
 
     await expect(run).rejects.toThrow(InvalidPath);
   });

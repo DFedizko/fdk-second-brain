@@ -34,8 +34,8 @@ describe("D1SearchIndex", () => {
   const pathsOf = (hits: { path: NotePath }[]) => hits.map((hit) => hit.path.value);
 
   it("finds a chunk by the start of a word", async () => {
-    await index.replace(PLAN, FIRST_VERSION, [chunk("Steps", "deploy the worker")]);
-    await index.replace(GARDEN, FIRST_VERSION, [chunk("Spring", "plant tomatoes")]);
+    await index.replace(PLAN, FIRST_VERSION, [chunk("Steps", "deploy the worker")], null);
+    await index.replace(GARDEN, FIRST_VERSION, [chunk("Spring", "plant tomatoes")], null);
 
     const hits = await search("depl");
 
@@ -43,7 +43,7 @@ describe("D1SearchIndex", () => {
   });
 
   it("finds Portuguese words typed without accents", async () => {
-    await index.replace(PLAN, FIRST_VERSION, [chunk("Decisões", "A decisão foi usar o D1")]);
+    await index.replace(PLAN, FIRST_VERSION, [chunk("Decisões", "A decisão foi usar o D1")], null);
 
     const hits = await search("decisao");
 
@@ -51,7 +51,7 @@ describe("D1SearchIndex", () => {
   });
 
   it("finds words written without accents when the query has them", async () => {
-    await index.replace(PLAN, FIRST_VERSION, [chunk("Notas", "a decisao final")]);
+    await index.replace(PLAN, FIRST_VERSION, [chunk("Notas", "a decisao final")], null);
 
     const hits = await search("DECISÃO");
 
@@ -59,7 +59,7 @@ describe("D1SearchIndex", () => {
   });
 
   it("finds a chunk by a word in its heading", async () => {
-    await index.replace(PLAN, FIRST_VERSION, [chunk("Roadmap", "first quarter goals")]);
+    await index.replace(PLAN, FIRST_VERSION, [chunk("Roadmap", "first quarter goals")], null);
 
     const hits = await search("roadmap");
 
@@ -67,10 +67,18 @@ describe("D1SearchIndex", () => {
   });
 
   it("ranks the chunk that matches best first", async () => {
-    await index.replace(GARDEN, FIRST_VERSION, [
-      chunk("Spring", "water the plants, maybe deploy a sensor some day, and pull the weeds"),
-    ]);
-    await index.replace(PLAN, FIRST_VERSION, [chunk("Deploy", "deploy steps: deploy the worker")]);
+    await index.replace(
+      GARDEN,
+      FIRST_VERSION,
+      [chunk("Spring", "water the plants, maybe deploy a sensor some day, and pull the weeds")],
+      null,
+    );
+    await index.replace(
+      PLAN,
+      FIRST_VERSION,
+      [chunk("Deploy", "deploy steps: deploy the worker")],
+      null,
+    );
 
     const hits = await search("deploy");
 
@@ -78,8 +86,8 @@ describe("D1SearchIndex", () => {
   });
 
   it("matches any of the query's words", async () => {
-    await index.replace(PLAN, FIRST_VERSION, [chunk("Steps", "deploy the worker")]);
-    await index.replace(GARDEN, FIRST_VERSION, [chunk("Spring", "plant tomatoes")]);
+    await index.replace(PLAN, FIRST_VERSION, [chunk("Steps", "deploy the worker")], null);
+    await index.replace(GARDEN, FIRST_VERSION, [chunk("Spring", "plant tomatoes")], null);
 
     const hits = await search("tomatoes deploy");
 
@@ -88,7 +96,7 @@ describe("D1SearchIndex", () => {
 
   it("returns no more hits than the limit", async () => {
     const chunks = Array.from({ length: MANY_CHUNKS }, (_, seq) => chunk("Log", "deploy", seq));
-    await index.replace(PLAN, FIRST_VERSION, chunks);
+    await index.replace(PLAN, FIRST_VERSION, chunks, null);
 
     const hits = await index.search(SearchQuery.of("deploy"), LIMIT);
 
@@ -96,7 +104,7 @@ describe("D1SearchIndex", () => {
   });
 
   it("treats search operators as plain words", async () => {
-    await index.replace(PLAN, FIRST_VERSION, [chunk("Logic", "NOT a gate, OR a wire")]);
+    await index.replace(PLAN, FIRST_VERSION, [chunk("Logic", "NOT a gate, OR a wire")], null);
 
     const hits = await search('NOT "OR');
 
@@ -105,7 +113,12 @@ describe("D1SearchIndex", () => {
 
   it("shows a short snippet around the match", async () => {
     const filler = "lorem ipsum dolor sit amet ".repeat(FILLER_REPEATS);
-    await index.replace(PLAN, FIRST_VERSION, [chunk("Long", `${filler}kubernetes ${filler}`)]);
+    await index.replace(
+      PLAN,
+      FIRST_VERSION,
+      [chunk("Long", `${filler}kubernetes ${filler}`)],
+      null,
+    );
 
     const [hit] = await search("kubernetes");
 
@@ -114,16 +127,21 @@ describe("D1SearchIndex", () => {
   });
 
   it("replaces a note's old chunks when it is indexed again", async () => {
-    await index.replace(PLAN, FIRST_VERSION, [chunk("Steps", "deploy the worker")]);
+    await index.replace(PLAN, FIRST_VERSION, [chunk("Steps", "deploy the worker")], null);
 
-    await index.replace(PLAN, SECOND_VERSION, [chunk("Steps", "migrate the database")]);
+    await index.replace(
+      PLAN,
+      SECOND_VERSION,
+      [chunk("Steps", "migrate the database")],
+      FIRST_VERSION,
+    );
 
     expect(await search("deploy")).toEqual([]);
     expect(pathsOf(await search("migrate"))).toEqual([PLAN.value]);
   });
 
   it("remembers the version it indexed", async () => {
-    await index.replace(PLAN, SECOND_VERSION, [chunk("Steps", "deploy")]);
+    await index.replace(PLAN, SECOND_VERSION, [chunk("Steps", "deploy")], null);
 
     const version = await index.versionOf(PLAN);
 
@@ -137,17 +155,17 @@ describe("D1SearchIndex", () => {
   });
 
   it("removes a note's chunks", async () => {
-    await index.replace(PLAN, FIRST_VERSION, [chunk("Steps", "deploy the worker")]);
+    await index.replace(PLAN, FIRST_VERSION, [chunk("Steps", "deploy the worker")], null);
 
-    await index.remove(PLAN);
+    await index.remove(PLAN, FIRST_VERSION);
 
     expect(await search("deploy")).toEqual([]);
   });
 
   it("forgets a removed note's version", async () => {
-    await index.replace(PLAN, FIRST_VERSION, [chunk("Steps", "deploy the worker")]);
+    await index.replace(PLAN, FIRST_VERSION, [chunk("Steps", "deploy the worker")], null);
 
-    await index.remove(PLAN);
+    await index.remove(PLAN, FIRST_VERSION);
 
     expect(await index.versionOf(PLAN)).toBeNull();
   });
