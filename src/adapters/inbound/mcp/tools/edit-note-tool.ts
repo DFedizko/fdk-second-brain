@@ -1,15 +1,17 @@
 import type { CallToolResult } from "@modelcontextprotocol/server";
 import { z } from "zod";
-import type { EditNote } from "../../../../application/use-cases/edit-note";
+import type { EditNoteInput } from "../../../../application/use-cases/edit-note";
+import type { NoteView } from "../../../../application/use-cases/note-view";
 import type { ToolReplies } from "../tool-results";
 import type { ToolCallRunner } from "../tool-runner";
 import { NoteTool } from "./note-tool";
-import { EXPECTED_VERSION, NOTE_PATH } from "./tool-fields";
+import type { UseCase } from "./use-case";
+import { EXPECTED_VERSION, NOTE_PATH, PASSAGE, TEXT } from "./tool-fields";
 
 const SCHEMA = z.object({
   path: NOTE_PATH,
-  passage: z.string().describe("Exact text to replace"),
-  replacement: z.string().describe("New text"),
+  passage: PASSAGE.describe("Exact text to replace"),
+  replacement: TEXT.describe("New text"),
   expectedVersion: EXPECTED_VERSION,
 });
 
@@ -22,7 +24,7 @@ export class EditNoteTool extends NoteTool<typeof SCHEMA> {
   constructor(
     runner: ToolCallRunner,
     private readonly results: ToolReplies,
-    private readonly useCase: EditNote,
+    private readonly useCase: UseCase<EditNoteInput, NoteView>,
   ) {
     super(runner);
   }

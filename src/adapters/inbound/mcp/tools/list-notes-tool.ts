@@ -1,13 +1,14 @@
 import type { CallToolResult } from "@modelcontextprotocol/server";
 import { z } from "zod";
-import type { ListNotes } from "../../../../application/use-cases/list-notes";
+import type { ListNotesInput } from "../../../../application/use-cases/list-notes";
 import type { ToolReplies } from "../tool-results";
 import type { ToolCallRunner } from "../tool-runner";
 import { NoteTool } from "./note-tool";
-import { READ_ONLY } from "./tool-fields";
+import type { UseCase } from "./use-case";
+import { FOLDER, READ_ONLY } from "./tool-fields";
 
 const SCHEMA = z.object({
-  folder: z.string().optional().describe("Only list notes under this folder"),
+  folder: FOLDER.optional().describe("Only list notes under this folder"),
 });
 
 export class ListNotesTool extends NoteTool<typeof SCHEMA> {
@@ -19,7 +20,7 @@ export class ListNotesTool extends NoteTool<typeof SCHEMA> {
   constructor(
     runner: ToolCallRunner,
     private readonly results: ToolReplies,
-    private readonly useCase: ListNotes,
+    private readonly useCase: UseCase<ListNotesInput, string[]>,
   ) {
     super(runner);
   }

@@ -1,14 +1,15 @@
 import type { CallToolResult } from "@modelcontextprotocol/server";
 import { z } from "zod";
-import type { ReadSection } from "../../../../application/use-cases/read-section";
+import type { ReadSectionInput, SectionView } from "../../../../application/use-cases/read-section";
 import type { ToolReplies } from "../tool-results";
 import type { ToolCallRunner } from "../tool-runner";
 import { NoteTool } from "./note-tool";
-import { NOTE_PATH, READ_ONLY } from "./tool-fields";
+import type { UseCase } from "./use-case";
+import { LABEL, NOTE_PATH, READ_ONLY } from "./tool-fields";
 
 const SCHEMA = z.object({
   path: NOTE_PATH,
-  heading: z.string().describe("Heading text, without the leading #"),
+  heading: LABEL.describe("Heading text, without the leading #"),
 });
 
 export class ReadSectionTool extends NoteTool<typeof SCHEMA> {
@@ -21,7 +22,7 @@ export class ReadSectionTool extends NoteTool<typeof SCHEMA> {
   constructor(
     runner: ToolCallRunner,
     private readonly results: ToolReplies,
-    private readonly useCase: ReadSection,
+    private readonly useCase: UseCase<ReadSectionInput, SectionView>,
   ) {
     super(runner);
   }
