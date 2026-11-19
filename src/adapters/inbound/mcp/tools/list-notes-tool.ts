@@ -1,8 +1,8 @@
 import type { CallToolResult } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import type { ListNotes } from "../../../../application/use-cases/list-notes";
-import type { ToolResults } from "../tool-results";
-import type { ToolRunner } from "../tool-runner";
+import type { ToolReplies } from "../tool-results";
+import type { ToolCallRunner } from "../tool-runner";
 import { NoteTool } from "./note-tool";
 import { READ_ONLY } from "./tool-fields";
 
@@ -17,8 +17,8 @@ export class ListNotesTool extends NoteTool<typeof SCHEMA> {
   protected override readonly annotations = READ_ONLY;
 
   constructor(
-    runner: ToolRunner,
-    private readonly results: ToolResults,
+    runner: ToolCallRunner,
+    private readonly results: ToolReplies,
     private readonly useCase: ListNotes,
   ) {
     super(runner);

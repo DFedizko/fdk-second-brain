@@ -7,7 +7,14 @@ const VERSION_LABEL = "version: ";
 const SAVED_LABEL = "Saved ";
 const DELETED_LABEL = "Deleted ";
 
-export class ToolResults {
+export interface ToolReplies {
+  paths(paths: readonly string[]): CallToolResult;
+  note(view: NoteView): CallToolResult;
+  saved(view: NoteView): CallToolResult;
+  deleted(path: string): CallToolResult;
+}
+
+export class ToolResults implements ToolReplies {
   paths(paths: readonly string[]): CallToolResult {
     return this.reply(paths.length === 0 ? NO_NOTES : paths.join(LINE_BREAK));
   }

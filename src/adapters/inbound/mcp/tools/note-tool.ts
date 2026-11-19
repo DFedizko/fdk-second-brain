@@ -6,7 +6,7 @@ import type {
 } from "@modelcontextprotocol/server";
 import type { z } from "zod";
 import type { McpTool } from "../mcp-tool";
-import type { ToolRunner } from "../tool-runner";
+import type { ToolCallRunner } from "../tool-runner";
 
 export abstract class NoteTool<Schema extends z.ZodObject> implements McpTool {
   protected abstract readonly name: string;
@@ -14,7 +14,7 @@ export abstract class NoteTool<Schema extends z.ZodObject> implements McpTool {
   protected abstract readonly schema: Schema;
   protected readonly annotations?: ToolAnnotations;
 
-  constructor(private readonly runner: ToolRunner) {}
+  constructor(private readonly runner: ToolCallRunner) {}
 
   register(server: McpServer): void {
     const config = {

@@ -1,10 +1,12 @@
 import { Container } from "inversify";
-import { mcpModule } from "../../../../src/adapters/inbound/mcp/mcp.container";
+import { ConsoleErrorLog } from "../../../../src/adapters/inbound/mcp/console-error-log";
+import { createMcpModule } from "../../../../src/adapters/inbound/mcp/mcp.container";
 import { MCP } from "../../../../src/adapters/inbound/mcp/mcp.symbols";
 import { NotesMcpServer } from "../../../../src/adapters/inbound/mcp/notes-mcp-server";
 import { CLOCK } from "../../../../src/adapters/outbound/clock/clock.symbols";
 import { GITHUB } from "../../../../src/adapters/outbound/github/github.symbols";
 import { useCasesModule } from "../../../../src/main/use-cases/use-cases.container";
+import { USE_CASES } from "../../../../src/main/use-cases/use-cases.symbols";
 import { InMemoryNoteRepo } from "../../../application/__fake__/in-memory-note-repo";
 import { FixedClock } from "../../../application/use-cases/__stub__/fixed-clock";
 
@@ -15,7 +17,7 @@ function buildContainer(): Container {
   const container = new Container();
   container.bind(GITHUB.noteRepository).toConstantValue(new InMemoryNoteRepo());
   container.bind(CLOCK.clock).toConstantValue(new FixedClock(NOW));
-  container.load(useCasesModule, mcpModule);
+  container.load(useCasesModule, createMcpModule(USE_CASES));
   return container;
 }
 
@@ -26,6 +28,14 @@ describe("mcpModule", () => {
     const tools = container.getAll(MCP.tool);
 
     expect(tools).toHaveLength(TOOL_COUNT);
+  });
+
+  it("reports unexpected tool errors to the Worker's logs", () => {
+    const container = buildContainer();
+
+    const log = container.get(MCP.errorLog);
+
+    expect(log).toBeInstanceOf(ConsoleErrorLog);
   });
 
   it("binds the notes MCP server factory", () => {

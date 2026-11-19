@@ -1,8 +1,8 @@
 import type { CallToolResult } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import type { DeleteNote } from "../../../../application/use-cases/delete-note";
-import type { ToolResults } from "../tool-results";
-import type { ToolRunner } from "../tool-runner";
+import type { ToolReplies } from "../tool-results";
+import type { ToolCallRunner } from "../tool-runner";
 import { NoteTool } from "./note-tool";
 import { NOTE_PATH } from "./tool-fields";
 
@@ -16,8 +16,8 @@ export class DeleteNoteTool extends NoteTool<typeof SCHEMA> {
   protected readonly schema = SCHEMA;
 
   constructor(
-    runner: ToolRunner,
-    private readonly results: ToolResults,
+    runner: ToolCallRunner,
+    private readonly results: ToolReplies,
     private readonly useCase: DeleteNote,
   ) {
     super(runner);

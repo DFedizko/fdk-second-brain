@@ -16,7 +16,11 @@ const HINTS: ReadonlyArray<readonly [ErrorClass, string]> = [
   [NoteAlreadyExists, "Pass its expectedVersion to replace it, or pick another path."],
 ];
 
-export class ToolErrorMapper {
+export interface ErrorResultMapper {
+  toResult(error: unknown): CallToolResult;
+}
+
+export class ToolErrorMapper implements ErrorResultMapper {
   toResult(error: unknown): CallToolResult {
     return { isError: true, content: [{ type: "text", text: this.describe(error) }] };
   }

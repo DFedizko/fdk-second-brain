@@ -1,8 +1,8 @@
 import type { CallToolResult } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import type { WriteNote } from "../../../../application/use-cases/write-note";
-import type { ToolResults } from "../tool-results";
-import type { ToolRunner } from "../tool-runner";
+import type { ToolReplies } from "../tool-results";
+import type { ToolCallRunner } from "../tool-runner";
 import { NoteTool } from "./note-tool";
 import { EXPECTED_VERSION, NOTE_PATH } from "./tool-fields";
 
@@ -19,8 +19,8 @@ export class WriteNoteTool extends NoteTool<typeof SCHEMA> {
   protected readonly schema = SCHEMA;
 
   constructor(
-    runner: ToolRunner,
-    private readonly results: ToolResults,
+    runner: ToolCallRunner,
+    private readonly results: ToolReplies,
     private readonly useCase: WriteNote,
   ) {
     super(runner);
