@@ -28,6 +28,6 @@ describe("worker", () => {
 
     const serve = worker.fetch(new Request(ANY_URL), env);
 
-    expect(serve).rejects.toThrow(InvalidEnvError);
+    await expect(serve).rejects.toThrow(InvalidEnvError);
   });
 });
