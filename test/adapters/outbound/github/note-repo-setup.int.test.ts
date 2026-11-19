@@ -46,13 +46,13 @@ describe("GitHubNoteRepo with a broken setup or limits", () => {
   it.each(ACTIONS)("reports a missing branch as NotesUnavailable when %s", async (_name, act) => {
     const error = await failureOf(act(connectRepo(api, { branch: MISSING_BRANCH })));
 
-    expect(error).toEqual(new NotesUnavailable(NOT_FOUND));
+    expect(error).toMatchObject({ name: NotesUnavailable.name, status: NOT_FOUND });
   });
 
   it.each(ACTIONS)("reports a missing repo as NotesUnavailable when %s", async (_name, act) => {
     const error = await failureOf(act(connectRepo(api, { repo: MISSING_REPO })));
 
-    expect(error).toEqual(new NotesUnavailable(NOT_FOUND));
+    expect(error).toMatchObject({ name: NotesUnavailable.name, status: NOT_FOUND });
   });
 
   it("refuses a truncated tree instead of listing part of the notes", async () => {

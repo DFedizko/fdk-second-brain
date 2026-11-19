@@ -22,6 +22,8 @@ const WRONG_TOKEN = "ghp_wrongToken";
 const ROOT = NoteFolder.of("");
 const RETRY_AFTER_SECONDS = 60;
 const SERVER_ERROR = 500;
+const UNAUTHORIZED = 401;
+const FORBIDDEN = 403;
 const CONFLICT = 409;
 const ALWAYS = Number.POSITIVE_INFINITY;
 
@@ -189,6 +191,38 @@ describe("GitHubNoteRepo maps GitHub errors", () => {
     const error = await failureOf(connectRepo(api).list(ROOT));
 
     expect((error as NotesUnavailable).status).toBe(SERVER_ERROR);
+  });
+
+  it("keeps GitHub's failure as the cause of NotesUnavailable", async () => {
+    api.startOutage("server");
+
+    const error = await failureOf(connectRepo(api).list(ROOT));
+
+    expect((error as Error).cause).toMatchObject({ status: SERVER_ERROR });
+  });
+
+  it("keeps the network failure as the cause", async () => {
+    api.startOutage("network");
+
+    const error = await failureOf(connectRepo(api).list(ROOT));
+
+    expect((error as Error).cause).toBeInstanceOf(Error);
+  });
+
+  it("keeps GitHub's failure as the cause of NotesAccessDenied", async () => {
+    api.revokeToken();
+
+    const error = await failureOf(connectRepo(api).list(ROOT));
+
+    expect((error as Error).cause).toMatchObject({ status: UNAUTHORIZED });
+  });
+
+  it("keeps GitHub's failure as the cause of NotesRateLimited", async () => {
+    api.exhaustRateLimit();
+
+    const error = await failureOf(connectRepo(api).list(ROOT));
+
+    expect((error as Error).cause).toMatchObject({ status: FORBIDDEN });
   });
 
   it("maps a network failure to NotesUnavailable", async () => {

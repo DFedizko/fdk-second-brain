@@ -11,7 +11,8 @@ export function githubContainer(config: GitHubConfig): ContainerModule {
     bind(GITHUB.config).toConstantValue(config);
     bind(GITHUB.client)
       .toResolvedValue(
-        (settings: GitHubConfig) => new Octokit({ auth: settings.token, log: SILENT_LOG }),
+        (settings: GitHubConfig) =>
+          new Octokit({ auth: settings.token, baseUrl: settings.apiUrl, log: SILENT_LOG }),
         [GITHUB.config],
       )
       .inSingletonScope();

@@ -4,21 +4,48 @@ import { VALID_ENV } from "./__stub__/valid-env";
 
 const NOT_FOUND = 404;
 const ANY_URL = "https://second-brain.example/";
+const MCP_URL = "https://second-brain.example/mcp";
+const MCP_URL_WITH_SLASH = "https://second-brain.example/mcp/";
+const NEAR_MISS_URL = "https://second-brain.example/mcpx";
 
 describe("worker", () => {
-  it("answers not found while no route exists", () => {
+  it("answers not found outside the MCP path", async () => {
     const env = { ...VALID_ENV } as unknown as Env;
 
-    const response = worker.fetch(new Request(ANY_URL), env);
+    const response = await worker.fetch(new Request(ANY_URL), env);
 
     expect(response.status).toBe(NOT_FOUND);
   });
 
-  it("refuses to serve when the env is invalid", () => {
+  it("serves MCP at /mcp", async () => {
+    const env = { ...VALID_ENV } as unknown as Env;
+
+    const response = await worker.fetch(new Request(MCP_URL), env);
+
+    expect(response.status).not.toBe(NOT_FOUND);
+  });
+
+  it("serves MCP at /mcp/ with a trailing slash", async () => {
+    const env = { ...VALID_ENV } as unknown as Env;
+
+    const response = await worker.fetch(new Request(MCP_URL_WITH_SLASH), env);
+
+    expect(response.status).not.toBe(NOT_FOUND);
+  });
+
+  it("does not serve paths that only start with /mcp", async () => {
+    const env = { ...VALID_ENV } as unknown as Env;
+
+    const response = await worker.fetch(new Request(NEAR_MISS_URL), env);
+
+    expect(response.status).toBe(NOT_FOUND);
+  });
+
+  it("refuses to serve when the env is invalid", async () => {
     const env = {} as Env;
 
-    const serve = () => worker.fetch(new Request(ANY_URL), env);
+    const serve = worker.fetch(new Request(ANY_URL), env);
 
-    expect(serve).toThrow(InvalidEnvError);
+    await expect(serve).rejects.toThrow(InvalidEnvError);
   });
 });

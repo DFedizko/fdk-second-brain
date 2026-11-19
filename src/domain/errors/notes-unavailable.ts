@@ -1,7 +1,13 @@
-import { DomainError } from "./domain-error";
+import { NotesStoreFailure } from "./notes-store-failure";
 
-export class NotesUnavailable extends DomainError {
-  constructor(readonly status?: number) {
-    super(`The notes store is unavailable${status === undefined ? "" : ` (status ${status})`}`);
+export class NotesUnavailable extends NotesStoreFailure {
+  constructor(
+    readonly status?: number,
+    cause?: unknown,
+  ) {
+    super(
+      `The notes store is unavailable${status === undefined ? "" : ` (status ${status})`}`,
+      cause,
+    );
   }
 }

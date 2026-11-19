@@ -9,6 +9,7 @@ export function toNotesRepoSettings(config: AppConfig): NotesRepoSettings {
     owner: config.NOTES_REPO_OWNER,
     repo: config.NOTES_REPO_NAME,
     branch: config.NOTES_BRANCH,
+    apiUrl: config.GITHUB_API_URL,
   };
 }
 

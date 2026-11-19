@@ -16,6 +16,11 @@ const BRANCH_RULES = [
   "(?!.*\\.lock(?:\\/|$))",
 ];
 const BRANCH_NAME = new RegExp(`^${BRANCH_RULES.join("")}[\\w./-]+$`);
+const DEFAULT_API_URL = "https://api.github.com";
+const URL_ORIGIN =
+  "(?:https:\\/\\/[^\\s/]+|http:\\/\\/(?:localhost|127\\.0\\.0\\.1|\\[::1\\])(?::\\d+)?)";
+const URL_PATH = "(?:\\/[^\\s]*[^\\s/])?";
+const API_URL = new RegExp(`^${URL_ORIGIN}${URL_PATH}$`);
 const CLIENT_ID = /^[A-Za-z0-9]+$/;
 const CLIENT_SECRET = /^[0-9a-fA-F]{40}$/;
 const LONG_SECRET = /^\S{32,}$/;
@@ -55,6 +60,14 @@ export const ENV_SCHEMA = z.object(
         pattern: BRANCH_NAME,
       },
       DEFAULT_BRANCH,
+    ),
+    GITHUB_API_URL: optionalEnvField(
+      {
+        name: "GITHUB_API_URL",
+        expected: `an https URL with no trailing slash, such as ${DEFAULT_API_URL} (http is allowed only for localhost, 127.0.0.1 or [::1]).`,
+        pattern: API_URL,
+      },
+      DEFAULT_API_URL,
     ),
     GITHUB_CLIENT_ID: requiredEnvField({
       name: "GITHUB_CLIENT_ID",

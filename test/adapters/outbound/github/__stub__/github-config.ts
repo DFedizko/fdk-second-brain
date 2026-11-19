@@ -6,4 +6,5 @@ export const GITHUB_CONFIG: GitHubConfig = {
   repo: NOTES_REPO,
   branch: NOTES_BRANCH,
   token: NOTES_TOKEN,
+  apiUrl: "https://api.github.com",
 };

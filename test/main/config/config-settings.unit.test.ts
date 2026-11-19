@@ -17,6 +17,7 @@ describe("config settings", () => {
       owner: VALID_ENV.NOTES_REPO_OWNER,
       repo: VALID_ENV.NOTES_REPO_NAME,
       branch: VALID_ENV.NOTES_BRANCH,
+      apiUrl: VALID_ENV.GITHUB_API_URL,
     });
   });
 

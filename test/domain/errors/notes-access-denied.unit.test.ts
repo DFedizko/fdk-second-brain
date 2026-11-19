@@ -8,4 +8,12 @@ describe("NotesAccessDenied", () => {
       "The notes store refused access: check the token and its permissions",
     );
   });
+
+  it("keeps the original failure as its cause", () => {
+    const cause = new Error("Bad credentials");
+
+    const error = new NotesAccessDenied(cause);
+
+    expect(error.cause).toBe(cause);
+  });
 });
