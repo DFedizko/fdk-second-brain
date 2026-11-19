@@ -22,6 +22,8 @@ const WRONG_TOKEN = "ghp_wrongToken";
 const ROOT = NoteFolder.of("");
 const RETRY_AFTER_SECONDS = 60;
 const SERVER_ERROR = 500;
+const NOT_FOUND = 404;
+const MISSING_BRANCH = "gone";
 
 async function failureOf(action: Promise<unknown>): Promise<unknown> {
   return action.then(
@@ -83,8 +85,20 @@ describe("GitHubNoteRepo maps GitHub errors", () => {
     expect(paths).toHaveLength(2);
   });
 
+  it("maps a missing branch when listing to NotesUnavailable, not a missing note", async () => {
+    const error = await failureOf(connectRepo(api, { branch: MISSING_BRANCH }).list(ROOT));
+
+    expect((error as NotesUnavailable).status).toBe(NOT_FOUND);
+  });
+
+  it("maps a missing branch when moving to NotesUnavailable, not a missing note", async () => {
+    const error = await failureOf(connectRepo(api, { branch: MISSING_BRANCH }).move(INBOX, PLAN));
+
+    expect((error as NotesUnavailable).status).toBe(NOT_FOUND);
+  });
+
   it("maps 401 Bad credentials to NotesAccessDenied", async () => {
-    const list = connectRepo(api, WRONG_TOKEN).list(ROOT);
+    const list = connectRepo(api, { token: WRONG_TOKEN }).list(ROOT);
 
     await expect(list).rejects.toThrow(NotesAccessDenied);
   });
