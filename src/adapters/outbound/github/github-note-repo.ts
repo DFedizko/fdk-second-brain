@@ -80,12 +80,18 @@ export class GitHubNoteRepo implements NoteRepository {
   }
 
   async delete(path: NotePath): Promise<void> {
-    const current = await this.read(path);
+    const version = await this.currentVersion(path);
     await this.retryFileWrite(
       path,
-      () => this.deleteFile(path, current.version),
-      (error) => this.isStillCurrent(error, path, current.version),
+      () => this.deleteFile(path, version),
+      (error) => this.isStillCurrent(error, path, version),
     );
+  }
+
+  private async currentVersion(path: NotePath): Promise<NoteVersion> {
+    return this.reader
+      .versionOf(path, this.github.branch)
+      .catch((error: unknown) => this.confirmBranchThenThrow(error));
   }
 
   async move(from: NotePath, to: NotePath): Promise<Note> {
@@ -115,9 +121,9 @@ export class GitHubNoteRepo implements NoteRepository {
     expected: NoteVersion,
   ): Promise<boolean> {
     if (!(error instanceof VersionConflict)) return false;
-    const current = await this.read(path);
-    if (current.version.equals(expected)) return true;
-    throw new VersionConflict(path.value, expected.value, current.version.value);
+    const current = await this.currentVersion(path);
+    if (current.equals(expected)) return true;
+    throw new VersionConflict(path.value, expected.value, current.value);
   }
 
   private async confirmBranchThenThrow(error: unknown): Promise<never> {

@@ -9,7 +9,7 @@ import { BranchMoved } from "./branch-moved";
 import { EmptyRepository } from "./empty-repository";
 import type { FailureContext } from "./github-error-translator";
 import type { GitHubAccess } from "./github-gateway";
-import type { NoteReader } from "./github-note-reader";
+import type { NoteReader, TextDecoding } from "./github-note-reader";
 
 const BLOB = "blob";
 const FILE_MODE = "100644";
@@ -19,6 +19,7 @@ const MOVE = "Move";
 const MOVE_TO = "to";
 const MOVE_ATTEMPTS = 2;
 const BRANCH_LEVEL: FailureContext = {};
+const LOSSY: TextDecoding = "lossy";
 
 type GitFileMode = typeof FILE_MODE | typeof EXECUTABLE_MODE;
 
@@ -48,7 +49,7 @@ export class GitHubNoteMover implements NoteMover {
     const head = await this.reader.headCommit().catch((error: unknown) => {
       throw error instanceof EmptyRepository ? new NoteNotFound(from.value) : error;
     });
-    const note = await this.reader.read(from, head);
+    const note = await this.reader.read(from, head, LOSSY);
     if (await this.reader.exists(to, head)) throw new NoteAlreadyExists(to.value);
     const tree = await this.movedTree(from, to, note.version, head);
     const message = `${MOVE} ${from.value} ${MOVE_TO} ${to.value}`;
