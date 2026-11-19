@@ -87,10 +87,11 @@ export class GitDataRoutes {
     const files = sha ? this.parts.store.tree(sha) : undefined;
     if (!sha || !files) return this.fail(call, STATUS.notFound, MESSAGE.notFound, DOCS_PAGE.trees);
     const modes = this.parts.store.modesOf(sha);
-    const tree = this.parts.shapes.gitTree(sha, files, (blob) => this.sizeOf(blob), modes);
+    const folders = (folder: string) => this.parts.store.folderSha(sha, folder);
+    const tree = this.parts.shapes.gitTree(sha, files, (blob) => this.sizeOf(blob), modes, folders);
     const recursive = call.query.has(RECURSIVE);
     const entries = recursive ? tree.tree : tree.tree.filter((e) => !e.path.includes(SEPARATOR));
-    const truncated = this.parts.limits.truncateTrees;
+    const truncated = recursive && this.parts.limits.truncateTrees;
     return this.reply(call, STATUS.ok, { ...tree, truncated, tree: entries });
   }
 

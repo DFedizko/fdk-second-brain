@@ -10,6 +10,7 @@ import { connectRepo } from "./__fake__/github-note-repo-on-fake";
 const INBOX = NotePath.of("inbox.md");
 const TAKEN = NotePath.of("taken.md");
 const NESTED = NotePath.of("taken.md/kept.md");
+const NESTED_SOURCE = NotePath.of("projects/scripts/run.md");
 const CONTENT = "# Inbox\n";
 const KEPT_CONTENT = "# Kept\n";
 const SYMLINK_MODE = "120000";
@@ -93,11 +94,12 @@ describe("GitHubNoteRepo moves", () => {
     expect(error).toMatchObject({ name: NotesUnavailable.name, status: UNPROCESSABLE });
   });
 
-  it("refuses a move when the tree is too big to find the note's file mode", async () => {
+  it("keeps the file mode of a nested note without reading the whole tree", async () => {
+    api.addEntry(NOTES_BRANCH, NESTED_SOURCE.value, EXECUTABLE_MODE, CONTENT);
     api.truncateTrees();
 
-    const move = repository.move(INBOX, TAKEN);
+    await repository.move(NESTED_SOURCE, TAKEN);
 
-    await expect(move).rejects.toThrow(NotesUnavailable);
+    expect(api.store.modesAt(NOTES_BRANCH).get(TAKEN.value)).toBe(EXECUTABLE_MODE);
   });
 });

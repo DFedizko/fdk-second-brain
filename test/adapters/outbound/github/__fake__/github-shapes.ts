@@ -13,6 +13,7 @@ type TreeEntry = GitTree["tree"][number];
 type DirectoryItem = components["schemas"]["content-directory"][number];
 
 type Sizes = (blobSha: string) => number;
+type FolderShas = (folder: string) => string | undefined;
 
 export interface CommittedFile {
   readonly path: string;
@@ -119,11 +120,19 @@ export class GitHubShapes {
     };
   }
 
-  gitTree(sha: string, files: FileTable, sizes: Sizes, modes: ModeTable = new Map()): GitTree {
+  gitTree(
+    sha: string,
+    files: FileTable,
+    sizes: Sizes,
+    modes: ModeTable = new Map(),
+    folderShas: FolderShas = () => undefined,
+  ): GitTree {
     const blobs = [...files.entries()].map(([path, blobSha]) =>
       this.blobEntry(path, blobSha, sizes(blobSha), modes.get(path) ?? FILE_MODE),
     );
-    const folders = this.foldersOf([...files.keys()]).map((path) => this.folderEntry(path));
+    const folders = this.foldersOf([...files.keys()]).map((path) =>
+      this.folderEntry(path, folderShas(path)),
+    );
     return {
       sha,
       url: `${this.api()}/git/trees/${sha}`,
@@ -194,8 +203,8 @@ export class GitHubShapes {
     };
   }
 
-  private folderEntry(path: string): TreeEntry {
-    const sha = this.folderSha(path);
+  private folderEntry(path: string, known?: string): TreeEntry {
+    const sha = known ?? this.folderSha(path);
     return { path, mode: FOLDER_MODE, type: "tree", sha, url: `${this.api()}/git/trees/${sha}` };
   }
 
