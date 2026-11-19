@@ -1,8 +1,10 @@
 import { InvalidEnvError } from "../../src/main/config/invalid-env-error";
 import worker from "../../src/main/worker";
+import { DUMMY_CONTEXT } from "./__dummy__/dummy-execution-context";
 import { VALID_ENV } from "./__stub__/valid-env";
 
 const NOT_FOUND = 404;
+const UNAUTHORIZED = 401;
 const ANY_URL = "https://second-brain.example/";
 const MCP_URL = "https://second-brain.example/mcp";
 const MCP_URL_WITH_SLASH = "https://second-brain.example/mcp/";
@@ -12,31 +14,31 @@ describe("worker", () => {
   it("answers not found outside the MCP path", async () => {
     const env = { ...VALID_ENV } as unknown as Env;
 
-    const response = await worker.fetch(new Request(ANY_URL), env);
+    const response = await worker.fetch(new Request(ANY_URL), env, DUMMY_CONTEXT);
 
     expect(response.status).toBe(NOT_FOUND);
   });
 
-  it("serves MCP at /mcp", async () => {
+  it("guards MCP at /mcp behind sign-in", async () => {
     const env = { ...VALID_ENV } as unknown as Env;
 
-    const response = await worker.fetch(new Request(MCP_URL), env);
+    const response = await worker.fetch(new Request(MCP_URL), env, DUMMY_CONTEXT);
 
-    expect(response.status).not.toBe(NOT_FOUND);
+    expect(response.status).toBe(UNAUTHORIZED);
   });
 
-  it("serves MCP at /mcp/ with a trailing slash", async () => {
+  it("guards MCP at /mcp/ with a trailing slash", async () => {
     const env = { ...VALID_ENV } as unknown as Env;
 
-    const response = await worker.fetch(new Request(MCP_URL_WITH_SLASH), env);
+    const response = await worker.fetch(new Request(MCP_URL_WITH_SLASH), env, DUMMY_CONTEXT);
 
-    expect(response.status).not.toBe(NOT_FOUND);
+    expect(response.status).toBe(UNAUTHORIZED);
   });
 
   it("does not serve paths that only start with /mcp", async () => {
     const env = { ...VALID_ENV } as unknown as Env;
 
-    const response = await worker.fetch(new Request(NEAR_MISS_URL), env);
+    const response = await worker.fetch(new Request(NEAR_MISS_URL), env, DUMMY_CONTEXT);
 
     expect(response.status).toBe(NOT_FOUND);
   });
@@ -44,7 +46,7 @@ describe("worker", () => {
   it("refuses to serve when the env is invalid", async () => {
     const env = {} as Env;
 
-    const serve = worker.fetch(new Request(ANY_URL), env);
+    const serve = worker.fetch(new Request(ANY_URL), env, DUMMY_CONTEXT);
 
     await expect(serve).rejects.toThrow(InvalidEnvError);
   });

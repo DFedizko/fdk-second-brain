@@ -5,6 +5,7 @@ import { CookieJar } from "./cookie-jar";
 export const CLIENT_REDIRECT = "https://client.example/callback";
 export const WORKER_ORIGIN = "https://second-brain.example";
 
+const MANUAL = "manual";
 const CLIENT_NAME = "E2E MCP client";
 const CLIENT_STATE = "client-state-42";
 const HANDLE_FIELD = /name="handle" value="([^"]+)"/;
@@ -89,7 +90,8 @@ export class SignInClient {
   }
 
   private async get(path: string): Promise<Response> {
-    return this.send(new Request(new URL(path, WORKER_ORIGIN), { headers: this.cookies() }));
+    const url = new URL(path, WORKER_ORIGIN);
+    return this.send(new Request(url, { headers: this.cookies(), redirect: MANUAL }));
   }
 
   private async post(path: string, type: string, body: object): Promise<Response> {
@@ -97,7 +99,7 @@ export class SignInClient {
     headers.set("content-type", type);
     const text = type === JSON_TYPE ? JSON.stringify(body) : String(body);
     const url = new URL(path, WORKER_ORIGIN);
-    return this.send(new Request(url, { method: "POST", headers, body: text }));
+    return this.send(new Request(url, { method: "POST", headers, body: text, redirect: MANUAL }));
   }
 
   private async send(request: Request): Promise<Response> {
