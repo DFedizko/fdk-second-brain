@@ -9,7 +9,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy"
+    "deploy": "wrangler deploy",
+    "postinstall": "wrangler types"
   },
   "dependencies": {
     "@cloudflare/workers-oauth-provider": "^1.2.4",
@@ -21,7 +22,6 @@
   },
   "devDependencies": {
     "@types/bun": "^1.4.4",
-    "miniflare": "^4.20260730.0",
     "prettier": "^3.10.1",
     "typescript": "^7.0.2",
     "wrangler": "^4.165.0"
