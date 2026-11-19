@@ -50,6 +50,7 @@ This repository holds only the server code. Notes never go here; the notes repos
 - Typed and validated once, at bootstrap, with a zod schema in `main/`. Every field has its own custom error message, so a missing or invalid variable says exactly which one is wrong and what is expected.
 - The rest of the app receives the parsed, typed config through DI, never by reading the environment directly.
 - Locally, Bun loads `.env` and wrangler loads `.dev.vars`. `.env.example` and `.dev.vars.example` list every variable with placeholders only (a test keeps them in sync with the schema); copy one and fill it in. Never commit real values.
+- `GITHUB_API_URL` (optional, defaults to `https://api.github.com`) is the GitHub REST base URL. Production leaves it unset; e2e tests point it at the local GitHub fake.
 - The schema lives in `src/main/config/env-schema.ts`. `Bootstrap` validates the Worker's env once per env object and throws `InvalidEnvError` listing every problem; the parsed config is bound to `CONFIG_SYMBOLS.AppConfig`. Adapters never import `AppConfig` from `main/`: they depend on the narrow settings interfaces in `src/shared/contracts/` (`NotesRepoSettings`, `OAuthSettings`, `WebhookSettings`), which the config module maps from the parsed config and binds under `CONFIG_SYMBOLS`.
 
 ## Test tooling
@@ -58,6 +59,8 @@ This repository holds only the server code. Notes never go here; the notes repos
 - **Never import values from `bun:test`**: it breaks transpilation. Only type imports are allowed, e.g. `import type { Mock } from "bun:test"`.
 - Declare spies and mocks with explicit types, at the top of the test file or in `beforeEach`, e.g. `let save: Mock<NoteRepo["save"]>`.
 - Use the Bun globals first. For spies, mocks and time, which Bun only exposes as globals through `jest`, use `jest.fn`, `jest.spyOn`, `jest.setSystemTime`, `jest.useFakeTimers` and the like. Use `jest.*` only for what the other globals don't cover.
+
+- **E2E tests run the real Worker in workerd** through wrangler's `createTestHarness` (no extra dependency), started from `test/shared/adapters/local-worker.ts`. Under Bun, the harness URL and `harness.fetch` can't reach the Worker (Bun's `fetch` ignores undici's dispatcher), so requests go through `getWorker().getExport().fetch(request)`, which works. GitHub is the high-fidelity fake served over HTTP by `Bun.serve` (`FakeGitHubServer`), and the Worker reaches it through `GITHUB_API_URL`. Start the Worker once per file (`beforeAll`) and give each test a fresh fake repository (`McpE2eStack.seed`).
 
 ## Commands
 
