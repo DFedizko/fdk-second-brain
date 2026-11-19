@@ -68,6 +68,12 @@ describe("MarkdownOutline", () => {
     expect(outline.section("Log")).toBe("## Log\nfirst");
   });
 
+  it("reads notes saved with Windows line endings", () => {
+    const outline = new MarkdownOutline("## Log\r\nfirst\r\n## Next\r\n");
+
+    expect(outline.section("Log")).toBe("## Log\nfirst");
+  });
+
   it("rejects a heading that does not exist", () => {
     const outline = new MarkdownOutline(NOTE);
 
