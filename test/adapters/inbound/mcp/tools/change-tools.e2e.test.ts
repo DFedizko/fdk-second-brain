@@ -90,4 +90,14 @@ describe("save_idea", () => {
     const idea = Object.entries(files()).find(([path]) => IDEA_PATH.test(path));
     expect(idea?.[1]).toBe("# Offline mode\n\nCache notes on the phone.");
   });
+
+  it("keeps both ideas when the same title is saved twice", async () => {
+    const idea = { title: "Offline mode", content: "Cache notes on the phone." };
+    await stack.client.callTool("save_idea", idea);
+
+    await stack.client.callTool("save_idea", idea);
+
+    const ideas = Object.keys(files()).filter((path) => path.startsWith("ideas/"));
+    expect(ideas).toHaveLength(2);
+  });
 });

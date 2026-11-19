@@ -2,11 +2,18 @@ import { ToolErrorMapper } from "../../../../src/adapters/inbound/mcp/tool-error
 import { InvalidPath } from "../../../../src/domain/errors/invalid-path";
 import { NoteAlreadyExists } from "../../../../src/domain/errors/note-already-exists";
 import { NoteNotFound } from "../../../../src/domain/errors/note-not-found";
+import { EmptySearchQuery } from "../../../../src/domain/errors/empty-search-query";
+import { NotesAccessDenied } from "../../../../src/domain/errors/notes-access-denied";
 import { NotesRateLimited } from "../../../../src/domain/errors/notes-rate-limited";
+import { NotesUnavailable } from "../../../../src/domain/errors/notes-unavailable";
+import { PassageNotFound } from "../../../../src/domain/errors/passage-not-found";
+import { SectionNotFound } from "../../../../src/domain/errors/section-not-found";
 import { PassageNotUnique } from "../../../../src/domain/errors/passage-not-unique";
 import { VersionConflict } from "../../../../src/domain/errors/version-conflict";
 
 const PATH = "projects/plan.md";
+const SERVICE_UNAVAILABLE = 503;
+const OCCURRENCES = 3;
 const UNEXPECTED_MESSAGE = "Something went wrong on the server. Try again later.";
 const SECRET_DETAIL = "token ghp_secret leaked in a stack";
 
@@ -57,8 +64,13 @@ describe("ToolErrorMapper", () => {
 
   it.each([
     new InvalidPath("../x.md", "it leaves the notes folder"),
-    new PassageNotUnique("todo", 3),
+    new PassageNotUnique("todo", OCCURRENCES),
+    new PassageNotFound("todo"),
+    new SectionNotFound("Goals"),
+    new EmptySearchQuery("  "),
+    new NotesAccessDenied(),
     new NotesRateLimited(),
+    new NotesUnavailable(SERVICE_UNAVAILABLE),
   ])("passes the message of $name through", (error) => {
     const mapper = new ToolErrorMapper();
 

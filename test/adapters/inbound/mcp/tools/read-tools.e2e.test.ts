@@ -29,6 +29,18 @@ describe("list_notes", () => {
     expect(text).toEqual([`${INBOX}\n${PLAN}`]);
   });
 
+  it("says so when a folder holds no notes", async () => {
+    const text = await stack.client.callText("list_notes", { folder: "empty" });
+
+    expect(text).toEqual(["No notes found."]);
+  });
+
+  it("rejects a folder outside the notes", async () => {
+    const result = await stack.client.callTool("list_notes", { folder: "../secrets" });
+
+    expect(result.isError).toBe(true);
+  });
+
   it("lists only the notes under a folder", async () => {
     const text = await stack.client.callText("list_notes", { folder: "projects" });
 
