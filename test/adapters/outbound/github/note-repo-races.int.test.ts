@@ -1,4 +1,4 @@
-import { NotesUnavailable } from "../../../../src/domain/errors/notes-unavailable";
+import { ConcurrentChange } from "../../../../src/domain/errors/concurrent-change";
 import { NotePath } from "../../../../src/domain/note-path";
 import type { GitHubNoteRepo } from "../../../../src/adapters/outbound/github/github-note-repo";
 import type { FakeGitHubApi } from "./__fake__/fake-github-api";
@@ -10,14 +10,6 @@ const CONTENT = "# Inbox\n";
 const EDITED = "# Inbox\n\n- edited\n";
 const ONCE = 1;
 const ALWAYS = Number.POSITIVE_INFINITY;
-const CONFLICT = 409;
-
-async function failureOf(action: Promise<unknown>): Promise<unknown> {
-  return action.then(
-    () => undefined,
-    (error: unknown) => error,
-  );
-}
 
 describe("GitHubNoteRepo when another commit lands during a file write", () => {
   let api: FakeGitHubApi;
@@ -54,21 +46,21 @@ describe("GitHubNoteRepo when another commit lands during a file write", () => {
     expect(api.filesOn(NOTES_BRANCH)).not.toHaveProperty(INBOX.value);
   });
 
-  it("gives up on a write with NotesUnavailable when the branch keeps moving", async () => {
+  it("gives up on a write with ConcurrentChange when the branch keeps moving", async () => {
     const created = await repository.create(INBOX, CONTENT);
     api.commitDuringFileWrites(ALWAYS);
 
-    const error = await failureOf(repository.write(INBOX, EDITED, created.version));
+    const write = repository.write(INBOX, EDITED, created.version);
 
-    expect(error).toEqual(new NotesUnavailable(CONFLICT));
+    await expect(write).rejects.toThrow(ConcurrentChange);
   });
 
-  it("gives up on a delete with NotesUnavailable when the branch keeps moving", async () => {
+  it("gives up on a delete with ConcurrentChange when the branch keeps moving", async () => {
     await repository.create(INBOX, CONTENT);
     api.commitDuringFileWrites(ALWAYS);
 
-    const error = await failureOf(repository.delete(INBOX));
+    const remove = repository.delete(INBOX);
 
-    expect(error).toEqual(new NotesUnavailable(CONFLICT));
+    await expect(remove).rejects.toThrow(ConcurrentChange);
   });
 });
