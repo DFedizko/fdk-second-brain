@@ -50,7 +50,7 @@ This repository holds only the server code. Notes never go here; the notes repos
 - Typed and validated once, at bootstrap, with a zod schema in `main/`. Every field has its own custom error message, so a missing or invalid variable says exactly which one is wrong and what is expected.
 - The rest of the app receives the parsed, typed config through DI, never by reading the environment directly.
 - Locally, Bun loads `.env` and wrangler loads `.dev.vars`. `.env.example` and `.dev.vars.example` list every variable with placeholders only (a test keeps them in sync with the schema); copy one and fill it in. Never commit real values.
-- `GITHUB_API_URL` (optional, defaults to `https://api.github.com`) is the GitHub REST base URL. Production leaves it unset; e2e tests point it at the local GitHub fake.
+- `GITHUB_API_URL` (optional, defaults to `https://api.github.com`) is the GitHub REST base URL. It must be https, except for loopback hosts (localhost, 127.0.0.1, [::1]). Production leaves it unset; e2e tests point it at the local GitHub fake.
 - The schema lives in `src/main/config/env-schema.ts`. `Bootstrap` validates the Worker's env once per env object and throws `InvalidEnvError` listing every problem; the parsed config is bound to `CONFIG_SYMBOLS.AppConfig`. Adapters never import `AppConfig` from `main/`: they depend on the narrow settings interfaces in `src/shared/contracts/` (`NotesRepoSettings`, `OAuthSettings`, `WebhookSettings`), which the config module maps from the parsed config and binds under `CONFIG_SYMBOLS`.
 
 ## Test tooling

@@ -54,7 +54,7 @@ const INVALID_CASES: ReadonlyArray<[EnvName, unknown, string]> = [
   [
     "GITHUB_API_URL",
     "ftp://api.github.com",
-    "GITHUB_API_URL is invalid: expected an http(s) URL with no trailing slash, such as https://api.github.com.",
+    "GITHUB_API_URL is invalid: expected an https URL with no trailing slash, such as https://api.github.com (http is allowed only for localhost, 127.0.0.1 or [::1]).",
   ],
   [
     "GITHUB_CLIENT_ID",
@@ -101,6 +101,10 @@ const MORE_INVALID_VALUES: ReadonlyArray<[EnvName, string]> = [
   ["NOTES_BRANCH", "HEAD"],
   ["GITHUB_API_URL", "https://api.github.com/"],
   ["GITHUB_API_URL", "api.github.com"],
+  ["GITHUB_API_URL", "http://api.github.com"],
+  ["GITHUB_API_URL", "http://localhost.attacker.example"],
+  ["GITHUB_API_URL", "http://127.0.0.1.attacker.example"],
+  ["GITHUB_API_URL", "http://10.0.0.5:8787"],
   ["GITHUB_WEBHOOK_SECRET", " ".repeat(SECRET_LENGTH)],
   ["GITHUB_WEBHOOK_SECRET", "a".repeat(SECRET_LENGTH - 1) + "\n"],
   ["GITHUB_WEBHOOK_SECRET", "a".repeat(SECRET_LENGTH) + "\n"],
@@ -112,6 +116,9 @@ const ACCEPTED_VALUES: ReadonlyArray<[EnvName, string]> = [
   ["NOTES_REPO_OWNER", "legacy--org"],
   ["NOTES_BRANCH", "notes/v1.2-draft"],
   ["GITHUB_API_URL", "http://127.0.0.1:8787"],
+  ["GITHUB_API_URL", "http://localhost:8787"],
+  ["GITHUB_API_URL", "http://[::1]:8787"],
+  ["GITHUB_API_URL", "http://localhost"],
   ["GITHUB_API_URL", "https://github.example.com/api/v3"],
 ];
 
