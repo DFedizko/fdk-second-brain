@@ -1,3 +1,4 @@
+import type { Clock } from "../../../application/ports/clock";
 import { NoteAlreadyExists } from "../../../domain/errors/note-already-exists";
 import { NoteNotFound } from "../../../domain/errors/note-not-found";
 import { NotesAccessDenied } from "../../../domain/errors/notes-access-denied";
@@ -42,6 +43,8 @@ interface HttpFailure {
 }
 
 export class GitHubErrorTranslator implements GitHubErrorMapper {
+  constructor(private readonly clock: Clock) {}
+
   toDomainError(error: unknown, context: FailureContext): Error {
     const failure = this.readFailure(error);
     if (!failure) return new NotesUnavailable(undefined, error);
@@ -99,10 +102,17 @@ export class GitHubErrorTranslator implements GitHubErrorMapper {
   }
 
   private rateLimited(failure: HttpFailure): NotesRateLimited {
-    const reset = this.numberHeader(failure, RESET_HEADER);
     const retryAfter = this.numberHeader(failure, RETRY_AFTER_HEADER);
-    const resetsAt = reset === undefined ? undefined : new Date(reset * MILLIS_PER_SECOND);
-    return new NotesRateLimited(resetsAt, retryAfter, failure.cause);
+    return new NotesRateLimited(this.resetTimeOf(failure, retryAfter), retryAfter, failure.cause);
+  }
+
+  private resetTimeOf(failure: HttpFailure, retryAfter?: number): Date | undefined {
+    if (retryAfter !== undefined) {
+      return new Date(this.clock.now().getTime() + retryAfter * MILLIS_PER_SECOND);
+    }
+    const reset = this.numberHeader(failure, RESET_HEADER);
+    const exhausted = String(failure.headers[REMAINING_HEADER]) === NO_REQUESTS_LEFT;
+    return exhausted && reset !== undefined ? new Date(reset * MILLIS_PER_SECOND) : undefined;
   }
 
   private numberHeader(failure: HttpFailure, name: string): number | undefined {

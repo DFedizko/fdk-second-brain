@@ -4,6 +4,7 @@ import { githubContainer } from "../../../../src/adapters/outbound/github/github
 import { GITHUB } from "../../../../src/adapters/outbound/github/github.symbols";
 import { GitHubNoteRepo } from "../../../../src/adapters/outbound/github/github-note-repo";
 import { SILENT_LOG } from "../../../../src/adapters/outbound/github/silent-log";
+import { clockModule } from "../../../../src/adapters/outbound/clock/clock.container";
 import { GITHUB_CONFIG } from "./__stub__/github-config";
 
 const LOCAL_API_URL = "http://127.0.0.1:8787";
@@ -11,7 +12,7 @@ const LOCAL_API_URL = "http://127.0.0.1:8787";
 describe("githubContainer", () => {
   it("binds the NoteRepository port to the GitHub adapter", () => {
     const container = new Container();
-    container.load(githubContainer(GITHUB_CONFIG));
+    container.load(githubContainer(GITHUB_CONFIG), clockModule);
 
     const repository = container.get<NoteRepository>(GITHUB.noteRepository);
 
@@ -20,7 +21,7 @@ describe("githubContainer", () => {
 
   it("builds a GitHub client that logs nothing, as request URLs hold note paths", () => {
     const container = new Container();
-    container.load(githubContainer(GITHUB_CONFIG));
+    container.load(githubContainer(GITHUB_CONFIG), clockModule);
 
     const client = container.get(GITHUB.client);
 
@@ -38,7 +39,7 @@ describe("githubContainer", () => {
 
   it("binds the injected config", () => {
     const container = new Container();
-    container.load(githubContainer(GITHUB_CONFIG));
+    container.load(githubContainer(GITHUB_CONFIG), clockModule);
 
     const config = container.get(GITHUB.config);
 

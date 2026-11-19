@@ -1,5 +1,6 @@
 import { Octokit } from "@octokit/rest";
 import { ContainerModule } from "inversify";
+import type { Clock } from "../../../application/ports/clock";
 import type { GitHubConfig } from "./github-config";
 import { GitHubErrorTranslator, type GitHubErrorMapper } from "./github-error-translator";
 import { GitHubGateway, type GitHubAccess } from "./github-gateway";
@@ -8,6 +9,7 @@ import { GitHubNoteReader, type NoteReader } from "./github-note-reader";
 import { GitHubNoteRepo } from "./github-note-repo";
 import { GITHUB } from "./github.symbols";
 import { SILENT_LOG } from "./silent-log";
+import { CLOCK } from "../clock/clock.symbols";
 
 export function githubContainer(config: GitHubConfig): ContainerModule {
   return new ContainerModule(({ bind }) => {
@@ -19,7 +21,10 @@ export function githubContainer(config: GitHubConfig): ContainerModule {
         [GITHUB.config],
       )
       .inSingletonScope();
-    bind(GITHUB.errorMapper).toResolvedValue(() => new GitHubErrorTranslator());
+    bind(GITHUB.errorMapper).toResolvedValue(
+      (clock: Clock) => new GitHubErrorTranslator(clock),
+      [CLOCK.clock],
+    );
     bind(GITHUB.access).toResolvedValue(
       (client: Octokit, settings: GitHubConfig, errors: GitHubErrorMapper) =>
         new GitHubGateway(client, settings, errors),

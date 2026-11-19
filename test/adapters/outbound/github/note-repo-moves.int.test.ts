@@ -90,6 +90,6 @@ describe("GitHubNoteRepo moves", () => {
 
     const error = await failureOf(repository.move(INBOX, TAKEN));
 
-    expect(error).toEqual(new NotesUnavailable(UNPROCESSABLE));
+    expect(error).toMatchObject({ name: NotesUnavailable.name, status: UNPROCESSABLE });
   });
 });
