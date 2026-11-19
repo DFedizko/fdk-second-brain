@@ -33,6 +33,8 @@ const REF_UPDATE = /^git\/refs\/heads\/(.+)$/;
 const RACING_MESSAGE = "A concurrent commit";
 const AUTHORIZATION = "authorization";
 const SUBMODULE_MODE = "160000";
+const FILE_WRITES = ["PUT", "DELETE"];
+const CONTENTS = /^contents\//;
 const ADD_MESSAGE = "Add";
 
 type HttpOutage = "secondary" | "secondaryForbidden" | "forbidden" | "server";
@@ -46,6 +48,7 @@ export class FakeGitHubApi {
   private outage?: Outage;
   private tokenRevoked = false;
   private refRaces = 0;
+  private contentRaces = 0;
   private readonly limits: FakeLimits = { truncateTrees: false };
   readonly served: number[] = [];
 
@@ -104,6 +107,10 @@ export class FakeGitHubApi {
     this.store.advance(branch, files, `${ADD_MESSAGE} ${path}`, modes);
   }
 
+  commitDuringFileWrites(times: number): void {
+    this.contentRaces = times;
+  }
+
   truncateTrees(): void {
     this.limits.truncateTrees = true;
   }
@@ -117,7 +124,8 @@ export class FakeGitHubApi {
     if (this.outage && this.outage !== "network") return this.outageReply(this.outage, headers);
     if (route === undefined) return this.notFound(headers);
     this.raceRefUpdate(request.method, route);
-    return this.dispatch(request, route, body, headers);
+    const raced = this.raceFileWrite(request.method, route, body, headers);
+    return raced ?? this.dispatch(request, route, body, headers);
   }
 
   private dispatch(
@@ -141,6 +149,27 @@ export class FakeGitHubApi {
     if (method !== PATCH || !branch || this.refRaces <= 0) return;
     this.refRaces -= 1;
     this.store.advance(branch, this.store.filesAt(branch) ?? new Map(), RACING_MESSAGE);
+  }
+
+  private raceFileWrite(
+    method: string,
+    route: string,
+    body: Record<string, unknown>,
+    headers: Headers,
+  ): Response | undefined {
+    if (!FILE_WRITES.includes(method) || !CONTENTS.test(route) || this.contentRaces <= 0) {
+      return undefined;
+    }
+    this.contentRaces -= 1;
+    const branch = typeof body.branch === "string" ? body.branch : (this.setup.branches[0] ?? "");
+    const before = this.store.headOf(branch) ?? "";
+    const after = this.store.advance(
+      branch,
+      this.store.filesAt(branch) ?? new Map(),
+      RACING_MESSAGE,
+    );
+    const message = `${branch} is at ${after.sha} but expected ${before}`;
+    return this.replies.error(STATUS.conflict, message, DOCS_PAGE.contents, headers);
   }
 
   private routeOf(url: URL): string | undefined {
