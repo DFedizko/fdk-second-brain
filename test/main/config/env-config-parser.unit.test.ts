@@ -1,6 +1,6 @@
 import { EnvConfigParser } from "../../../src/main/config/env-config-parser";
 import { InvalidEnvError } from "../../../src/main/config/invalid-env-error";
-import { VALID_ENV } from "./__stub__/valid-env";
+import { VALID_ENV } from "../__stub__/valid-env";
 
 const BROKEN_ENV = {
   ...VALID_ENV,

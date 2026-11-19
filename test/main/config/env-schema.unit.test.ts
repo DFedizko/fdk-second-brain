@@ -1,5 +1,5 @@
 import { ENV_SCHEMA } from "../../../src/main/config/env-schema";
-import { VALID_ENV, type EnvName } from "./__stub__/valid-env";
+import { VALID_ENV, type EnvName } from "../__stub__/valid-env";
 
 const DEFAULT_BRANCH = "main";
 const NOT_A_STRING = 42;
