@@ -1,9 +1,13 @@
 import { SectionNotFound } from "./errors/section-not-found";
 
 const LINE_BREAK = "\n";
+const ANY_LINE_BREAK = /\r?\n/;
 const HEADING_LINE = /^ {0,3}(#{1,6})[ \t]+(.*?)(?:[ \t]+#+)?[ \t]*$/;
 const FENCE_LINE = /^ {0,3}(```|~~~)/;
 const LEADING_HASHES = /^#+/;
+const LEVEL_GROUP = 1;
+const TITLE_GROUP = 2;
+const NOTHING = "";
 
 interface Heading {
   readonly index: number;
@@ -21,14 +25,8 @@ export class MarkdownOutline {
   private readonly headings: readonly Heading[];
 
   constructor(content: string) {
-    this.lines = content.split(LINE_BREAK);
-    this.headings = this.lines.reduce<Scan>(
-      (scan, line, index) => this.scanLine(scan, line, index),
-      {
-        inFence: false,
-        headings: [],
-      },
-    ).headings;
+    this.lines = content.split(ANY_LINE_BREAK);
+    this.headings = this.scanHeadings();
   }
 
   section(heading: string): string {
@@ -38,11 +36,17 @@ export class MarkdownOutline {
     return this.lines.slice(start.index, this.findEnd(start)).join(LINE_BREAK).trimEnd();
   }
 
+  private scanHeadings(): readonly Heading[] {
+    const start: Scan = { inFence: false, headings: [] };
+    return this.lines.reduce((scan, line, index) => this.scanLine(scan, line, index), start)
+      .headings;
+  }
+
   private scanLine(scan: Scan, line: string, index: number): Scan {
     if (FENCE_LINE.test(line)) return { ...scan, inFence: !scan.inFence };
     const match = scan.inFence ? null : HEADING_LINE.exec(line);
     if (!match) return scan;
-    const heading = { index, level: match[1]!.length, title: match[2]! };
+    const heading = { index, level: match[LEVEL_GROUP]!.length, title: match[TITLE_GROUP]! };
     return { ...scan, headings: [...scan.headings, heading] };
   }
 
@@ -52,6 +56,6 @@ export class MarkdownOutline {
   }
 
   private normalize(title: string): string {
-    return title.trim().replace(LEADING_HASHES, "").trim().toLowerCase();
+    return title.trim().replace(LEADING_HASHES, NOTHING).trim().toLowerCase();
   }
 }
