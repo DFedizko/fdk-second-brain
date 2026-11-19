@@ -3,4 +3,7 @@ export interface OAuthSettings {
   readonly clientSecret: string;
   readonly ownerLogin: string;
   readonly cookieEncryptionKey: string;
+  readonly publicUrl: string;
+  readonly oauthUrl: string;
+  readonly apiUrl: string;
 }

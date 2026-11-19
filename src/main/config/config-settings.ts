@@ -19,6 +19,9 @@ export function toOAuthSettings(config: AppConfig): OAuthSettings {
     clientSecret: config.GITHUB_CLIENT_SECRET,
     ownerLogin: config.OWNER_GITHUB_LOGIN,
     cookieEncryptionKey: config.COOKIE_ENCRYPTION_KEY,
+    publicUrl: config.PUBLIC_URL,
+    oauthUrl: config.GITHUB_OAUTH_URL,
+    apiUrl: config.GITHUB_API_URL,
   };
 }
 

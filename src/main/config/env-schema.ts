@@ -21,6 +21,10 @@ const URL_ORIGIN =
   "(?:https:\\/\\/[^\\s/]+|http:\\/\\/(?:localhost|127\\.0\\.0\\.1|\\[::1\\])(?::\\d+)?)";
 const URL_PATH = "(?:\\/[^\\s]*[^\\s/])?";
 const API_URL = new RegExp(`^${URL_ORIGIN}${URL_PATH}$`);
+const ORIGIN_URL = new RegExp(`^${URL_ORIGIN}$`);
+const DEFAULT_OAUTH_URL = "https://github.com";
+const PUBLIC_URL_SAMPLE = "https://second-brain.example.workers.dev";
+const LOOPBACK_RULE = "(http is allowed only for localhost, 127.0.0.1 or [::1]).";
 const CLIENT_ID = /^[A-Za-z0-9]+$/;
 const CLIENT_SECRET = /^[0-9a-fA-F]{40}$/;
 const LONG_SECRET = /^\S{32,}$/;
@@ -64,11 +68,25 @@ export const ENV_SCHEMA = z.object(
     GITHUB_API_URL: optionalEnvField(
       {
         name: "GITHUB_API_URL",
-        expected: `an https URL with no trailing slash, such as ${DEFAULT_API_URL} (http is allowed only for localhost, 127.0.0.1 or [::1]).`,
+        expected: `an https URL with no trailing slash, such as ${DEFAULT_API_URL} ${LOOPBACK_RULE}`,
         pattern: API_URL,
       },
       DEFAULT_API_URL,
     ),
+    GITHUB_OAUTH_URL: optionalEnvField(
+      {
+        name: "GITHUB_OAUTH_URL",
+        expected: `an https origin with no path or trailing slash, such as ${DEFAULT_OAUTH_URL} ${LOOPBACK_RULE}`,
+        pattern: ORIGIN_URL,
+      },
+      DEFAULT_OAUTH_URL,
+    ),
+    PUBLIC_URL: requiredEnvField({
+      name: "PUBLIC_URL",
+      whenMissing: `set it to the Worker's public https origin, such as ${PUBLIC_URL_SAMPLE}.`,
+      expected: `an https origin with no path or trailing slash, such as ${PUBLIC_URL_SAMPLE} ${LOOPBACK_RULE}`,
+      pattern: ORIGIN_URL,
+    }),
     GITHUB_CLIENT_ID: requiredEnvField({
       name: "GITHUB_CLIENT_ID",
       whenMissing: "set it to the Client ID of the GitHub OAuth app.",
