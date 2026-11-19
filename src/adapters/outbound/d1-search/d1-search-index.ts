@@ -13,6 +13,7 @@ import {
 } from "./d1-search-sql";
 
 const ANY_TERM = " OR ";
+const MIN_PREFIX_CHARS = 2;
 
 interface HitRow {
   readonly path: string;
@@ -66,7 +67,11 @@ export class D1SearchIndex implements SearchIndex {
   }
 
   private buildMatch(query: SearchQuery): string {
-    return query.terms.map((term) => `"${term}"*`).join(ANY_TERM);
+    return query.terms.map((term) => this.matchTerm(term)).join(ANY_TERM);
+  }
+
+  private matchTerm(term: string): string {
+    return Array.from(term).length < MIN_PREFIX_CHARS ? `"${term}"` : `"${term}"*`;
   }
 
   private insertChunk(guard: Guard, version: NoteVersion, chunk: MarkdownChunk) {
