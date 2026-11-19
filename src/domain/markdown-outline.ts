@@ -11,6 +11,8 @@ const FENCE_GROUP = 1;
 const INFO_GROUP = 2;
 const FENCE_CHAR_INDEX = 0;
 const NOTHING = "";
+const LEADING_BLANK_LINES = /^(?:[ \t]*\n)+/;
+const FIRST_LINE = 0;
 
 interface Heading {
   readonly index: number;
@@ -21,6 +23,11 @@ interface Heading {
 export interface MarkdownSection {
   readonly heading: string;
   readonly content: string;
+}
+
+export interface OutlinePart {
+  readonly heading: string;
+  readonly body: string;
 }
 
 interface Scan {
@@ -43,6 +50,23 @@ export class MarkdownOutline {
     if (!start) throw new SectionNotFound(heading);
     const lines = this.lines.slice(start.index, this.findEnd(start));
     return { heading: start.title, content: lines.join(LINE_BREAK).trimEnd() };
+  }
+
+  parts(): OutlinePart[] {
+    const leadEnd = this.headings[0]?.index ?? this.lines.length;
+    const lead = { heading: NOTHING, body: this.joinBody(FIRST_LINE, leadEnd) };
+    const rest = this.headings.map((heading, position) => this.toPart(heading, position));
+    return lead.body === NOTHING ? rest : [lead, ...rest];
+  }
+
+  private toPart(heading: Heading, position: number): OutlinePart {
+    const end = this.headings[position + 1]?.index ?? this.lines.length;
+    return { heading: heading.title, body: this.joinBody(heading.index + 1, end) };
+  }
+
+  private joinBody(start: number, end: number): string {
+    const body = this.lines.slice(start, end).join(LINE_BREAK);
+    return body.replace(LEADING_BLANK_LINES, NOTHING).trimEnd();
   }
 
   private scanHeadings(): readonly Heading[] {
