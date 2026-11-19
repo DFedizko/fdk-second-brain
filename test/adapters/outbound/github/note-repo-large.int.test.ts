@@ -68,6 +68,23 @@ describe("GitHubNoteRepo decoding note text", () => {
     expect(note.content).toBe(WITH_BOM);
   });
 
+  it("deletes a note that is not valid UTF-8", async () => {
+    api.addEntry(NOTES_BRANCH, INBOX.value, FILE_MODE, INVALID_UTF8);
+
+    await repository.delete(INBOX);
+
+    expect(api.filesOn(NOTES_BRANCH)).not.toHaveProperty(INBOX.value);
+  });
+
+  it("moves a note that is not valid UTF-8 with its bytes unchanged", async () => {
+    api.addEntry(NOTES_BRANCH, INBOX.value, FILE_MODE, INVALID_UTF8);
+
+    await repository.move(INBOX, PLAN);
+
+    const moved = api.store.filesAt(NOTES_BRANCH)?.get(PLAN.value) ?? "";
+    expect(api.store.bytesOf(moved)).toEqual(INVALID_UTF8);
+  });
+
   it("refuses a note that is not valid UTF-8 instead of corrupting it", async () => {
     api.addEntry(NOTES_BRANCH, INBOX.value, FILE_MODE, INVALID_UTF8);
 
