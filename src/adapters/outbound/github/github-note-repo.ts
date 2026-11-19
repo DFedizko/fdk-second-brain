@@ -18,6 +18,7 @@ const BLOB = "blob";
 const FILE = "file";
 const BASE64 = "base64";
 const FILE_MODE = "100644";
+const EXECUTABLE_MODE = "100755";
 const RECURSIVE = "1";
 const NOTE_EXTENSION = ".md";
 const BRANCH_REF = "heads/";
@@ -29,6 +30,8 @@ const MOVE_TO = "to";
 const MOVE_ATTEMPTS = 2;
 const UNPROCESSABLE = 422;
 const BRANCH_LEVEL: FailureContext = {};
+
+type GitFileMode = typeof FILE_MODE | typeof EXECUTABLE_MODE;
 
 export class GitHubNoteRepo implements NoteRepository {
   constructor(
@@ -155,7 +158,11 @@ export class GitHubNoteRepo implements NoteRepository {
   }
 
   private async rejectExistingAt(path: NotePath, ref: string): Promise<void> {
-    const exists = await this.fetchNote(path, ref).then(
+    const context = { path: path.value, mayBeMissing: true };
+    const lookup = this.call(context, () =>
+      this.client.rest.repos.getContent({ ...this.repo(), path: path.value, ref }),
+    );
+    const exists = await lookup.then(
       () => true,
       (error: unknown) => this.treatMissingAsAbsent(error),
     );
@@ -193,17 +200,26 @@ export class GitHubNoteRepo implements NoteRepository {
     const { data: commit } = await this.call(BRANCH_LEVEL, () =>
       this.client.rest.git.getCommit({ ...this.repo(), commit_sha: head }),
     );
+    const mode = await this.modeOf(from, commit.tree.sha);
     const { data } = await this.call(BRANCH_LEVEL, () =>
       this.client.rest.git.createTree({
         ...this.repo(),
         base_tree: commit.tree.sha,
         tree: [
-          { path: to.value, mode: FILE_MODE, type: BLOB, sha: blob.value },
+          { path: to.value, mode, type: BLOB, sha: blob.value },
           { path: from.value, mode: FILE_MODE, type: BLOB, sha: null },
         ],
       }),
     );
     return data.sha;
+  }
+
+  private async modeOf(path: NotePath, tree: string): Promise<GitFileMode> {
+    const { data } = await this.call(BRANCH_LEVEL, () =>
+      this.client.rest.git.getTree({ ...this.repo(), tree_sha: tree, recursive: RECURSIVE }),
+    );
+    const entry = data.tree.find((candidate) => candidate.path === path.value);
+    return entry?.mode === EXECUTABLE_MODE ? EXECUTABLE_MODE : FILE_MODE;
   }
 
   private async commitTree(tree: string, parent: string, message: string): Promise<string> {
