@@ -74,6 +74,12 @@ describe("MarkdownOutline", () => {
     expect(outline.section("Log")).toBe("## Log\nfirst");
   });
 
+  it("closes a fence only with the same marker that opened it", () => {
+    const outline = new MarkdownOutline("## A\n~~~\n```\n~~~\n## B\nx");
+
+    expect(outline.section("A")).toBe("## A\n~~~\n```\n~~~");
+  });
+
   it("rejects a heading that does not exist", () => {
     const outline = new MarkdownOutline(NOTE);
 

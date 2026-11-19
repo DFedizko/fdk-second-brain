@@ -30,6 +30,14 @@ describe("ReadSection", () => {
     });
   });
 
+  it("returns the heading as the note writes it", async () => {
+    await repository.create(NotePath.of(PATH), CONTENT);
+
+    const section = await readSection.execute({ path: PATH, heading: "  tasks " });
+
+    expect(section.heading).toBe(HEADING);
+  });
+
   it("rejects a heading the note does not have", async () => {
     await repository.create(NotePath.of(PATH), CONTENT);
 

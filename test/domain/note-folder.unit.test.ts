@@ -27,6 +27,7 @@ describe("NoteFolder", () => {
   it.each([
     ["a parent folder segment", "projects/../secrets"],
     ["a leading slash", "/projects"],
+    ["a lone slash", "/"],
     ["a dot-folder", ".github"],
     ["an empty segment", "projects//old"],
     ["a backslash", "projects\\old"],

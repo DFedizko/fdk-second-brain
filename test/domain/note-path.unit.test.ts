@@ -29,6 +29,8 @@ describe("NotePath", () => {
     ["an empty segment", "notes//plan.md"],
     ["a backslash", "notes\\plan.md"],
     ["a bare extension", ".md"],
+    ["a control character", "notes/pl\u0000an.md"],
+    ["a line break", "notes/pl\nan.md"],
   ])("rejects %s", (_case, raw) => {
     const build = () => NotePath.of(raw);
 
