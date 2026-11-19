@@ -48,3 +48,5 @@ Dependency direction: `adapters → application → domain`. Never the reverse. 
 - **No magic numbers or strings.** Name them as `UPPER_SNAKE_CASE` constants (`MAX_SEARCH_RESULTS`, `NOTE_EXTENSION`).
 - **No comments.** The code must explain itself through names. A comment is allowed only, and rarely, to explain a _decision_ (why), never what the code does.
 - **Identifiers have at most 30 characters**: variables, functions, classes, interfaces, constants and files.
+
+Generated files (type definitions, lockfiles and the like) are exempt from these rules. Never edit them by hand; regenerate them with their tool, and gitignore them when the tool can rebuild them.
