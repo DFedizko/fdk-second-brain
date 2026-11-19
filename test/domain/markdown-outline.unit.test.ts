@@ -88,6 +88,18 @@ describe("MarkdownOutline", () => {
     expect(outline.section("  tasks ").heading).toBe("Tasks");
   });
 
+  it("keeps a shorter fence inside a longer one", () => {
+    const outline = new MarkdownOutline("## A\n````md\n```\n## Fake\n```\n````\nafter\n## B\nx");
+
+    expect(outline.section("A").content).toBe("## A\n````md\n```\n## Fake\n```\n````\nafter");
+  });
+
+  it("does not close a fence on a line with an info string", () => {
+    const outline = new MarkdownOutline("## A\n```\n```js\n## Fake\n```\nafter");
+
+    expect(() => outline.section("Fake")).toThrow(SectionNotFound);
+  });
+
   it("rejects a heading that does not exist", () => {
     const outline = new MarkdownOutline(NOTE);
 
