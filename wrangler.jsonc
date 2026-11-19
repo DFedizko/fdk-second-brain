@@ -12,6 +12,5 @@
   ],
   "queues": {
     "producers": [{ "binding": "INDEX_QUEUE", "queue": "second-brain-index" }],
-    "consumers": [{ "queue": "second-brain-index" }],
   },
 }
