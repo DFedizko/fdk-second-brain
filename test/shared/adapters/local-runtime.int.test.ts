@@ -14,18 +14,19 @@ const LIST_TABLES = "SELECT name FROM sqlite_master";
 const PING = "SELECT 1";
 
 describe("LocalRuntime", () => {
-  let runtime: LocalRuntime;
+  let runtime: LocalRuntime | undefined;
 
   beforeEach(async () => {
     runtime = await LocalRuntime.start();
   });
 
   afterEach(async () => {
-    await runtime.stop();
+    await runtime?.stop();
+    runtime = undefined;
   });
 
   it("runs a full-text search on a local D1 database", async () => {
-    const database = await runtime.database();
+    const database = await runtime!.database();
     await database.exec(CREATE_NOTES_INDEX);
     await database.batch([
       database.prepare(INSERT_NOTE).bind(MATCHING_PATH, MATCHING_BODY),
@@ -38,21 +39,45 @@ describe("LocalRuntime", () => {
   });
 
   it("starts each runtime with an empty database", async () => {
-    const database = await runtime.database();
+    const database = await runtime!.database();
 
     const { results } = await database.prepare(LIST_TABLES).all();
 
     expect(results).toEqual([]);
   });
+
+  it("exposes the bindings declared in wrangler.jsonc", async () => {
+    const bindings = runtime!.bindings();
+
+    expect(bindings.INDEX_QUEUE).toBeDefined();
+  });
 });
 
 describe("LocalRuntime.stop", () => {
-  it("shuts the runtime down so its database can no longer be used", async () => {
-    const runtime = await LocalRuntime.start();
-    const database = await runtime.database();
+  let runtime: LocalRuntime | undefined;
 
-    await runtime.stop();
+  beforeEach(async () => {
+    runtime = await LocalRuntime.start();
+  });
+
+  afterEach(async () => {
+    await runtime?.stop();
+    runtime = undefined;
+  });
+
+  it("shuts the runtime down so its database can no longer be used", async () => {
+    const database = await runtime!.database();
+
+    await runtime!.stop();
 
     expect(() => database.prepare(PING)).toThrow();
+  });
+
+  it("can be called again after the runtime has stopped", async () => {
+    await runtime!.stop();
+
+    const stopAgain = runtime!.stop();
+
+    await expect(stopAgain).resolves.toBeUndefined();
   });
 });
