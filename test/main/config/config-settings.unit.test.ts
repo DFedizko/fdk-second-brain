@@ -29,6 +29,9 @@ describe("config settings", () => {
       clientSecret: VALID_ENV.GITHUB_CLIENT_SECRET,
       ownerLogin: VALID_ENV.OWNER_GITHUB_LOGIN,
       cookieEncryptionKey: VALID_ENV.COOKIE_ENCRYPTION_KEY,
+      publicUrl: VALID_ENV.PUBLIC_URL,
+      oauthUrl: VALID_ENV.GITHUB_OAUTH_URL,
+      apiUrl: VALID_ENV.GITHUB_API_URL,
     });
   });
 
