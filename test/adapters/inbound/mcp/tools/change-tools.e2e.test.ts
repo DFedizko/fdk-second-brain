@@ -59,9 +59,11 @@ describe("move_note", () => {
   it("refuses to move onto an existing note", async () => {
     repo = stack.seed({ [PLAN]: PLAN_TEXT, [ARCHIVED]: "# Old\n" });
 
-    const result = await stack.client.callTool("move_note", { from: PLAN, to: ARCHIVED });
+    const [text] = await stack.client.callText("move_note", { from: PLAN, to: ARCHIVED });
 
-    expect(result.isError).toBe(true);
+    expect(text).toBe(
+      `Note already exists: "${ARCHIVED}". Use a free path, or replace it with write_note and the expectedVersion from read_note.`,
+    );
   });
 
   it("reports a missing note as a tool error", async () => {

@@ -60,7 +60,7 @@ describe("write_note", () => {
     expect(result.content).toEqual([
       {
         type: "text",
-        text: `Note already exists: "${PLAN}". Pass its expectedVersion to replace it, or pick another path.`,
+        text: `Note already exists: "${PLAN}". Use a free path, or replace it with write_note and the expectedVersion from read_note.`,
       },
     ]);
   });

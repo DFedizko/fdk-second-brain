@@ -15,7 +15,10 @@ type ErrorClass = abstract new (...args: never[]) => DomainError;
 const HINTS: ReadonlyArray<readonly [ErrorClass, string]> = [
   [NoteNotFound, "Call list_notes to see the paths."],
   [VersionConflict, "Read the note again and retry with its current version."],
-  [NoteAlreadyExists, "Pass its expectedVersion to replace it, or pick another path."],
+  [
+    NoteAlreadyExists,
+    "Use a free path, or replace it with write_note and the expectedVersion from read_note.",
+  ],
 ];
 
 export interface ErrorResultMapper {

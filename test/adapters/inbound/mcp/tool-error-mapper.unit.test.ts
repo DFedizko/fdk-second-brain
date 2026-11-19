@@ -58,7 +58,7 @@ describe("ToolErrorMapper", () => {
     expect(result.content).toEqual([
       {
         type: "text",
-        text: `Note already exists: "${PATH}". Pass its expectedVersion to replace it, or pick another path.`,
+        text: `Note already exists: "${PATH}". Use a free path, or replace it with write_note and the expectedVersion from read_note.`,
       },
     ]);
   });
