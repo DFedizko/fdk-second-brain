@@ -1,4 +1,6 @@
+import { ConcurrentChange } from "../../../../src/domain/errors/concurrent-change";
 import { NoteAlreadyExists } from "../../../../src/domain/errors/note-already-exists";
+import { NotesUnavailable } from "../../../../src/domain/errors/notes-unavailable";
 import { NotePath } from "../../../../src/domain/note-path";
 import type { GitHubNoteRepo } from "../../../../src/adapters/outbound/github/github-note-repo";
 import type { FakeGitHubApi } from "./__fake__/fake-github-api";
@@ -15,6 +17,15 @@ const SUBMODULE_MODE = "160000";
 const EXECUTABLE_MODE = "100755";
 const OUTSIDE_TARGET = "../elsewhere.md";
 const SUBMODULE_COMMIT = "1111111111111111111111111111111111111111";
+const ALWAYS = Number.POSITIVE_INFINITY;
+const UNPROCESSABLE = 422;
+
+async function failureOf(action: Promise<unknown>): Promise<unknown> {
+  return action.then(
+    () => undefined,
+    (error: unknown) => error,
+  );
+}
 
 describe("GitHubNoteRepo moves", () => {
   let api: FakeGitHubApi;
@@ -64,5 +75,21 @@ describe("GitHubNoteRepo moves", () => {
     await repository.move(INBOX, TAKEN);
 
     expect(api.store.modesAt(NOTES_BRANCH).get(TAKEN.value)).toBe(EXECUTABLE_MODE);
+  });
+
+  it("gives up with ConcurrentChange when the branch keeps moving", async () => {
+    api.commitBeforeRefUpdates(ALWAYS);
+
+    const move = repository.move(INBOX, TAKEN);
+
+    await expect(move).rejects.toThrow(ConcurrentChange);
+  });
+
+  it("does not retry a ref update rejected for another reason", async () => {
+    api.dropBranchBeforeRefUpdates();
+
+    const error = await failureOf(repository.move(INBOX, TAKEN));
+
+    expect(error).toEqual(new NotesUnavailable(UNPROCESSABLE));
   });
 });

@@ -25,7 +25,6 @@ const SERVER_ERROR = 500;
 const UNAUTHORIZED = 401;
 const FORBIDDEN = 403;
 const CONFLICT = 409;
-const ALWAYS = Number.POSITIVE_INFINITY;
 
 async function failureOf(action: Promise<unknown>): Promise<unknown> {
   return action.then(
@@ -104,16 +103,6 @@ describe("GitHubNoteRepo maps GitHub errors", () => {
     const moved = await repository.move(INBOX, PLAN);
 
     expect(moved.path).toEqual(PLAN);
-  });
-
-  it("gives up with NotesUnavailable when the branch keeps moving", async () => {
-    const repository = connectRepo(api);
-    await repository.create(INBOX, CONTENT);
-    api.commitBeforeRefUpdates(ALWAYS);
-
-    const move = repository.move(INBOX, PLAN);
-
-    await expect(move).rejects.toThrow(NotesUnavailable);
   });
 
   it("reports the winning version when a racing delete meets a 409", async () => {

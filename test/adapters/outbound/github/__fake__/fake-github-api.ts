@@ -52,6 +52,7 @@ export class FakeGitHubApi {
   private tokenRevoked = false;
   private refRaces = 0;
   private contentRaces = 0;
+  private refDrops = false;
   private readonly limits: FakeLimits = { truncateTrees: false };
   readonly served: number[] = [];
 
@@ -111,6 +112,10 @@ export class FakeGitHubApi {
     this.store.advance(branch, files, `${ADD_MESSAGE} ${path}`, modes);
   }
 
+  dropBranchBeforeRefUpdates(): void {
+    this.refDrops = true;
+  }
+
   commitDuringFileWrites(times: number): void {
     this.contentRaces = times;
   }
@@ -151,7 +156,9 @@ export class FakeGitHubApi {
 
   private raceRefUpdate(method: string, route: string): void {
     const branch = REF_UPDATE.exec(route)?.[1];
-    if (method !== PATCH || !branch || this.refRaces <= 0) return;
+    if (method !== PATCH || !branch) return;
+    if (this.refDrops) this.store.dropRef(branch);
+    if (this.refRaces <= 0) return;
     this.refRaces -= 1;
     this.store.advance(branch, this.store.filesAt(branch) ?? new Map(), RACING_MESSAGE);
   }
