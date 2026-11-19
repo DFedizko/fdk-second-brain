@@ -35,9 +35,9 @@ describe("PassageEdit", () => {
     expect(() => edit.applyTo(CONTENT)).toThrow(/2 times/);
   });
 
-  it("rejects an empty passage", () => {
+  it("finds no match for an empty passage", () => {
     const edit = new PassageEdit("", "anything");
 
-    expect(() => edit.applyTo(CONTENT)).toThrow(PassageNotUnique);
+    expect(() => edit.applyTo(CONTENT)).toThrow(PassageNotFound);
   });
 });
