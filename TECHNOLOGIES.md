@@ -41,6 +41,7 @@ This repository holds only the server code. Notes never go here; the notes repos
 - **No decorators.** Classes in every layer stay free of Inversify. Every binding is a factory: `bind<Port>(SYMBOL).toResolvedValue((dep: Dep) => new Impl(dep), [DEP_SYMBOL])`. This works in Inversify 8 with no decorators and no `reflect-metadata`.
 - **One container module per module, next to the code it wires.** Each module has a `<name>.container.ts` exporting a `ContainerModule`, and beside it a `<name>.symbols.ts` with the symbols that container binds. Keep each container small; split it before it grows.
 - **Containers live only in outer layers** (`adapters/` or `main/`), never in `domain/` or `application/`.
+- **A module built from runtime values** (such as the parsed config) exports a `create<Name>Module(value)` factory from its `<name>.container.ts` instead of a constant. `main/app-modules.ts` builds the full module list from the config.
 - **The root container** in `main/` only loads the modules; it holds no bindings of its own.
 - **A symbol is declared once**, in the symbols file of the container that binds it. Other containers import it from there.
 
@@ -48,7 +49,8 @@ This repository holds only the server code. Notes never go here; the notes repos
 
 - Typed and validated once, at bootstrap, with a zod schema in `main/`. Every field has its own custom error message, so a missing or invalid variable says exactly which one is wrong and what is expected.
 - The rest of the app receives the parsed, typed config through DI, never by reading the environment directly.
-- Locally, Bun loads `.env` and wrangler loads `.dev.vars`. Commit a `.env.example` listing every variable, never real values.
+- Locally, Bun loads `.env` and wrangler loads `.dev.vars`. `.env.example` and `.dev.vars.example` list every variable with placeholders only (a test keeps them in sync with the schema); copy one and fill it in. Never commit real values.
+- The schema lives in `src/main/config/env-schema.ts`. `Bootstrap` validates the Worker's env once per env object and throws `InvalidEnvError` listing every problem; the parsed config is bound to `CONFIG_SYMBOLS.AppConfig`. Adapters never import `AppConfig` from `main/`: they depend on the narrow settings interfaces in `src/shared/contracts/` (`NotesRepoSettings`, `OAuthSettings`, `WebhookSettings`), which the config module maps from the parsed config and binds under `CONFIG_SYMBOLS`.
 
 ## Test tooling
 
