@@ -39,6 +39,7 @@ export class FakeGitHubOAuth {
 
   signInAs(user: FakeGitHubUser): void {
     this.signedIn = user;
+    this.denying = false;
   }
 
   denyAccess(): void {
@@ -64,7 +65,10 @@ export class FakeGitHubOAuth {
     const state = { state: query.get("state") ?? "" };
     if (query.get("client_id") !== this.app.clientId) return this.replies.notFound();
     if (!this.isCallback(redirectUri)) {
-      return this.replies.redirect(this.app.callbackUrl, { ...TOKEN_ERROR.redirectMismatch, ...state });
+      return this.replies.redirect(this.app.callbackUrl, {
+        ...TOKEN_ERROR.redirectMismatch,
+        ...state,
+      });
     }
     if (this.denying || !this.signedIn) {
       return this.replies.redirect(redirectUri, { ...ACCESS_DENIED, ...state });

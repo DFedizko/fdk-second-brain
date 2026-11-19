@@ -27,7 +27,8 @@ export const TOKEN_ERROR = {
   },
   redirectMismatch: {
     error: "redirect_uri_mismatch",
-    error_description: "The redirect_uri MUST match the registered callback URL for this application.",
+    error_description:
+      "The redirect_uri MUST match the registered callback URL for this application.",
     error_uri: `${AUTHORIZE_ERRORS_DOCS}#redirect-uri-mismatch2`,
   },
 } as const;

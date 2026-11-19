@@ -1,3 +1,4 @@
+import type { FakeGitHubOAuth } from "../../github-oauth/__fake__/fake-github-oauth";
 import type { FakeGitHubApi } from "./fake-github-api";
 
 const LOOPBACK = "127.0.0.1";
@@ -9,12 +10,13 @@ export class FakeGitHubServer {
     private readonly backend: { api: FakeGitHubApi },
   ) {}
 
-  static serve(api: FakeGitHubApi): FakeGitHubServer {
+  static serve(api: FakeGitHubApi, oauth?: FakeGitHubOAuth): FakeGitHubServer {
     const backend = { api };
     const server = Bun.serve({
       hostname: LOOPBACK,
       port: ANY_FREE_PORT,
-      fetch: (request) => backend.api.fetch(request),
+      fetch: (request) =>
+        oauth?.handles(new URL(request.url)) ? oauth.fetch(request) : backend.api.fetch(request),
     });
     return new FakeGitHubServer(server, backend);
   }
