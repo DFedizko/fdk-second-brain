@@ -4,6 +4,7 @@ import { NotesAccessDenied } from "../../../domain/errors/notes-access-denied";
 import { NotesRateLimited } from "../../../domain/errors/notes-rate-limited";
 import { NotesUnavailable } from "../../../domain/errors/notes-unavailable";
 import { VersionConflict } from "../../../domain/errors/version-conflict";
+import { BranchMoved } from "./branch-moved";
 import { EmptyRepository } from "./empty-repository";
 
 const UNAUTHORIZED = 401;
@@ -69,7 +70,7 @@ export class GitHubErrorTranslator implements GitHubErrorMapper {
     if (context.path !== undefined && SHA_MISSING.test(failure.message)) {
       return new NoteAlreadyExists(context.path);
     }
-    if (NOT_FAST_FORWARD.test(failure.message)) return this.conflict(failure, context);
+    if (NOT_FAST_FORWARD.test(failure.message)) return new BranchMoved();
     return new NotesUnavailable(failure.status, failure.cause);
   }
 

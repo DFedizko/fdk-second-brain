@@ -1,6 +1,6 @@
+import { ConcurrentChange } from "../../../domain/errors/concurrent-change";
 import { NoteAlreadyExists } from "../../../domain/errors/note-already-exists";
 import { NoteNotFound } from "../../../domain/errors/note-not-found";
-import { NotesUnavailable } from "../../../domain/errors/notes-unavailable";
 import { Note } from "../../../domain/note";
 import type { NotePath } from "../../../domain/note-path";
 import type { NoteVersion } from "../../../domain/note-version";
@@ -17,7 +17,6 @@ const RECURSIVE = "1";
 const MOVE = "Move";
 const MOVE_TO = "to";
 const MOVE_ATTEMPTS = 2;
-const UNPROCESSABLE = 422;
 const BRANCH_LEVEL: FailureContext = {};
 
 type GitFileMode = typeof FILE_MODE | typeof EXECUTABLE_MODE;
@@ -39,7 +38,7 @@ export class GitHubNoteMover implements NoteMover {
   private async moveWithRetry(from: NotePath, to: NotePath, attempts: number): Promise<Note> {
     return this.moveOnce(from, to).catch((error: unknown) => {
       if (!(error instanceof BranchMoved)) throw error;
-      if (attempts <= 1) throw new NotesUnavailable(UNPROCESSABLE);
+      if (attempts <= 1) throw new ConcurrentChange(from.value);
       return this.moveWithRetry(from, to, attempts - 1);
     });
   }
@@ -58,22 +57,14 @@ export class GitHubNoteMover implements NoteMover {
   }
 
   private async updateBranch(commit: string): Promise<void> {
-    await this.github
-      .send(BRANCH_LEVEL, (client, repo) =>
-        client.rest.git.updateRef({
-          ...repo,
-          ref: this.github.branchRef,
-          sha: commit,
-          force: false,
-        }),
-      )
-      .catch((error: unknown) => {
-        throw this.isRejectedUpdate(error) ? new BranchMoved() : error;
-      });
-  }
-
-  private isRejectedUpdate(error: unknown): boolean {
-    return error instanceof NotesUnavailable && error.status === UNPROCESSABLE;
+    await this.github.send(BRANCH_LEVEL, (client, repo) =>
+      client.rest.git.updateRef({
+        ...repo,
+        ref: this.github.branchRef,
+        sha: commit,
+        force: false,
+      }),
+    );
   }
 
   private async movedTree(from: NotePath, to: NotePath, blob: NoteVersion, head: string) {
