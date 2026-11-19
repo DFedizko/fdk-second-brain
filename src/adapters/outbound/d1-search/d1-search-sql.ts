@@ -5,12 +5,22 @@ const TEXT_WEIGHT = 1.0;
 const HOLDS_EXPECTED = "(SELECT version FROM index_manifest WHERE path = ?1) IS ?2";
 
 export const SEARCH_CHUNKS = `
-  SELECT c.path AS path, c.heading AS heading,
-    snippet(note_chunks_fts, ${SNIPPET_COLUMN}, '', '', '…', ${SNIPPET_TOKENS}) AS snippet
-  FROM note_chunks_fts
-  JOIN note_chunks AS c ON c.id = note_chunks_fts.rowid
-  WHERE note_chunks_fts MATCH ?1
-  ORDER BY bm25(note_chunks_fts, ${HEADING_WEIGHT}, ${TEXT_WEIGHT})
+  WITH matches AS (
+    SELECT c.path AS path, c.heading AS heading, c.seq AS seq,
+      snippet(note_chunks_fts, ${SNIPPET_COLUMN}, '', '', '…', ${SNIPPET_TOKENS}) AS snippet,
+      bm25(note_chunks_fts, ${HEADING_WEIGHT}, ${TEXT_WEIGHT}) AS score
+    FROM note_chunks_fts
+    JOIN note_chunks AS c ON c.id = note_chunks_fts.rowid
+    WHERE note_chunks_fts MATCH ?1
+  ),
+  ranked AS (
+    SELECT path, heading, seq, snippet, score,
+      ROW_NUMBER() OVER (PARTITION BY path ORDER BY score, seq) AS place
+    FROM matches
+  )
+  SELECT path, heading, snippet FROM ranked
+  WHERE place = 1
+  ORDER BY score, path, seq
   LIMIT ?2`;
 
 export const SELECT_VERSION = "SELECT version FROM index_manifest WHERE path = ?1";
