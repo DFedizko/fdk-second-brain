@@ -3,4 +3,5 @@ export interface NotesRepoSettings {
   readonly owner: string;
   readonly repo: string;
   readonly branch: string;
+  readonly apiUrl: string;
 }

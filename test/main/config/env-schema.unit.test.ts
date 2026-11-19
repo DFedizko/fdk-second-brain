@@ -4,12 +4,14 @@ import { VALID_ENV, type EnvName } from "../__stub__/valid-env";
 const DEFAULT_BRANCH = "main";
 const NOT_A_STRING = 42;
 const OPTIONAL_NAME = "NOTES_BRANCH";
+const API_URL_NAME = "GITHUB_API_URL";
+const DEFAULT_API_URL = "https://api.github.com";
 const SECRET_LENGTH = 32;
 const NOT_AN_OBJECT_MESSAGE =
   "The Worker's env bindings are missing: expected an object holding the environment variables.";
 const EMPTY = "";
 
-type RequiredName = Exclude<EnvName, typeof OPTIONAL_NAME>;
+type RequiredName = Exclude<EnvName, typeof OPTIONAL_NAME | typeof API_URL_NAME>;
 
 const MISSING_MESSAGES: Record<RequiredName, string> = {
   GITHUB_TOKEN:
@@ -48,6 +50,11 @@ const INVALID_CASES: ReadonlyArray<[EnvName, unknown, string]> = [
     "NOTES_BRANCH",
     "notes..main",
     "NOTES_BRANCH is invalid: expected a valid git branch name made of letters, digits, '.', '_', '-' and '/'.",
+  ],
+  [
+    "GITHUB_API_URL",
+    "ftp://api.github.com",
+    "GITHUB_API_URL is invalid: expected an http(s) URL with no trailing slash, such as https://api.github.com.",
   ],
   [
     "GITHUB_CLIENT_ID",
@@ -92,6 +99,8 @@ const MORE_INVALID_VALUES: ReadonlyArray<[EnvName, string]> = [
   ["NOTES_BRANCH", "notes.lock/main"],
   ["NOTES_BRANCH", "notes/."],
   ["NOTES_BRANCH", "HEAD"],
+  ["GITHUB_API_URL", "https://api.github.com/"],
+  ["GITHUB_API_URL", "api.github.com"],
   ["GITHUB_WEBHOOK_SECRET", " ".repeat(SECRET_LENGTH)],
   ["GITHUB_WEBHOOK_SECRET", "a".repeat(SECRET_LENGTH - 1) + "\n"],
   ["GITHUB_WEBHOOK_SECRET", "a".repeat(SECRET_LENGTH) + "\n"],
@@ -102,6 +111,8 @@ const ACCEPTED_VALUES: ReadonlyArray<[EnvName, string]> = [
   ["OWNER_GITHUB_LOGIN", "legacy-"],
   ["NOTES_REPO_OWNER", "legacy--org"],
   ["NOTES_BRANCH", "notes/v1.2-draft"],
+  ["GITHUB_API_URL", "http://127.0.0.1:8787"],
+  ["GITHUB_API_URL", "https://github.example.com/api/v3"],
 ];
 
 const REQUIRED_NAMES = Object.keys(MISSING_MESSAGES) as RequiredName[];
@@ -137,6 +148,12 @@ describe("ENV_SCHEMA", () => {
     const config = ENV_SCHEMA.parse(withoutVariable(OPTIONAL_NAME));
 
     expect(config.NOTES_BRANCH).toBe(DEFAULT_BRANCH);
+  });
+
+  it("defaults GITHUB_API_URL to the public GitHub API when it is unset", () => {
+    const config = ENV_SCHEMA.parse(withoutVariable(API_URL_NAME));
+
+    expect(config.GITHUB_API_URL).toBe(DEFAULT_API_URL);
   });
 
   it.each(REQUIRED_NAMES)("explains that %s is missing", (name) => {

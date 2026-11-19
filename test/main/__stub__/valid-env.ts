@@ -3,6 +3,7 @@ export const VALID_ENV = {
   NOTES_REPO_OWNER: "octo-cat",
   NOTES_REPO_NAME: "second-brain.notes",
   NOTES_BRANCH: "notes/main",
+  GITHUB_API_URL: "https://api.github.com",
   GITHUB_CLIENT_ID: "Ov23liAAAAAAAAAAAAAA",
   GITHUB_CLIENT_SECRET: "0123456789abcdef0123456789abcdef01234567",
   OWNER_GITHUB_LOGIN: "octo-cat",
