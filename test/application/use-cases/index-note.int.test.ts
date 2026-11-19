@@ -1,8 +1,8 @@
-import { D1SearchIndex } from "../../../../src/adapters/outbound/d1-search/d1-search-index";
-import { IndexNote } from "../../../../src/application/use-cases/index-note";
-import { SearchNotes } from "../../../../src/application/use-cases/search-notes";
-import { MarkdownChunker } from "../../../../src/domain/markdown-chunker";
-import { LocalRuntime } from "../../../shared/adapters/local-runtime";
+import { D1SearchIndex } from "../../../src/adapters/outbound/d1-search/d1-search-index";
+import { IndexNote } from "../../../src/application/use-cases/index-note";
+import { SearchNotes } from "../../../src/application/use-cases/search-notes";
+import { MarkdownChunker } from "../../../src/domain/markdown-chunker";
+import { LocalRuntime } from "../../shared/adapters/local-runtime";
 
 const PATH = "work/plan.md";
 const VERSION = "aaa111";

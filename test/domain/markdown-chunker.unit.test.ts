@@ -62,4 +62,22 @@ describe("MarkdownChunker", () => {
 
     expect(chunks.map((chunk) => chunk.text.length)).toEqual([MAX_CHUNK_CHARS, MAX_CHUNK_CHARS, 1]);
   });
+
+  it("cuts a long paragraph between words", () => {
+    const words = "alpha beta gamma ".repeat(MAX_CHUNK_CHARS / 10).trim();
+
+    const chunks = chunker.chunk(`# Words\n${words}`);
+
+    expect(chunks.every((chunk) => chunk.text.length <= MAX_CHUNK_CHARS)).toBe(true);
+    expect(chunks.map((chunk) => chunk.text).join(" ")).toBe(words);
+  });
+
+  it("does not cut an emoji in half", () => {
+    const emojis = "x" + "😀".repeat(MAX_CHUNK_CHARS);
+
+    const chunks = chunker.chunk(`# Emoji\n${emojis}`);
+
+    expect(chunks.map((chunk) => chunk.text).join("")).toBe(emojis);
+    expect(chunks.every((chunk) => chunk.text.isWellFormed())).toBe(true);
+  });
 });
