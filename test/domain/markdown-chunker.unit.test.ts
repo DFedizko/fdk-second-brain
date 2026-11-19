@@ -9,6 +9,7 @@ const LONG_SECTION = Array.from({ length: PARAGRAPHS_PER_LONG_SECTION }, () => P
   "\n\n",
 );
 const NO_HEADING = "";
+const NEARLY_FULL = "w".repeat(MAX_CHUNK_CHARS - 1);
 
 describe("MarkdownChunker", () => {
   let chunker: MarkdownChunker;
@@ -79,5 +80,17 @@ describe("MarkdownChunker", () => {
 
     expect(chunks.map((chunk) => chunk.text).join("")).toBe(emojis);
     expect(chunks.every((chunk) => chunk.text.isWellFormed())).toBe(true);
+  });
+
+  it("never makes a chunk from the blank lines between paragraphs", () => {
+    const chunks = chunker.chunk(`# Log\n${NEARLY_FULL}\n\n\n\nlast`);
+
+    expect(chunks.map((chunk) => chunk.text)).toEqual([NEARLY_FULL, "last"]);
+  });
+
+  it("treats lines of only spaces and tabs as paragraph breaks", () => {
+    const chunks = chunker.chunk(`# Log\n${NEARLY_FULL}\n\n \t \n\nlast`);
+
+    expect(chunks.map((chunk) => chunk.text)).toEqual([NEARLY_FULL, "last"]);
   });
 });
