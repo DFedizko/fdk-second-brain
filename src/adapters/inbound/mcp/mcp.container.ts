@@ -36,8 +36,9 @@ export function createMcpModule(useCases: ToolUseCases): ContainerModule {
       .inSingletonScope();
     bind(MCP.httpHandler)
       .toResolvedValue(
-        (server: NotesMcpServer) => createMcpHandler(() => server.build()),
-        [MCP.server],
+        (server: NotesMcpServer, log: ErrorLog) =>
+          createMcpHandler(() => server.build(), { onerror: (error) => log.report(error) }),
+        [MCP.server, MCP.errorLog],
       )
       .inSingletonScope();
   });

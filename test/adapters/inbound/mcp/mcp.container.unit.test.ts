@@ -9,9 +9,16 @@ import { useCasesModule } from "../../../../src/main/use-cases/use-cases.contain
 import { USE_CASES } from "../../../../src/main/use-cases/use-cases.symbols";
 import { InMemoryNoteRepo } from "../../../application/__fake__/in-memory-note-repo";
 import { FixedClock } from "../../../application/use-cases/__stub__/fixed-clock";
+import { SpyErrorLog } from "./__spy__/spy-error-log";
 
 const NOW = new Date("2026-11-19T10:30:00.000Z");
 const TOOL_COUNT = 8;
+const MCP_URL = "https://second-brain.example/mcp";
+const WRONG_MEDIA_TYPE = new Request(MCP_URL, {
+  method: "POST",
+  headers: { accept: "application/json, text/event-stream", "content-type": "text/plain" },
+  body: "list my notes",
+});
 
 function buildContainer(): Container {
   const container = new Container();
@@ -52,5 +59,15 @@ describe("mcpModule", () => {
     const handler = container.get(MCP.httpHandler);
 
     expect(handler).toBe(container.get(MCP.httpHandler));
+  });
+
+  it("reports requests the MCP protocol layer rejects", async () => {
+    const container = buildContainer();
+    const log = new SpyErrorLog();
+    container.rebind(MCP.errorLog).toConstantValue(log);
+
+    await container.get(MCP.httpHandler).fetch(WRONG_MEDIA_TYPE);
+
+    expect(log.reported).not.toEqual([]);
   });
 });
