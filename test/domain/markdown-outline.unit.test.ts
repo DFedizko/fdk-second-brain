@@ -112,3 +112,21 @@ describe("MarkdownOutline", () => {
     expect(() => outline.section("Not a heading")).toThrow(SectionNotFound);
   });
 });
+
+describe("MarkdownOutline.parts", () => {
+  it("splits the note at every heading, with the text before the first one", () => {
+    const outline = new MarkdownOutline("lead\n# A\none\n## B\ntwo\n\n");
+
+    expect(outline.parts()).toEqual([
+      { heading: "", body: "lead" },
+      { heading: "A", body: "one" },
+      { heading: "B", body: "two" },
+    ]);
+  });
+
+  it("keeps fenced headings inside the body", () => {
+    const outline = new MarkdownOutline("# A\n```\n# B\n```");
+
+    expect(outline.parts()).toEqual([{ heading: "A", body: "```\n# B\n```" }]);
+  });
+});
