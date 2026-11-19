@@ -7,6 +7,15 @@ export type GitRef = components["schemas"]["git-ref"];
 export type GitTree = components["schemas"]["git-tree"];
 export type GitCommit = components["schemas"]["git-commit"];
 type TreeEntry = GitTree["tree"][number];
+type DirectoryItem = components["schemas"]["content-directory"][number];
+
+type Sizes = (blobSha: string) => number;
+
+export interface CommittedFile {
+  readonly path: string;
+  readonly sha: string;
+  readonly size: number;
+}
 
 const API = "https://api.github.com";
 const WEB = "https://github.com";
@@ -17,7 +26,9 @@ const LINE_BREAK = "\n";
 const FILE_MODE = "100644";
 const FOLDER_MODE = "040000";
 const SEPARATOR = "/";
-const DEFAULT_BRANCH = "main";
+const MAX_INLINE_BYTES = 1024 * 1024;
+const NO_ENCODING = "none";
+const UTF8 = "utf8";
 const HEX_RADIX = 16;
 const SHA_LENGTH = 40;
 const ZERO = "0";
@@ -37,19 +48,18 @@ export class GitHubShapes {
   ) {}
 
   contentFile(path: string, sha: string, content: string, ref: string): ContentFile {
-    const bytes = Buffer.from(content, "utf8");
+    const bytes = Buffer.from(content, UTF8);
     return {
       ...this.locate(path, sha, ref),
       type: "file",
-      encoding: BASE64,
+      ...this.encodeFor(bytes),
       size: bytes.length,
-      content: this.wrapBase64(bytes.toString(BASE64)),
     };
   }
 
-  fileCommit(commit: FakeCommit, file?: { path: string; sha: string; size: number }): FileCommit {
+  fileCommit(commit: FakeCommit, branch: string, file?: CommittedFile): FileCommit {
     return {
-      content: file ? this.fileSummary(file.path, file.sha, file.size) : null,
+      content: file ? this.fileSummary(file, branch) : null,
       commit: this.gitCommit(commit),
     };
   }
@@ -82,7 +92,7 @@ export class GitHubShapes {
     };
   }
 
-  gitTree(sha: string, files: FileTable, sizes: (blobSha: string) => number): GitTree {
+  gitTree(sha: string, files: FileTable, sizes: Sizes): GitTree {
     const blobs = [...files.entries()].map(([path, blobSha]) =>
       this.blobEntry(path, blobSha, sizes(blobSha)),
     );
@@ -95,8 +105,35 @@ export class GitHubShapes {
     };
   }
 
-  private fileSummary(path: string, sha: string, size: number): FileCommit["content"] {
-    return { ...this.locate(path, sha, DEFAULT_BRANCH), type: "file", size };
+  folderListing(folder: string, files: FileTable, ref: string, sizes: Sizes): DirectoryItem[] {
+    const prefix = folder + SEPARATOR;
+    const children = [...files.entries()].filter(([path]) => path.startsWith(prefix));
+    const direct = children.filter(([path]) => !path.slice(prefix.length).includes(SEPARATOR));
+    const subfolders = this.foldersOf(children.map(([path]) => path)).filter(
+      (path) => path.startsWith(prefix) && !path.slice(prefix.length).includes(SEPARATOR),
+    );
+    return [
+      ...subfolders.map((path) => this.folderItem(path, ref)),
+      ...direct.map(([path, sha]) => this.fileItem(path, sha, ref, sizes(sha))),
+    ];
+  }
+
+  private fileItem(path: string, sha: string, ref: string, size: number): DirectoryItem {
+    return { ...this.locate(path, sha, ref), type: "file", size };
+  }
+
+  private folderItem(path: string, ref: string): DirectoryItem {
+    const sha = this.folderSha(path);
+    return { ...this.locate(path, sha, ref), type: "dir", size: 0, download_url: null };
+  }
+
+  private encodeFor(bytes: Buffer): Pick<ContentFile, "encoding" | "content"> {
+    if (bytes.length > MAX_INLINE_BYTES) return { encoding: NO_ENCODING, content: "" };
+    return { encoding: BASE64, content: this.wrapBase64(bytes.toString(BASE64)) };
+  }
+
+  private fileSummary(file: CommittedFile, branch: string): FileCommit["content"] {
+    return { ...this.locate(file.path, file.sha, branch), type: "file", size: file.size };
   }
 
   private locate(path: string, sha: string, ref: string) {
@@ -130,8 +167,12 @@ export class GitHubShapes {
   }
 
   private folderEntry(path: string): TreeEntry {
-    const sha = Bun.hash(path).toString(HEX_RADIX).padStart(SHA_LENGTH, ZERO);
+    const sha = this.folderSha(path);
     return { path, mode: FOLDER_MODE, type: "tree", sha, url: `${this.api()}/git/trees/${sha}` };
+  }
+
+  private folderSha(path: string): string {
+    return Bun.hash(path).toString(HEX_RADIX).padStart(SHA_LENGTH, ZERO);
   }
 
   private foldersOf(paths: string[]): string[] {

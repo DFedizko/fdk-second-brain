@@ -15,6 +15,7 @@ const PLAN = NotePath.of("plan.md");
 const TODO = NotePath.of("todo.md");
 const DONE = NotePath.of("done.md");
 const ARCHIVE = NotePath.of("archive.md");
+const LATER = NotePath.of("later.md");
 const CONTENT = "# Inbox\n";
 const FIRST_EDIT = "# Inbox\n\n- first\n";
 const SECOND_EDIT = "# Inbox\n\n- second\n";
@@ -22,8 +23,7 @@ const WRONG_TOKEN = "ghp_wrongToken";
 const ROOT = NoteFolder.of("");
 const RETRY_AFTER_SECONDS = 60;
 const SERVER_ERROR = 500;
-const NOT_FOUND = 404;
-const MISSING_BRANCH = "gone";
+const CONFLICT = 409;
 
 async function failureOf(action: Promise<unknown>): Promise<unknown> {
   return action.then(
@@ -66,35 +66,45 @@ describe("GitHubNoteRepo maps GitHub errors", () => {
     await expect(writes).rejects.toThrow(VersionConflict);
   });
 
-  it("maps 422 not a fast forward from a racing move to VersionConflict", async () => {
+  it("reports the winning version when a racing write meets a 409", async () => {
     const repository = connectRepo(api);
-    await Promise.all([INBOX, TODO].map((path) => repository.create(path, CONTENT)));
+    const created = await repository.create(INBOX, CONTENT);
 
-    const moves = Promise.all([repository.move(INBOX, PLAN), repository.move(TODO, DONE)]);
+    const error = await failureOf(
+      Promise.all([
+        repository.write(INBOX, FIRST_EDIT, created.version),
+        repository.write(INBOX, SECOND_EDIT, created.version),
+      ]),
+    );
 
-    await expect(moves).rejects.toThrow(VersionConflict);
+    const winner = await repository.read(INBOX);
+    expect({ actual: (error as VersionConflict).actual, served: api.served }).toEqual({
+      actual: winner.version.value,
+      served: expect.arrayContaining([CONFLICT]),
+    });
   });
 
-  it("keeps the branch consistent after a rejected racing move", async () => {
+  it("retries a move that loses the race for the branch, so both moves land", async () => {
     const repository = connectRepo(api);
     await Promise.all([INBOX, TODO].map((path) => repository.create(path, CONTENT)));
-    await failureOf(Promise.all([repository.move(INBOX, PLAN), repository.move(TODO, DONE)]));
+
+    await Promise.all([repository.move(INBOX, PLAN), repository.move(TODO, DONE)]);
 
     const paths = await repository.list(ROOT);
-
-    expect(paths).toHaveLength(2);
+    expect(paths.map((path) => path.value)).toEqual([DONE.value, PLAN.value]);
   });
 
-  it("maps a missing branch when listing to NotesUnavailable, not a missing note", async () => {
-    const error = await failureOf(connectRepo(api, { branch: MISSING_BRANCH }).list(ROOT));
+  it("gives up with NotesUnavailable when the branch keeps moving", async () => {
+    const repository = connectRepo(api);
+    await Promise.all([INBOX, TODO, ARCHIVE].map((path) => repository.create(path, CONTENT)));
 
-    expect((error as NotesUnavailable).status).toBe(NOT_FOUND);
-  });
+    const moves = Promise.all([
+      repository.move(INBOX, PLAN),
+      repository.move(TODO, DONE),
+      repository.move(ARCHIVE, LATER),
+    ]);
 
-  it("maps a missing branch when moving to NotesUnavailable, not a missing note", async () => {
-    const error = await failureOf(connectRepo(api, { branch: MISSING_BRANCH }).move(INBOX, PLAN));
-
-    expect((error as NotesUnavailable).status).toBe(NOT_FOUND);
+    await expect(moves).rejects.toThrow(NotesUnavailable);
   });
 
   it("maps 401 Bad credentials to NotesAccessDenied", async () => {
@@ -135,6 +145,14 @@ describe("GitHubNoteRepo maps GitHub errors", () => {
     expect((error as NotesRateLimited).retryAfterSeconds).toBe(RETRY_AFTER_SECONDS);
   });
 
+  it("maps 403 secondary rate limit to NotesRateLimited with its retry-after", async () => {
+    api.startOutage("secondaryForbidden");
+
+    const error = await failureOf(connectRepo(api).read(INBOX));
+
+    expect((error as NotesRateLimited).retryAfterSeconds).toBe(RETRY_AFTER_SECONDS);
+  });
+
   it("maps a 500 to NotesUnavailable with its status", async () => {
     api.startOutage("server");
 
@@ -152,6 +170,7 @@ describe("GitHubNoteRepo maps GitHub errors", () => {
   });
 
   it.each([
+    ["bad credentials", (fake: FakeGitHubApi) => fake.revokeToken()],
     ["missing permission", (fake: FakeGitHubApi) => fake.startOutage("forbidden")],
     ["a server error", (fake: FakeGitHubApi) => fake.startOutage("server")],
     ["a rate limit", (fake: FakeGitHubApi) => fake.exhaustRateLimit()],

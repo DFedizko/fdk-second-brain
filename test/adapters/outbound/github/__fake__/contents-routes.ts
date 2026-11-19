@@ -6,6 +6,7 @@ const CONTENTS = /^contents\/(.+)$/;
 const SEPARATOR = "/";
 const BASE64 = "base64";
 const UTF8 = "utf8";
+const REF = "ref";
 
 export class ContentsRoutes {
   constructor(private readonly parts: FakeRepoParts) {}
@@ -20,7 +21,7 @@ export class ContentsRoutes {
 
   private getContent(call: FakeCall): Response {
     const path = this.pathOf(call);
-    const ref = call.query.get("ref") ?? this.parts.defaultBranch;
+    const ref = call.query.get(REF) ?? this.parts.defaultBranch;
     const files = this.parts.store.filesAt(ref);
     const sha = files?.get(path);
     if (!files) return this.notFound(call, `No commit found for the ref ${ref}`);
@@ -44,7 +45,7 @@ export class ContentsRoutes {
     const file = { path, sha, size: Buffer.byteLength(content, UTF8) };
     return this.parts.replies.json(
       status,
-      this.parts.shapes.fileCommit(commit, file),
+      this.parts.shapes.fileCommit(commit, branch, file),
       call.headers,
     );
   }
@@ -60,7 +61,11 @@ export class ContentsRoutes {
     const remaining = new Map(files);
     remaining.delete(path);
     const commit = this.commitFiles(call, branch, remaining);
-    return this.parts.replies.json(STATUS.ok, this.parts.shapes.fileCommit(commit), call.headers);
+    return this.parts.replies.json(
+      STATUS.ok,
+      this.parts.shapes.fileCommit(commit, branch),
+      call.headers,
+    );
   }
 
   private rejectWrongSha(call: FakeCall, path: string, current?: string): Response | undefined {
@@ -81,12 +86,12 @@ export class ContentsRoutes {
   }
 
   private folderReply(call: FakeCall, files: FileTable, path: string, ref: string): Response {
-    const prefix = path + SEPARATOR;
-    const children = [...files.entries()].filter(([child]) => child.startsWith(prefix));
-    const listing = children.map(([child, sha]) =>
-      this.parts.shapes.contentFile(child, sha, this.parts.store.blob(sha) ?? "", ref),
-    );
+    const listing = this.parts.shapes.folderListing(path, files, ref, (sha) => this.sizeOf(sha));
     return this.parts.replies.json(STATUS.ok, listing, call.headers);
+  }
+
+  private sizeOf(sha: string): number {
+    return Buffer.byteLength(this.parts.store.blob(sha) ?? "", UTF8);
   }
 
   private isFolder(files: FileTable, path: string): boolean {

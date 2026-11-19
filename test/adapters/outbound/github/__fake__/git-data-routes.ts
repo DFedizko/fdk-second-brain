@@ -9,6 +9,7 @@ const COMMITS = /^git\/commits$/;
 const ONE_TREE = /^git\/trees\/(.+)$/;
 const TREES = /^git\/trees$/;
 const SEPARATOR = "/";
+const RECURSIVE = "recursive";
 
 interface TreeChange {
   readonly path?: unknown;
@@ -77,9 +78,10 @@ export class GitDataRoutes {
     const files = sha ? this.parts.store.tree(sha) : undefined;
     if (!sha || !files) return this.fail(call, STATUS.notFound, MESSAGE.notFound, DOCS_PAGE.trees);
     const tree = this.parts.shapes.gitTree(sha, files, (blob) => this.sizeOf(blob));
-    const recursive = call.query.has("recursive");
+    const recursive = call.query.has(RECURSIVE);
     const entries = recursive ? tree.tree : tree.tree.filter((e) => !e.path.includes(SEPARATOR));
-    return this.reply(call, STATUS.ok, { ...tree, tree: entries });
+    const truncated = this.parts.limits.truncateTrees;
+    return this.reply(call, STATUS.ok, { ...tree, truncated, tree: entries });
   }
 
   private createTree(call: FakeCall): Response {

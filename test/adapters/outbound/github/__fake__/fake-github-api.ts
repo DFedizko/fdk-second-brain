@@ -1,7 +1,7 @@
 import { Octokit } from "@octokit/rest";
 import { ContentsRoutes } from "./contents-routes";
 import { FakeGitStore } from "./fake-git-store";
-import type { FakeRepoParts, FakeRoute } from "./fake-route";
+import type { FakeLimits, FakeRepoParts, FakeRoute } from "./fake-route";
 import { GitDataRoutes } from "./git-data-routes";
 import { DOCS_PAGE, GitHubReplies, MESSAGE, STATUS } from "./github-replies";
 import { GitHubShapes } from "./github-shapes";
@@ -26,8 +26,12 @@ const RETRY_AFTER_SECONDS = 60;
 const CORE_RESOURCE = "core";
 const SEED_MESSAGE = "Initial commit";
 const NETWORK_FAILURE = "fetch failed";
+const RETRY_AFTER = "retry-after";
+const AUTHORIZATION = "authorization";
+const SILENT_LOG = { debug: () => {}, info: () => {}, warn: () => {}, error: () => {} };
 
-type Outage = "secondary" | "forbidden" | "server" | "network";
+type HttpOutage = "secondary" | "secondaryForbidden" | "forbidden" | "server";
+type Outage = HttpOutage | "network";
 
 export class FakeGitHubApi {
   readonly store = new FakeGitStore();
@@ -35,6 +39,9 @@ export class FakeGitHubApi {
   private readonly routes: FakeRoute[];
   private remaining = RATE_LIMIT;
   private outage?: Outage;
+  private tokenRevoked = false;
+  private readonly limits: FakeLimits = { truncateTrees: false };
+  readonly served: number[] = [];
 
   constructor(private readonly setup: FakeRepoSetup) {
     const shapes = new GitHubShapes(setup.owner, setup.repo);
@@ -44,6 +51,7 @@ export class FakeGitHubApi {
       shapes,
       replies: this.replies,
       defaultBranch,
+      limits: this.limits,
     };
     this.routes = [...new ContentsRoutes(parts).all(), ...new GitDataRoutes(parts).all()];
     this.seedBranches();
@@ -53,11 +61,13 @@ export class FakeGitHubApi {
     const request = new Request(input, init);
     if (this.outage === "network") throw new TypeError(NETWORK_FAILURE);
     const body = request.body ? await request.json() : {};
-    return this.answer(request, body as Record<string, unknown>);
+    const response = this.answer(request, body as Record<string, unknown>);
+    this.served.push(response.status);
+    return response;
   };
 
   octokit(token: string): Octokit {
-    return new Octokit({ auth: token, request: { fetch: this.fetch } });
+    return new Octokit({ auth: token, request: { fetch: this.fetch }, log: SILENT_LOG });
   }
 
   filesOn(branch: string): Record<string, string> {
@@ -71,6 +81,14 @@ export class FakeGitHubApi {
 
   startOutage(outage: Outage): void {
     this.outage = outage;
+  }
+
+  revokeToken(): void {
+    this.tokenRevoked = true;
+  }
+
+  truncateTrees(): void {
+    this.limits.truncateTrees = true;
   }
 
   private answer(request: Request, body: Record<string, unknown>): Response {
@@ -107,20 +125,26 @@ export class FakeGitHubApi {
   }
 
   private isAuthorized(request: Request): boolean {
-    const [scheme, token] = (request.headers.get("authorization") ?? "").split(" ");
-    return AUTH_SCHEMES.includes(scheme?.toLowerCase() ?? "") && token === this.setup.token;
+    const [scheme, token] = (request.headers.get(AUTHORIZATION) ?? "").split(" ");
+    const known = AUTH_SCHEMES.includes(scheme?.toLowerCase() ?? "") && token === this.setup.token;
+    return known && !this.tokenRevoked;
   }
 
-  private outageReply(outage: Exclude<Outage, "network">, headers: Headers): Response {
-    if (outage === "forbidden") {
-      return this.replies.error(STATUS.forbidden, MESSAGE.noPermission, DOCS_PAGE.root, headers);
-    }
-    if (outage === "server") {
-      return this.replies.error(STATUS.serverError, MESSAGE.serverError, DOCS_PAGE.root, headers);
-    }
-    headers.set("retry-after", String(RETRY_AFTER_SECONDS));
-    const docs = DOCS_PAGE.rateLimits;
-    return this.replies.error(STATUS.tooManyRequests, MESSAGE.secondaryLimit, docs, headers);
+  private outageReply(outage: HttpOutage, headers: Headers): Response {
+    const replies: Record<HttpOutage, () => Response> = {
+      forbidden: () =>
+        this.replies.error(STATUS.forbidden, MESSAGE.noPermission, DOCS_PAGE.root, headers),
+      server: () =>
+        this.replies.error(STATUS.serverError, MESSAGE.serverError, DOCS_PAGE.root, headers),
+      secondary: () => this.secondaryLimit(STATUS.tooManyRequests, headers),
+      secondaryForbidden: () => this.secondaryLimit(STATUS.forbidden, headers),
+    };
+    return replies[outage]();
+  }
+
+  private secondaryLimit(status: number, headers: Headers): Response {
+    headers.set(RETRY_AFTER, String(RETRY_AFTER_SECONDS));
+    return this.replies.error(status, MESSAGE.secondaryLimit, DOCS_PAGE.rateLimits, headers);
   }
 
   private badCredentials(headers: Headers): Response {
