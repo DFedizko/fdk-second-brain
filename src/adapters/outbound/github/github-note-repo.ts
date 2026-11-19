@@ -17,6 +17,12 @@ const FILE_MODE = "100644";
 const RECURSIVE = "1";
 const NOTE_EXTENSION = ".md";
 const BRANCH_REF = "heads/";
+const CREATE = "Create";
+const UPDATE = "Update";
+const DELETE = "Delete";
+const MOVE = "Move";
+const MOVE_TO = "to";
+const BRANCH_LEVEL: FailureContext = {};
 
 export class GitHubNoteRepo implements NoteRepository {
   constructor(
@@ -26,7 +32,7 @@ export class GitHubNoteRepo implements NoteRepository {
   ) {}
 
   async list(folder: NoteFolder): Promise<NotePath[]> {
-    const { data } = await this.call({ path: folder.value }, () =>
+    const { data } = await this.call(BRANCH_LEVEL, () =>
       this.client.rest.git.getTree({
         ...this.repo(),
         tree_sha: this.config.branch,
@@ -35,9 +41,10 @@ export class GitHubNoteRepo implements NoteRepository {
     );
     return data.tree
       .filter((entry) => entry.type === BLOB && entry.path.endsWith(NOTE_EXTENSION))
-      .flatMap((entry) => this.toNotePath(entry.path))
-      .filter((path) => folder.contains(path))
-      .sort((left, right) => (left.value < right.value ? -1 : 1));
+      .map((entry) => entry.path)
+      .sort()
+      .flatMap((raw) => this.toNotePath(raw))
+      .filter((path) => folder.contains(path));
   }
 
   async read(path: NotePath): Promise<Note> {
@@ -45,13 +52,13 @@ export class GitHubNoteRepo implements NoteRepository {
   }
 
   async create(path: NotePath, content: string): Promise<Note> {
-    return this.putFile(path, content, `Create ${path.value}`);
+    return this.putFile(path, content, `${CREATE} ${path.value}`);
   }
 
   async write(path: NotePath, content: string, expected: NoteVersion): Promise<Note> {
     const current = await this.read(path);
     current.ensureVersion(expected);
-    return this.putFile(path, content, `Update ${path.value}`, expected);
+    return this.putFile(path, content, `${UPDATE} ${path.value}`, expected);
   }
 
   async delete(path: NotePath): Promise<void> {
@@ -61,7 +68,7 @@ export class GitHubNoteRepo implements NoteRepository {
       this.client.rest.repos.deleteFile({
         ...this.repo(),
         path: path.value,
-        message: `Delete ${path.value}`,
+        message: `${DELETE} ${path.value}`,
         sha,
         branch: this.config.branch,
       }),
@@ -73,7 +80,11 @@ export class GitHubNoteRepo implements NoteRepository {
     const note = await this.readAt(from, head);
     await this.rejectExistingAt(to, head);
     const tree = await this.movedTree(from, to, note.version, head);
-    const commit = await this.commitTree(tree, head, `Move ${from.value} to ${to.value}`);
+    const commit = await this.commitTree(
+      tree,
+      head,
+      `${MOVE} ${from.value} ${MOVE_TO} ${to.value}`,
+    );
     await this.call({ path: from.value, expected: head }, () =>
       this.client.rest.git.updateRef({
         ...this.repo(),
@@ -124,18 +135,17 @@ export class GitHubNoteRepo implements NoteRepository {
   }
 
   private async headCommit(): Promise<string> {
-    const { data } = await this.call({ path: this.config.branch }, () =>
+    const { data } = await this.call(BRANCH_LEVEL, () =>
       this.client.rest.git.getRef({ ...this.repo(), ref: this.branchRef() }),
     );
     return data.object.sha;
   }
 
   private async movedTree(from: NotePath, to: NotePath, blob: NoteVersion, head: string) {
-    const context = { path: from.value, expected: head };
-    const { data: commit } = await this.call(context, () =>
+    const { data: commit } = await this.call(BRANCH_LEVEL, () =>
       this.client.rest.git.getCommit({ ...this.repo(), commit_sha: head }),
     );
-    const { data } = await this.call(context, () =>
+    const { data } = await this.call(BRANCH_LEVEL, () =>
       this.client.rest.git.createTree({
         ...this.repo(),
         base_tree: commit.tree.sha,
@@ -149,7 +159,7 @@ export class GitHubNoteRepo implements NoteRepository {
   }
 
   private async commitTree(tree: string, parent: string, message: string): Promise<string> {
-    const { data } = await this.call({ path: message, expected: parent }, () =>
+    const { data } = await this.call(BRANCH_LEVEL, () =>
       this.client.rest.git.createCommit({ ...this.repo(), message, tree, parents: [parent] }),
     );
     return data.sha;

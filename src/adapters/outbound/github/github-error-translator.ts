@@ -19,7 +19,7 @@ const NOT_FAST_FORWARD = /not a fast forward/i;
 const NEWER_VERSION = "a newer version";
 
 export interface FailureContext {
-  readonly path: string;
+  readonly path?: string;
   readonly expected?: string;
 }
 
@@ -47,7 +47,7 @@ export class GitHubErrorTranslator implements GitHubErrorMapper {
       case FORBIDDEN:
         return new NotesAccessDenied();
       case NOT_FOUND:
-        return new NoteNotFound(context.path);
+        return this.notFound(failure, context);
       case CONFLICT:
         return this.conflict(failure, context);
       case UNPROCESSABLE:
@@ -58,14 +58,22 @@ export class GitHubErrorTranslator implements GitHubErrorMapper {
   }
 
   private unprocessable(failure: HttpFailure, context: FailureContext): Error {
-    if (SHA_MISSING.test(failure.message)) return new NoteAlreadyExists(context.path);
+    if (context.path !== undefined && SHA_MISSING.test(failure.message)) {
+      return new NoteAlreadyExists(context.path);
+    }
     if (NOT_FAST_FORWARD.test(failure.message)) return this.conflict(failure, context);
     return new NotesUnavailable(failure.status);
   }
 
   private conflict(failure: HttpFailure, context: FailureContext): Error {
-    if (context.expected === undefined) return new NotesUnavailable(failure.status);
-    return new VersionConflict(context.path, context.expected, NEWER_VERSION);
+    const { path, expected } = context;
+    if (path === undefined || expected === undefined) return new NotesUnavailable(failure.status);
+    return new VersionConflict(path, expected, NEWER_VERSION);
+  }
+
+  private notFound(failure: HttpFailure, context: FailureContext): Error {
+    if (context.path === undefined) return new NotesUnavailable(failure.status);
+    return new NoteNotFound(context.path);
   }
 
   private isRateLimit(failure: HttpFailure): boolean {
