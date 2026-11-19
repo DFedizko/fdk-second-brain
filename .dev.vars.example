@@ -1,0 +1,16 @@
+# Copy to .dev.vars (read by wrangler dev) and replace every value. Never commit the copy.
+# Fine-grained personal access token limited to the notes repository (Contents: read and write).
+GITHUB_TOKEN=github_pat_replace-me
+NOTES_REPO_OWNER=your-github-user
+NOTES_REPO_NAME=your-notes-repo
+# Optional: defaults to main.
+NOTES_BRANCH=main
+# GitHub OAuth app used to sign in.
+GITHUB_CLIENT_ID=replace-with-oauth-app-client-id
+GITHUB_CLIENT_SECRET=replace-with-oauth-app-client-secret
+# The only GitHub account allowed to sign in.
+OWNER_GITHUB_LOGIN=your-github-user
+# openssl rand -hex 32
+GITHUB_WEBHOOK_SECRET=replace-with-openssl-rand-hex-32
+# openssl rand -hex 32
+COOKIE_ENCRYPTION_KEY=replace-with-openssl-rand-hex-32

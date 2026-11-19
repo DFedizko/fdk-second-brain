@@ -48,7 +48,8 @@ This repository holds only the server code. Notes never go here; the notes repos
 
 - Typed and validated once, at bootstrap, with a zod schema in `main/`. Every field has its own custom error message, so a missing or invalid variable says exactly which one is wrong and what is expected.
 - The rest of the app receives the parsed, typed config through DI, never by reading the environment directly.
-- Locally, Bun loads `.env` and wrangler loads `.dev.vars`. Commit a `.env.example` listing every variable, never real values.
+- Locally, Bun loads `.env` and wrangler loads `.dev.vars`. `.env.example` and `.dev.vars.example` list every variable with placeholders only (a test keeps them in sync with the schema); copy one and fill it in. Never commit real values.
+- The schema lives in `src/main/config/env-schema.ts`. `Bootstrap` validates the Worker's env once per env object and throws `InvalidEnvError` listing every problem; the parsed config is bound to `CONFIG_SYMBOLS.AppConfig`.
 
 ## Test tooling
 

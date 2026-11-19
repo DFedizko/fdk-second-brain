@@ -19,5 +19,4 @@ describe("example env files", () => {
 
     expect(names).toEqual(Object.keys(ENV_SCHEMA.shape).sort());
   });
-
 });
