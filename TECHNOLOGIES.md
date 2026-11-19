@@ -12,28 +12,28 @@ This repository holds only the server code. Notes never go here; the notes repos
 
 ## Decided
 
-| Concern | Choice | Notes |
-|---|---|---|
-| Language | TypeScript 7 (strict) | Always the latest stable |
-| Tooling, package manager | Bun | Always the latest stable. Never Node, npm, jest or vitest. Bun loads `.env` automatically, so no dotenv |
-| Test runner | `bun test` | See [Test tooling](#test-tooling) |
-| Runtime / hosting | Cloudflare Workers, free plan | |
-| Deploy and local dev | wrangler | Required by Workers |
-| Notes storage | A private GitHub repository of `.md` files | |
-| MCP server | `@modelcontextprotocol/server` (official TypeScript SDK, v2) | Tool input schemas are zod schemas |
-| Client authentication | `@cloudflare/workers-oauth-provider` (OAuth 2.1) + GitHub sign-in, restricted to the owner's account | |
-| GitHub API client | `@octokit/rest`, typed by `@octokit/openapi-types` | The same types drive the GitHub fakes in tests |
-| Validation | zod 4 | Used for MCP tool input schemas and the environment schema; reuse schemas instead of duplicating them |
-| Dependency injection | Inversify 8 | See [Dependency injection](#dependency-injection) |
-| Formatting | Prettier | No linter |
-| Database and keyword search | Cloudflare D1 with SQLite FTS5 | Notes are split into chunks by heading; search returns short snippets (path + heading + ~300 characters), and the AI opens a full note or a single section only when needed, to save tokens |
-| Indexing | GitHub push webhook → Cloudflare Queue → indexer; a daily cron trigger reconciles notes and index | |
-| Local Workers runtime for integration/e2e tests | Miniflare, started from `bun test` | Gives a real local D1; confirm it runs under Bun during setup |
+| Concern                                         | Choice                                                                                               | Notes                                                                                                                                                                                       |
+| ----------------------------------------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Language                                        | TypeScript 7 (strict)                                                                                | Always the latest stable                                                                                                                                                                    |
+| Tooling, package manager                        | Bun                                                                                                  | Always the latest stable. Never Node, npm, jest or vitest. Bun loads `.env` automatically, so no dotenv                                                                                     |
+| Test runner                                     | `bun test`                                                                                           | See [Test tooling](#test-tooling)                                                                                                                                                           |
+| Runtime / hosting                               | Cloudflare Workers, free plan                                                                        |                                                                                                                                                                                             |
+| Deploy and local dev                            | wrangler                                                                                             | Required by Workers                                                                                                                                                                         |
+| Notes storage                                   | A private GitHub repository of `.md` files                                                           |                                                                                                                                                                                             |
+| MCP server                                      | `@modelcontextprotocol/server` (official TypeScript SDK, v2)                                         | Tool input schemas are zod schemas                                                                                                                                                          |
+| Client authentication                           | `@cloudflare/workers-oauth-provider` (OAuth 2.1) + GitHub sign-in, restricted to the owner's account |                                                                                                                                                                                             |
+| GitHub API client                               | `@octokit/rest`, typed by `@octokit/openapi-types`                                                   | The same types drive the GitHub fakes in tests                                                                                                                                              |
+| Validation                                      | zod 4                                                                                                | Used for MCP tool input schemas and the environment schema; reuse schemas instead of duplicating them                                                                                       |
+| Dependency injection                            | Inversify 8                                                                                          | See [Dependency injection](#dependency-injection)                                                                                                                                           |
+| Formatting                                      | Prettier                                                                                             | No linter                                                                                                                                                                                   |
+| Database and keyword search                     | Cloudflare D1 with SQLite FTS5                                                                       | Notes are split into chunks by heading; search returns short snippets (path + heading + ~300 characters), and the AI opens a full note or a single section only when needed, to save tokens |
+| Indexing                                        | GitHub push webhook → Cloudflare Queue → indexer; a daily cron trigger reconciles notes and index    |                                                                                                                                                                                             |
+| Local Workers runtime for integration/e2e tests | Miniflare, started from `bun test`                                                                   | Gives a real local D1; confirm it runs under Bun during setup                                                                                                                               |
 
 ## Later (phase 2)
 
-| Concern | Plan |
-|---|---|
+| Concern         | Plan                                                                                                                                                                              |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Semantic search | Workers AI embeddings (`bge-m3`, multilingual) + Vectorize, as a second `SearchIndex` adapter, fused with the keyword results by rank. First confirm Vectorize's free-plan limits |
 
 ## Dependency injection
