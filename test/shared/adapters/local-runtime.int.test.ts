@@ -9,6 +9,7 @@ const MATCHING_BODY = "Plant tomatoes along the sunny fence in spring";
 const OTHER_PATH = "work/meeting.md";
 const OTHER_BODY = "Quarterly planning with the platform team";
 const SEARCH_TERM = "tomatoes";
+const MATCHING_EXCERPT = "Plant [tomatoes] along the…";
 const LIST_TABLES = "SELECT name FROM sqlite_master";
 const PING = "SELECT 1";
 
@@ -33,9 +34,7 @@ describe("LocalRuntime", () => {
 
     const { results } = await database.prepare(SEARCH_NOTES).bind(SEARCH_TERM).all();
 
-    expect(results).toEqual([
-      { path: MATCHING_PATH, excerpt: "Plant [tomatoes] along the sunny…" },
-    ]);
+    expect(results).toEqual([{ path: MATCHING_PATH, excerpt: MATCHING_EXCERPT }]);
   });
 
   it("starts each runtime with an empty database", async () => {
@@ -48,12 +47,12 @@ describe("LocalRuntime", () => {
 });
 
 describe("LocalRuntime.stop", () => {
-  it("shuts the runtime down so its database is no longer reachable", async () => {
+  it("shuts the runtime down so its database can no longer be used", async () => {
     const runtime = await LocalRuntime.start();
     const database = await runtime.database();
 
     await runtime.stop();
 
-    await expect(database.prepare(PING).all()).rejects.toThrow();
+    expect(() => database.prepare(PING)).toThrow();
   });
 });
