@@ -92,4 +92,12 @@ describe("GitHubNoteRepo moves", () => {
 
     expect(error).toMatchObject({ name: NotesUnavailable.name, status: UNPROCESSABLE });
   });
+
+  it("refuses a move when the tree is too big to find the note's file mode", async () => {
+    api.truncateTrees();
+
+    const move = repository.move(INBOX, TAKEN);
+
+    await expect(move).rejects.toThrow(NotesUnavailable);
+  });
 });
