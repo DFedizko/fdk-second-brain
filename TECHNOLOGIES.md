@@ -1,0 +1,67 @@
+# Technologies
+
+The project-specific half of the guidance. `CLAUDE.md` and `test/CLAUDE.md` hold rules that are reusable across projects; this file holds what is specific to this project: what it is, the stack, and the commands.
+
+Every library and framework here is a **detail**. Only adapters and the composition root may import them; `domain/` and `application/` never do.
+
+## Project
+
+A personal "second brain": Markdown notes kept in a **separate private GitHub repository**, served through a remote MCP server so every AI client (Claude Code, Claude Desktop, Claude web/phone, ChatGPT) reads and writes the same notes. It runs on the **Cloudflare Workers free plan**. Inspired by YudiG12/second-brain-mcp, but notes live in GitHub instead of Cloudflare Artifacts.
+
+This repository holds only the server code. Notes never go here; the notes repository is reached through configuration.
+
+## Decided
+
+| Concern | Choice | Notes |
+|---|---|---|
+| Language | TypeScript 7 (strict) | Always the latest stable |
+| Tooling, package manager | Bun | Always the latest stable. Never Node, npm, jest or vitest. Bun loads `.env` automatically, so no dotenv |
+| Test runner | `bun test` | See [Test tooling](#test-tooling) |
+| Runtime / hosting | Cloudflare Workers, free plan | |
+| Deploy and local dev | wrangler | Required by Workers |
+| Notes storage | A private GitHub repository of `.md` files | |
+| MCP server | `@modelcontextprotocol/server` (official TypeScript SDK, v2) | Tool input schemas are zod schemas |
+| Client authentication | `@cloudflare/workers-oauth-provider` (OAuth 2.1) + GitHub sign-in, restricted to the owner's account | |
+| GitHub API client | `@octokit/rest`, typed by `@octokit/openapi-types` | The same types drive the GitHub fakes in tests |
+| Validation | zod 4 | Used for MCP tool input schemas and the environment schema; reuse schemas instead of duplicating them |
+| Dependency injection | Inversify 8 | See [Dependency injection](#dependency-injection) |
+| Formatting | Prettier | No linter |
+| Database and keyword search | Cloudflare D1 with SQLite FTS5 | Notes are split into chunks by heading; search returns short snippets (path + heading + ~300 characters), and the AI opens a full note or a single section only when needed, to save tokens |
+| Indexing | GitHub push webhook → Cloudflare Queue → indexer; a daily cron trigger reconciles notes and index | |
+| Local Workers runtime for integration/e2e tests | Miniflare, started from `bun test` | Gives a real local D1; confirm it runs under Bun during setup |
+
+## Later (phase 2)
+
+| Concern | Plan |
+|---|---|
+| Semantic search | Workers AI embeddings (`bge-m3`, multilingual) + Vectorize, as a second `SearchIndex` adapter, fused with the keyword results by rank. First confirm Vectorize's free-plan limits |
+
+## Dependency injection
+
+- **No decorators.** Classes in every layer stay free of Inversify. Every binding is a factory: `bind<Port>(SYMBOL).toResolvedValue((dep: Dep) => new Impl(dep), [DEP_SYMBOL])`. This works in Inversify 8 with no decorators and no `reflect-metadata`.
+- **One container module per module, next to the code it wires.** Each module has a `<name>.container.ts` exporting a `ContainerModule`, and beside it a `<name>.symbols.ts` with the symbols that container binds. Keep each container small; split it before it grows.
+- **Containers live only in outer layers** (`adapters/` or `main/`), never in `domain/` or `application/`.
+- **The root container** in `main/` only loads the modules; it holds no bindings of its own.
+- **A symbol is declared once**, in the symbols file of the container that binds it. Other containers import it from there.
+
+## Environment
+
+- Typed and validated once, at bootstrap, with a zod schema in `main/`. Every field has its own custom error message, so a missing or invalid variable says exactly which one is wrong and what is expected.
+- The rest of the app receives the parsed, typed config through DI, never by reading the environment directly.
+- Locally, Bun loads `.env` and wrangler loads `.dev.vars`. Commit a `.env.example` listing every variable, never real values.
+
+## Test tooling
+
+- Test globals (`describe`, `it`, `test`, `expect`, `beforeEach`, `afterEach`, `beforeAll`, `afterAll`, `jest`) come from Bun with no import. `bun-test.d.ts` in the root types them: `/// <reference types="bun-types/test-globals" />`.
+- **Never import values from `bun:test`**: it breaks transpilation. Only type imports are allowed, e.g. `import type { Mock } from "bun:test"`.
+- Declare spies and mocks with explicit types, at the top of the test file or in `beforeEach`, e.g. `let save: Mock<NoteRepo["save"]>`.
+- Use the Bun globals first. For spies, mocks and time, which Bun only exposes as globals through `jest`, use `jest.fn`, `jest.spyOn`, `jest.setSystemTime`, `jest.useFakeTimers` and the like. Use `jest.*` only for what the other globals don't cover.
+
+## Commands
+
+- Install: `bun install`
+- Run tests: `bun test`
+- Run a single test file: `bun test path/to/file.test.ts`
+- Run tests by name: `bun test -t "<test name pattern>"`
+- Run one test level: `bun test .unit.test` · `bun test .int.test` · `bun test .e2e.test`
+- Typecheck: `bunx tsc --noEmit`
