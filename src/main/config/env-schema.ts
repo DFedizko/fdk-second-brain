@@ -16,7 +16,7 @@ const BRANCH_RULES = [
   "(?!.*\\.lock(?:\\/|$))",
 ];
 const BRANCH_NAME = new RegExp(`^${BRANCH_RULES.join("")}[\\w./-]+$`);
-const CLIENT_ID = /^[A-Za-z0-9.]+$/;
+const CLIENT_ID = /^[A-Za-z0-9]+$/;
 const CLIENT_SECRET = /^[0-9a-fA-F]{40}$/;
 const LONG_SECRET = /^\S{32,}$/;
 const HEX_KEY = /^[0-9a-fA-F]{64}$/;
@@ -59,7 +59,7 @@ export const ENV_SCHEMA = z.object(
     GITHUB_CLIENT_ID: requiredEnvField({
       name: "GITHUB_CLIENT_ID",
       whenMissing: "set it to the Client ID of the GitHub OAuth app.",
-      expected: "the GitHub app's Client ID (letters, digits and dots only).",
+      expected: "the Client ID of a GitHub OAuth App, not a GitHub App (letters and digits only).",
       pattern: CLIENT_ID,
     }),
     GITHUB_CLIENT_SECRET: requiredEnvField({
