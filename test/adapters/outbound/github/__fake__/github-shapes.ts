@@ -1,11 +1,14 @@
 import type { components } from "@octokit/openapi-types";
-import type { FakeCommit, FileTable } from "./fake-git-store";
+import type { FakeCommit, FileTable, ModeTable } from "./fake-git-store";
 
 export type ContentFile = components["schemas"]["content-file"];
 export type FileCommit = components["schemas"]["file-commit"];
 export type GitRef = components["schemas"]["git-ref"];
 export type GitTree = components["schemas"]["git-tree"];
 export type GitCommit = components["schemas"]["git-commit"];
+export type ContentSymlink = components["schemas"]["content-symlink"];
+export type ContentSubmodule = components["schemas"]["content-submodule"];
+export type GitBlob = components["schemas"]["blob"];
 type TreeEntry = GitTree["tree"][number];
 type DirectoryItem = components["schemas"]["content-directory"][number];
 
@@ -25,6 +28,8 @@ const BASE64_LINE_LENGTH = 60;
 const LINE_BREAK = "\n";
 const FILE_MODE = "100644";
 const FOLDER_MODE = "040000";
+const SUBMODULE_MODE = "160000";
+const SUBMODULE_URL = "https://github.com/fedizko/vendored.git";
 const SEPARATOR = "/";
 const MAX_INLINE_BYTES = 1024 * 1024;
 const NO_ENCODING = "none";
@@ -54,6 +59,28 @@ export class GitHubShapes {
       type: "file",
       ...this.encodeFor(bytes),
       size: bytes.length,
+    };
+  }
+
+  symlink(path: string, sha: string, target: string, ref: string): ContentSymlink {
+    const size = Buffer.byteLength(target, UTF8);
+    return { ...this.locate(path, sha, ref), type: "symlink", target, size };
+  }
+
+  submodule(path: string, sha: string, ref: string): ContentSubmodule {
+    const located = { ...this.locate(path, sha, ref), download_url: null };
+    return { ...located, type: "submodule", submodule_git_url: SUBMODULE_URL, size: 0 };
+  }
+
+  gitBlob(sha: string, content: string): GitBlob {
+    const bytes = Buffer.from(content, UTF8);
+    return {
+      sha,
+      node_id: `B_${sha}`,
+      url: `${this.api()}/git/blobs/${sha}`,
+      size: bytes.length,
+      encoding: BASE64,
+      content: this.wrapBase64(bytes.toString(BASE64)),
     };
   }
 
@@ -92,9 +119,9 @@ export class GitHubShapes {
     };
   }
 
-  gitTree(sha: string, files: FileTable, sizes: Sizes): GitTree {
+  gitTree(sha: string, files: FileTable, sizes: Sizes, modes: ModeTable = new Map()): GitTree {
     const blobs = [...files.entries()].map(([path, blobSha]) =>
-      this.blobEntry(path, blobSha, sizes(blobSha)),
+      this.blobEntry(path, blobSha, sizes(blobSha), modes.get(path) ?? FILE_MODE),
     );
     const folders = this.foldersOf([...files.keys()]).map((path) => this.folderEntry(path));
     return {
@@ -155,10 +182,11 @@ export class GitHubShapes {
     };
   }
 
-  private blobEntry(path: string, sha: string, size: number): TreeEntry {
+  private blobEntry(path: string, sha: string, size: number, mode: string): TreeEntry {
+    if (mode === SUBMODULE_MODE) return { path, mode, type: "commit", sha };
     return {
       path,
-      mode: FILE_MODE,
+      mode,
       type: "blob",
       sha,
       size,

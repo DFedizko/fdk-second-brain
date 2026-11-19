@@ -6,6 +6,7 @@ const COMMIT = "commit";
 const NUL = "\0";
 
 export type FileTable = ReadonlyMap<string, string>;
+export type ModeTable = ReadonlyMap<string, string>;
 
 export interface FakeCommit {
   readonly sha: string;
@@ -17,6 +18,7 @@ export interface FakeCommit {
 export class FakeGitStore {
   private readonly blobs = new Map<string, string>();
   private readonly trees = new Map<string, FileTable>();
+  private readonly treeModes = new Map<string, ModeTable>();
   private readonly commits = new Map<string, FakeCommit>();
   private readonly refs = new Map<string, string>();
 
@@ -26,10 +28,13 @@ export class FakeGitStore {
     return sha;
   }
 
-  addTree(files: FileTable): string {
-    const entries = [...files.entries()].sort(([left], [right]) => left.localeCompare(right));
-    const sha = this.hashObject(TREE, JSON.stringify(entries));
+  addTree(files: FileTable, modes: ModeTable = new Map()): string {
+    const entries = this.sorted(files);
+    const special = this.sorted(modes);
+    const body = special.length === 0 ? entries : { entries, special };
+    const sha = this.hashObject(TREE, JSON.stringify(body));
     this.trees.set(sha, new Map(entries));
+    this.treeModes.set(sha, new Map(special));
     return sha;
   }
 
@@ -60,6 +65,23 @@ export class FakeGitStore {
     return this.trees.get(sha);
   }
 
+  modesOf(treeSha: string): ModeTable {
+    return this.treeModes.get(treeSha) ?? new Map();
+  }
+
+  modesAt(ref: string): ModeTable {
+    const commit = this.resolveCommit(ref);
+    return commit ? this.modesOf(commit.tree) : new Map();
+  }
+
+  hasRefs(): boolean {
+    return this.refs.size > 0;
+  }
+
+  dropRef(branch: string): void {
+    this.refs.delete(branch);
+  }
+
   commit(sha: string): FakeCommit | undefined {
     return this.commits.get(sha);
   }
@@ -73,9 +95,10 @@ export class FakeGitStore {
     return commit && this.tree(commit.tree);
   }
 
-  advance(branch: string, files: FileTable, message: string): FakeCommit {
+  advance(branch: string, files: FileTable, message: string, modes?: ModeTable): FakeCommit {
     const parent = this.headOf(branch);
-    const commit = this.addCommit(this.addTree(files), parent ? [parent] : [], message);
+    const kept = modes ?? this.keptModes(this.modesAt(branch), files);
+    const commit = this.addCommit(this.addTree(files, kept), parent ? [parent] : [], message);
     this.setRef(branch, commit.sha);
     return commit;
   }
@@ -88,6 +111,14 @@ export class FakeGitStore {
     if (!commit) return [];
     const [parent] = commit.parents;
     return [commit, ...this.walkHistory(parent ? this.commit(parent) : undefined)];
+  }
+
+  private keptModes(modes: ModeTable, files: FileTable): ModeTable {
+    return new Map([...modes].filter(([path]) => files.has(path)));
+  }
+
+  private sorted(table: ReadonlyMap<string, string>): [string, string][] {
+    return [...table.entries()].sort(([left], [right]) => left.localeCompare(right));
   }
 
   private hashObject(type: string, body: string): string {

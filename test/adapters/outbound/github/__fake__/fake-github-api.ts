@@ -8,7 +8,7 @@ import { DOCS_PAGE, GitHubReplies, MESSAGE, STATUS } from "./github-replies";
 import { GitHubShapes } from "./github-shapes";
 
 // Built from https://docs.github.com/en/rest/repos/contents, /git/refs, /git/trees,
-// /git/commits and /using-the-rest-api/rate-limits-for-the-rest-api, checked 2026-11-19.
+// /git/commits, /git/blobs and /using-the-rest-api/rate-limits-for-the-rest-api, checked 2026-11-19.
 
 export interface FakeRepoSetup {
   readonly owner: string;
@@ -32,6 +32,8 @@ const PATCH = "PATCH";
 const REF_UPDATE = /^git\/refs\/heads\/(.+)$/;
 const RACING_MESSAGE = "A concurrent commit";
 const AUTHORIZATION = "authorization";
+const SUBMODULE_MODE = "160000";
+const ADD_MESSAGE = "Add";
 
 type HttpOutage = "secondary" | "secondaryForbidden" | "forbidden" | "server";
 type Outage = HttpOutage | "network";
@@ -93,6 +95,13 @@ export class FakeGitHubApi {
 
   commitBeforeRefUpdates(times: number): void {
     this.refRaces = times;
+  }
+
+  addEntry(branch: string, path: string, mode: string, target: string): void {
+    const sha = mode === SUBMODULE_MODE ? target : this.store.addBlob(target);
+    const files = new Map(this.store.filesAt(branch)).set(path, sha);
+    const modes = new Map(this.store.modesAt(branch)).set(path, mode);
+    this.store.advance(branch, files, `${ADD_MESSAGE} ${path}`, modes);
   }
 
   truncateTrees(): void {

@@ -7,6 +7,8 @@ const SEPARATOR = "/";
 const BASE64 = "base64";
 const UTF8 = "utf8";
 const REF = "ref";
+const SYMLINK_MODE = "120000";
+const SUBMODULE_MODE = "160000";
 
 export class ContentsRoutes {
   constructor(private readonly parts: FakeRepoParts) {}
@@ -25,7 +27,7 @@ export class ContentsRoutes {
     const files = this.parts.store.filesAt(ref);
     const sha = files?.get(path);
     if (!files) return this.notFound(call, `No commit found for the ref ${ref}`);
-    if (sha) return this.fileReply(call, path, sha, ref);
+    if (sha) return this.entryReply(call, files, path, sha, ref);
     if (this.isFolder(files, path)) return this.folderReply(call, files, path, ref);
     return this.notFound(call, MESSAGE.notFound);
   }
@@ -77,6 +79,28 @@ export class ContentsRoutes {
 
   private commitFiles(call: FakeCall, branch: string, files: FileTable) {
     return this.parts.store.advance(branch, files, String(call.body.message));
+  }
+
+  private entryReply(call: FakeCall, files: FileTable, path: string, sha: string, ref: string) {
+    const mode = this.parts.store.modesAt(ref).get(path);
+    if (mode === SUBMODULE_MODE) {
+      return this.parts.replies.json(
+        STATUS.ok,
+        this.parts.shapes.submodule(path, sha, ref),
+        call.headers,
+      );
+    }
+    if (mode === SYMLINK_MODE) return this.symlinkReply(call, files, path, sha, ref);
+    return this.fileReply(call, path, sha, ref);
+  }
+
+  // The docs: a symlink to a file in the repository answers with that file's content.
+  private symlinkReply(call: FakeCall, files: FileTable, path: string, sha: string, ref: string) {
+    const target = this.parts.store.blob(sha) ?? "";
+    const targetSha = files.get(target);
+    if (targetSha) return this.fileReply(call, target, targetSha, ref);
+    const symlink = this.parts.shapes.symlink(path, sha, target, ref);
+    return this.parts.replies.json(STATUS.ok, symlink, call.headers);
   }
 
   private fileReply(call: FakeCall, path: string, sha: string, ref: string): Response {

@@ -1,4 +1,3 @@
-import type { FileTable } from "./fake-git-store";
 import type { FakeCall, FakeRepoParts, FakeRoute } from "./fake-route";
 import { DOCS_PAGE, MESSAGE, STATUS } from "./github-replies";
 
@@ -8,6 +7,9 @@ const ONE_COMMIT = /^git\/commits\/([0-9a-f]+)$/;
 const COMMITS = /^git\/commits$/;
 const ONE_TREE = /^git\/trees\/(.+)$/;
 const TREES = /^git\/trees$/;
+const ONE_BLOB = /^git\/blobs\/([0-9a-f]+)$/;
+const FILE_MODE = "100644";
+const SUBMODULE_MODE = "160000";
 const SEPARATOR = "/";
 const RECURSIVE = "recursive";
 
@@ -15,6 +17,12 @@ interface TreeChange {
   readonly path?: unknown;
   readonly sha?: unknown;
   readonly content?: unknown;
+  readonly mode?: unknown;
+}
+
+interface TreeDraft {
+  readonly files: Map<string, string>;
+  readonly modes: Map<string, string>;
 }
 
 export class GitDataRoutes {
@@ -28,6 +36,7 @@ export class GitDataRoutes {
       { method: "POST", pattern: COMMITS, reply: (call) => this.createCommit(call) },
       { method: "GET", pattern: ONE_TREE, reply: (call) => this.getTree(call) },
       { method: "POST", pattern: TREES, reply: (call) => this.createTree(call) },
+      { method: "GET", pattern: ONE_BLOB, reply: (call) => this.getBlob(call) },
     ];
   }
 
@@ -77,7 +86,8 @@ export class GitDataRoutes {
     const sha = this.parts.store.tree(ref) ? ref : this.parts.store.resolveCommit(ref)?.tree;
     const files = sha ? this.parts.store.tree(sha) : undefined;
     if (!sha || !files) return this.fail(call, STATUS.notFound, MESSAGE.notFound, DOCS_PAGE.trees);
-    const tree = this.parts.shapes.gitTree(sha, files, (blob) => this.sizeOf(blob));
+    const modes = this.parts.store.modesOf(sha);
+    const tree = this.parts.shapes.gitTree(sha, files, (blob) => this.sizeOf(blob), modes);
     const recursive = call.query.has(RECURSIVE);
     const entries = recursive ? tree.tree : tree.tree.filter((e) => !e.path.includes(SEPARATOR));
     const truncated = this.parts.limits.truncateTrees;
@@ -85,33 +95,54 @@ export class GitDataRoutes {
   }
 
   private createTree(call: FakeCall): Response {
-    const base = call.body.base_tree === undefined ? new Map() : this.baseTree(call);
+    const draft = call.body.base_tree === undefined ? this.emptyDraft() : this.baseDraft(call);
     const changes = Array.isArray(call.body.tree) ? (call.body.tree as TreeChange[]) : [];
-    const files = base && this.applyChanges(new Map(base), changes);
-    if (!files) return this.fail(call, STATUS.unprocessable, MESSAGE.invalidTree, DOCS_PAGE.trees);
-    const sha = this.parts.store.addTree(files);
-    const tree = this.parts.shapes.gitTree(sha, files, (blob) => this.sizeOf(blob));
-    return this.reply(call, STATUS.created, tree);
+    const applied = draft && changes.every((change) => this.applyChange(draft, change));
+    if (!draft || !applied) {
+      return this.fail(call, STATUS.unprocessable, MESSAGE.invalidTree, DOCS_PAGE.trees);
+    }
+    const sha = this.parts.store.addTree(draft.files, draft.modes);
+    const sizes = (blob: string) => this.sizeOf(blob);
+    return this.reply(
+      call,
+      STATUS.created,
+      this.parts.shapes.gitTree(sha, draft.files, sizes, draft.modes),
+    );
   }
 
-  private baseTree(call: FakeCall): FileTable | undefined {
-    return this.parts.store.tree(String(call.body.base_tree));
+  private getBlob(call: FakeCall): Response {
+    const sha = this.param(call);
+    const content = this.parts.store.blob(sha);
+    if (content === undefined) {
+      return this.fail(call, STATUS.notFound, MESSAGE.notFound, DOCS_PAGE.blobs);
+    }
+    return this.reply(call, STATUS.ok, this.parts.shapes.gitBlob(sha, content));
   }
 
-  private applyChanges(files: Map<string, string>, changes: TreeChange[]) {
-    const applied = changes.every((change) => this.applyChange(files, change));
-    return applied ? files : undefined;
+  private emptyDraft(): TreeDraft {
+    return { files: new Map(), modes: new Map() };
   }
 
-  private applyChange(files: Map<string, string>, change: TreeChange): boolean {
+  private baseDraft(call: FakeCall): TreeDraft | undefined {
+    const sha = String(call.body.base_tree);
+    const files = this.parts.store.tree(sha);
+    if (!files) return undefined;
+    return { files: new Map(files), modes: new Map(this.parts.store.modesOf(sha)) };
+  }
+
+  private applyChange(draft: TreeDraft, change: TreeChange): boolean {
     const path = String(change.path);
-    if (change.sha === null) return files.delete(path);
+    draft.modes.delete(path);
+    if (change.sha === null) return draft.files.delete(path);
+    const mode = typeof change.mode === "string" ? change.mode : FILE_MODE;
+    if (mode !== FILE_MODE) draft.modes.set(path, mode);
     if (typeof change.content === "string") {
-      files.set(path, this.parts.store.addBlob(change.content));
+      draft.files.set(path, this.parts.store.addBlob(change.content));
       return true;
     }
-    if (!this.parts.store.hasBlob(String(change.sha))) return false;
-    files.set(path, String(change.sha));
+    const known = mode === SUBMODULE_MODE || this.parts.store.hasBlob(String(change.sha));
+    if (!known) return false;
+    draft.files.set(path, String(change.sha));
     return true;
   }
 

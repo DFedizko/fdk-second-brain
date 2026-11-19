@@ -23,6 +23,7 @@ export const DOCS_PAGE = {
   refs: `${DOCS}/git/refs`,
   trees: `${DOCS}/git/trees`,
   commits: `${DOCS}/git/commits`,
+  blobs: `${DOCS}/git/blobs`,
   rateLimits: `${DOCS}/using-the-rest-api/rate-limits-for-the-rest-api`,
   root: DOCS,
 } as const;
