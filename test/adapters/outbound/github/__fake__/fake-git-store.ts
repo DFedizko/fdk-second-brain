@@ -16,15 +16,16 @@ export interface FakeCommit {
 }
 
 export class FakeGitStore {
-  private readonly blobs = new Map<string, string>();
+  private readonly blobs = new Map<string, Uint8Array>();
   private readonly trees = new Map<string, FileTable>();
   private readonly treeModes = new Map<string, ModeTable>();
   private readonly commits = new Map<string, FakeCommit>();
   private readonly refs = new Map<string, string>();
 
-  addBlob(content: string): string {
-    const sha = this.hashObject(BLOB, content);
-    this.blobs.set(sha, content);
+  addBlob(content: string | Uint8Array): string {
+    const bytes = typeof content === "string" ? new TextEncoder().encode(content) : content;
+    const sha = this.hashObject(BLOB, bytes);
+    this.blobs.set(sha, bytes);
     return sha;
   }
 
@@ -54,6 +55,11 @@ export class FakeGitStore {
   }
 
   blob(sha: string): string | undefined {
+    const bytes = this.blobs.get(sha);
+    return bytes && new TextDecoder().decode(bytes);
+  }
+
+  bytesOf(sha: string): Uint8Array | undefined {
     return this.blobs.get(sha);
   }
 
@@ -121,8 +127,8 @@ export class FakeGitStore {
     return [...table.entries()].sort(([left], [right]) => left.localeCompare(right));
   }
 
-  private hashObject(type: string, body: string): string {
-    const bytes = new TextEncoder().encode(body);
+  private hashObject(type: string, body: string | Uint8Array): string {
+    const bytes = typeof body === "string" ? new TextEncoder().encode(body) : body;
     const hasher = new Bun.CryptoHasher(HASH_ALGORITHM);
     hasher.update(`${type} ${bytes.length}${NUL}`);
     hasher.update(bytes);

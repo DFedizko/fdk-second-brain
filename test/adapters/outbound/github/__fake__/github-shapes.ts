@@ -52,8 +52,8 @@ export class GitHubShapes {
     private readonly repo: string,
   ) {}
 
-  contentFile(path: string, sha: string, content: string, ref: string): ContentFile {
-    const bytes = Buffer.from(content, UTF8);
+  contentFile(path: string, sha: string, content: Uint8Array, ref: string): ContentFile {
+    const bytes = Buffer.from(content);
     return {
       ...this.locate(path, sha, ref),
       type: "file",
@@ -72,8 +72,8 @@ export class GitHubShapes {
     return { ...located, type: "submodule", submodule_git_url: SUBMODULE_URL, size: 0 };
   }
 
-  gitBlob(sha: string, content: string): GitBlob {
-    const bytes = Buffer.from(content, UTF8);
+  gitBlob(sha: string, content: Uint8Array): GitBlob {
+    const bytes = Buffer.from(content);
     return {
       sha,
       node_id: `B_${sha}`,

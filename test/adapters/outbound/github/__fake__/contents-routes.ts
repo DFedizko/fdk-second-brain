@@ -104,7 +104,7 @@ export class ContentsRoutes {
   }
 
   private fileReply(call: FakeCall, path: string, sha: string, ref: string): Response {
-    const content = this.parts.store.blob(sha) ?? "";
+    const content = this.parts.store.bytesOf(sha) ?? new Uint8Array();
     const file = this.parts.shapes.contentFile(path, sha, content, ref);
     return this.parts.replies.json(STATUS.ok, file, call.headers);
   }
@@ -115,7 +115,7 @@ export class ContentsRoutes {
   }
 
   private sizeOf(sha: string): number {
-    return Buffer.byteLength(this.parts.store.blob(sha) ?? "", UTF8);
+    return this.parts.store.bytesOf(sha)?.length ?? 0;
   }
 
   private isFolder(files: FileTable, path: string): boolean {

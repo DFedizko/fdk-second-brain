@@ -112,7 +112,7 @@ export class GitDataRoutes {
 
   private getBlob(call: FakeCall): Response {
     const sha = this.param(call);
-    const content = this.parts.store.blob(sha);
+    const content = this.parts.store.bytesOf(sha);
     if (content === undefined) {
       return this.fail(call, STATUS.notFound, MESSAGE.notFound, DOCS_PAGE.blobs);
     }
@@ -151,7 +151,7 @@ export class GitDataRoutes {
   }
 
   private sizeOf(blobSha: string): number {
-    return Buffer.byteLength(this.parts.store.blob(blobSha) ?? "");
+    return this.parts.store.bytesOf(blobSha)?.length ?? 0;
   }
 
   private reply(call: FakeCall, status: number, body: unknown): Response {

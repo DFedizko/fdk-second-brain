@@ -100,8 +100,9 @@ export class FakeGitHubApi {
     this.refRaces = times;
   }
 
-  addEntry(branch: string, path: string, mode: string, target: string): void {
-    const sha = mode === SUBMODULE_MODE ? target : this.store.addBlob(target);
+  addEntry(branch: string, path: string, mode: string, target: string | Uint8Array): void {
+    const sha =
+      typeof target === "string" && mode === SUBMODULE_MODE ? target : this.store.addBlob(target);
     const files = new Map(this.store.filesAt(branch)).set(path, sha);
     const modes = new Map(this.store.modesAt(branch)).set(path, mode);
     this.store.advance(branch, files, `${ADD_MESSAGE} ${path}`, modes);
