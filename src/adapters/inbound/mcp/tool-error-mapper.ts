@@ -2,9 +2,11 @@ import type { CallToolResult } from "@modelcontextprotocol/server";
 import { DomainError } from "../../../domain/errors/domain-error";
 import { NoteAlreadyExists } from "../../../domain/errors/note-already-exists";
 import { NoteNotFound } from "../../../domain/errors/note-not-found";
+import { NotesStoreFailure } from "../../../domain/errors/notes-store-failure";
 import { VersionConflict } from "../../../domain/errors/version-conflict";
 
 const UNEXPECTED_MESSAGE = "Something went wrong on the server. Try again later.";
+const STORE_DOWN_MESSAGE = "The notes can't be reached right now. Try again in a few minutes.";
 const HINT_SEPARATOR = ". ";
 const NO_HINT = "";
 
@@ -27,6 +29,7 @@ export class ToolErrorMapper implements ErrorResultMapper {
 
   private describe(error: unknown): string {
     if (!(error instanceof DomainError)) return UNEXPECTED_MESSAGE;
+    if (error instanceof NotesStoreFailure) return STORE_DOWN_MESSAGE;
     const hint = this.findHint(error);
     return hint === NO_HINT ? error.message : `${error.message}${HINT_SEPARATOR}${hint}`;
   }

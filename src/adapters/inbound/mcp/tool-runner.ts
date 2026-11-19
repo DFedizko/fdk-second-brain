@@ -1,5 +1,6 @@
 import type { CallToolResult } from "@modelcontextprotocol/server";
 import { DomainError } from "../../../domain/errors/domain-error";
+import { NotesStoreFailure } from "../../../domain/errors/notes-store-failure";
 import type { ErrorLog } from "./error-log";
 import type { ErrorResultMapper } from "./tool-error-mapper";
 
@@ -25,6 +26,11 @@ export class ToolRunner implements ToolCallRunner {
   }
 
   private reportUnexpected(error: unknown): void {
-    if (!(error instanceof DomainError)) this.log.report(error);
+    if (this.isCausedByUser(error)) return;
+    this.log.report(error);
+  }
+
+  private isCausedByUser(error: unknown): boolean {
+    return error instanceof DomainError && !(error instanceof NotesStoreFailure);
   }
 }

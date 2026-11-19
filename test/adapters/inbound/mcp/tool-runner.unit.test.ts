@@ -2,6 +2,9 @@ import type { CallToolResult } from "@modelcontextprotocol/server";
 import { ToolErrorMapper } from "../../../../src/adapters/inbound/mcp/tool-error-mapper";
 import { ToolRunner } from "../../../../src/adapters/inbound/mcp/tool-runner";
 import { NoteNotFound } from "../../../../src/domain/errors/note-not-found";
+import { NotesAccessDenied } from "../../../../src/domain/errors/notes-access-denied";
+import { NotesRateLimited } from "../../../../src/domain/errors/notes-rate-limited";
+import { NotesUnavailable } from "../../../../src/domain/errors/notes-unavailable";
 import { SpyErrorLog } from "./__spy__/spy-error-log";
 
 const PATH = "missing.md";
@@ -43,4 +46,16 @@ describe("ToolRunner", () => {
 
     expect(log.reported).toEqual([]);
   });
+
+  it.each([new NotesUnavailable(), new NotesAccessDenied(), new NotesRateLimited()])(
+    "reports $name so the operator can see it",
+    async (failure) => {
+      const log = new SpyErrorLog();
+      const runner = new ToolRunner(new ToolErrorMapper(), log);
+
+      await runner.run(async () => Promise.reject(failure));
+
+      expect(log.reported).toEqual([failure]);
+    },
+  );
 });

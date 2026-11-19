@@ -35,12 +35,13 @@ interface HttpFailure {
   readonly status: number;
   readonly headers: Readonly<Record<string, string | number | undefined>>;
   readonly message: string;
+  readonly cause: unknown;
 }
 
 export class GitHubErrorTranslator implements GitHubErrorMapper {
   toDomainError(error: unknown, context: FailureContext): Error {
     const failure = this.readFailure(error);
-    if (!failure) return new NotesUnavailable();
+    if (!failure) return new NotesUnavailable(undefined, error);
     if (this.isRateLimit(failure)) return this.rateLimited(failure);
     return this.byStatus(failure, context);
   }
@@ -49,7 +50,7 @@ export class GitHubErrorTranslator implements GitHubErrorMapper {
     switch (failure.status) {
       case UNAUTHORIZED:
       case FORBIDDEN:
-        return new NotesAccessDenied();
+        return new NotesAccessDenied(failure.cause);
       case NOT_FOUND:
         return this.notFound(failure, context);
       case CONFLICT:
@@ -57,7 +58,7 @@ export class GitHubErrorTranslator implements GitHubErrorMapper {
       case UNPROCESSABLE:
         return this.unprocessable(failure, context);
       default:
-        return new NotesUnavailable(failure.status);
+        return new NotesUnavailable(failure.status, failure.cause);
     }
   }
 
@@ -66,18 +67,19 @@ export class GitHubErrorTranslator implements GitHubErrorMapper {
       return new NoteAlreadyExists(context.path);
     }
     if (NOT_FAST_FORWARD.test(failure.message)) return this.conflict(failure, context);
-    return new NotesUnavailable(failure.status);
+    return new NotesUnavailable(failure.status, failure.cause);
   }
 
   private conflict(failure: HttpFailure, context: FailureContext): Error {
     const { path, expected } = context;
-    if (path === undefined || expected === undefined) return new NotesUnavailable(failure.status);
+    if (path === undefined || expected === undefined)
+      return new NotesUnavailable(failure.status, failure.cause);
     return new VersionConflict(path, expected, NEWER_VERSION);
   }
 
   private notFound(failure: HttpFailure, context: FailureContext): Error {
     if (context.path === undefined || !context.mayBeMissing) {
-      return new NotesUnavailable(failure.status);
+      return new NotesUnavailable(failure.status, failure.cause);
     }
     return new NoteNotFound(context.path);
   }
@@ -96,7 +98,7 @@ export class GitHubErrorTranslator implements GitHubErrorMapper {
     const reset = this.numberHeader(failure, RESET_HEADER);
     const retryAfter = this.numberHeader(failure, RETRY_AFTER_HEADER);
     const resetsAt = reset === undefined ? undefined : new Date(reset * MILLIS_PER_SECOND);
-    return new NotesRateLimited(resetsAt, retryAfter);
+    return new NotesRateLimited(resetsAt, retryAfter, failure.cause);
   }
 
   private numberHeader(failure: HttpFailure, name: string): number | undefined {
@@ -112,6 +114,7 @@ export class GitHubErrorTranslator implements GitHubErrorMapper {
       status: error.status,
       headers: response?.headers ?? {},
       message: this.messageOf(response?.data),
+      cause: error,
     };
   }
 

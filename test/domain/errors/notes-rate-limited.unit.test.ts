@@ -18,4 +18,12 @@ describe("NotesRateLimited", () => {
 
     expect(error.name).toBe("NotesRateLimited");
   });
+
+  it("keeps the original failure as its cause", () => {
+    const cause = new Error("API rate limit exceeded");
+
+    const error = new NotesRateLimited(RESET, RETRY_AFTER_SECONDS, cause);
+
+    expect(error.cause).toBe(cause);
+  });
 });

@@ -13,6 +13,7 @@ import { VersionConflict } from "../../../../src/domain/errors/version-conflict"
 
 const PATH = "projects/plan.md";
 const SERVICE_UNAVAILABLE = 503;
+const STORE_DOWN_MESSAGE = "The notes can't be reached right now. Try again in a few minutes.";
 const OCCURRENCES = 3;
 const UNEXPECTED_MESSAGE = "Something went wrong on the server. Try again later.";
 const SECRET_DETAIL = "token ghp_secret leaked in a stack";
@@ -68,15 +69,24 @@ describe("ToolErrorMapper", () => {
     new PassageNotFound("todo"),
     new SectionNotFound("Goals"),
     new EmptySearchQuery("  "),
-    new NotesAccessDenied(),
-    new NotesRateLimited(),
-    new NotesUnavailable(SERVICE_UNAVAILABLE),
   ])("passes the message of $name through", (error) => {
     const mapper = new ToolErrorMapper();
 
     const result = mapper.toResult(error);
 
     expect(result.content).toEqual([{ type: "text", text: error.message }]);
+  });
+
+  it.each([
+    new NotesAccessDenied(),
+    new NotesRateLimited(),
+    new NotesUnavailable(SERVICE_UNAVAILABLE),
+  ])("gives the client a generic message for $name", (error) => {
+    const mapper = new ToolErrorMapper();
+
+    const result = mapper.toResult(error);
+
+    expect(result.content).toEqual([{ type: "text", text: STORE_DOWN_MESSAGE }]);
   });
 
   it("hides the details of an unexpected error", () => {
