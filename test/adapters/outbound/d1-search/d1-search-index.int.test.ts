@@ -103,6 +103,14 @@ describe("D1SearchIndex", () => {
     expect(hits).toHaveLength(LIMIT);
   });
 
+  it("matches a one-letter word only as a whole word", async () => {
+    await index.replace(PLAN, FIRST_VERSION, [chunk("Fruit", "apple pie")], null);
+
+    const hits = await search("a");
+
+    expect(hits).toEqual([]);
+  });
+
   it("treats search operators as plain words", async () => {
     await index.replace(PLAN, FIRST_VERSION, [chunk("Logic", "NOT a gate, OR a wire")], null);
 
