@@ -3,15 +3,17 @@ import { VALID_ENV, type EnvName } from "../__stub__/valid-env";
 
 const DEFAULT_BRANCH = "main";
 const NOT_A_STRING = 42;
+const OPTIONAL_NAME = "NOTES_BRANCH";
+const EMPTY = "";
 
-const MISSING_MESSAGES: Record<EnvName, string> = {
+type RequiredName = Exclude<EnvName, typeof OPTIONAL_NAME>;
+
+const MISSING_MESSAGES: Record<RequiredName, string> = {
   GITHUB_TOKEN:
     "GITHUB_TOKEN is missing: set it to a fine-grained personal access token (starts with github_pat_) limited to the notes repository.",
   NOTES_REPO_OWNER:
     "NOTES_REPO_OWNER is missing: set it to the GitHub user or organization that owns the notes repository.",
   NOTES_REPO_NAME: "NOTES_REPO_NAME is missing: set it to the name of the notes repository.",
-  NOTES_BRANCH:
-    "NOTES_BRANCH is missing: set it to the branch that holds the notes, or leave it unset to use main.",
   GITHUB_CLIENT_ID: "GITHUB_CLIENT_ID is missing: set it to the Client ID of the GitHub OAuth app.",
   GITHUB_CLIENT_SECRET:
     "GITHUB_CLIENT_SECRET is missing: set it to a client secret of the GitHub OAuth app.",
@@ -42,7 +44,7 @@ const INVALID_CASES: ReadonlyArray<[EnvName, unknown, string]> = [
   [
     "NOTES_BRANCH",
     "notes..main",
-    "NOTES_BRANCH is invalid: expected a branch name made of letters, digits, '.', '_', '-' and '/', with no '..'.",
+    "NOTES_BRANCH is invalid: expected a valid git branch name made of letters, digits, '.', '_', '-' and '/'.",
   ],
   [
     "GITHUB_CLIENT_ID",
@@ -71,9 +73,20 @@ const INVALID_CASES: ReadonlyArray<[EnvName, unknown, string]> = [
   ],
 ];
 
-const REQUIRED_NAMES = (Object.keys(MISSING_MESSAGES) as EnvName[]).filter(
-  (name) => name !== "NOTES_BRANCH",
-);
+const MORE_INVALID_VALUES: ReadonlyArray<[EnvName, string]> = [
+  ["NOTES_REPO_NAME", "."],
+  ["NOTES_REPO_NAME", ".."],
+  ["NOTES_BRANCH", "/main"],
+  ["NOTES_BRANCH", "main/"],
+  ["NOTES_BRANCH", "notes//main"],
+  ["NOTES_BRANCH", "main.lock"],
+];
+
+const REQUIRED_NAMES = Object.keys(MISSING_MESSAGES) as RequiredName[];
+
+function invalidMessage(name: EnvName): string {
+  return INVALID_CASES.find(([caseName]) => caseName === name)?.[2] ?? EMPTY;
+}
 
 function withoutVariable(name: EnvName): Record<string, unknown> {
   const { [name]: _removed, ...rest } = VALID_ENV;
@@ -99,7 +112,7 @@ describe("ENV_SCHEMA", () => {
   });
 
   it("defaults NOTES_BRANCH to main when it is unset", () => {
-    const config = ENV_SCHEMA.parse(withoutVariable("NOTES_BRANCH"));
+    const config = ENV_SCHEMA.parse(withoutVariable(OPTIONAL_NAME));
 
     expect(config.NOTES_BRANCH).toBe(DEFAULT_BRANCH);
   });
@@ -110,8 +123,14 @@ describe("ENV_SCHEMA", () => {
     expect(messages).toEqual([MISSING_MESSAGES[name]]);
   });
 
-  it.each(Object.keys(MISSING_MESSAGES) as EnvName[])("treats an empty %s as missing", (name) => {
-    const messages = issueMessages({ ...VALID_ENV, [name]: "" });
+  it("defaults NOTES_BRANCH to main when it is empty", () => {
+    const config = ENV_SCHEMA.parse({ ...VALID_ENV, [OPTIONAL_NAME]: EMPTY });
+
+    expect(config.NOTES_BRANCH).toBe(DEFAULT_BRANCH);
+  });
+
+  it.each(REQUIRED_NAMES)("treats an empty %s as missing", (name) => {
+    const messages = issueMessages({ ...VALID_ENV, [name]: EMPTY });
 
     expect(messages).toEqual([MISSING_MESSAGES[name]]);
   });
@@ -120,6 +139,12 @@ describe("ENV_SCHEMA", () => {
     const messages = issueMessages({ ...VALID_ENV, [name]: value });
 
     expect(messages).toEqual([msg]);
+  });
+
+  it.each(MORE_INVALID_VALUES)("rejects %s %p", (name, value) => {
+    const messages = issueMessages({ ...VALID_ENV, [name]: value });
+
+    expect(messages).toEqual([invalidMessage(name)]);
   });
 
   it.each(INVALID_CASES)("explains that a non-string %s is invalid", (name, _value, msg) => {

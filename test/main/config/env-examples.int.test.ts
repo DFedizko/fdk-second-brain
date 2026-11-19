@@ -1,11 +1,12 @@
 import { ENV_SCHEMA } from "../../../src/main/config/env-schema";
 
 const EXAMPLE_FILES = [".env.example", ".dev.vars.example"];
+const REPO_ROOT = `${import.meta.dir}/../../..`;
 const ASSIGNMENT = /^([A-Z0-9_]+)=/;
 const LINE_BREAK = /\r?\n/;
 
 async function variableNames(path: string): Promise<string[]> {
-  const text = await Bun.file(path).text();
+  const text = await Bun.file(`${REPO_ROOT}/${path}`).text();
   return text
     .split(LINE_BREAK)
     .map((line) => ASSIGNMENT.exec(line)?.[1])
