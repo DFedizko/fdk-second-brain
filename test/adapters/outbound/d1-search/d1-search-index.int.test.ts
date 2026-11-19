@@ -10,7 +10,7 @@ const FIRST_VERSION = NoteVersion.of("aaa111");
 const SECOND_VERSION = NoteVersion.of("bbb222");
 const PLAN = NotePath.of("work/plan.md");
 const GARDEN = NotePath.of("home/garden.md");
-const MANY_CHUNKS = 150;
+const MANY_NOTES = 15;
 const FILLER_REPEATS = 40;
 
 const chunk = (heading: string, text: string, seq = 0): MarkdownChunk => ({ heading, seq, text });
@@ -95,8 +95,10 @@ describe("D1SearchIndex", () => {
   });
 
   it("returns no more hits than the limit", async () => {
-    const chunks = Array.from({ length: MANY_CHUNKS }, (_, seq) => chunk("Log", "deploy", seq));
-    await index.replace(PLAN, FIRST_VERSION, chunks, null);
+    const paths = Array.from({ length: MANY_NOTES }, (_, n) => NotePath.of(`log/day${n}.md`));
+    await Promise.all(
+      paths.map((path) => index.replace(path, FIRST_VERSION, [chunk("Log", "deploy")], null)),
+    );
 
     const hits = await index.search(SearchQuery.of("deploy"), LIMIT);
 
