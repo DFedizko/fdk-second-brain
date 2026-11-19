@@ -9,12 +9,10 @@ const MISSING_MESSAGES: Record<EnvName, string> = {
     "GITHUB_TOKEN is missing: set it to a fine-grained personal access token (starts with github_pat_) limited to the notes repository.",
   NOTES_REPO_OWNER:
     "NOTES_REPO_OWNER is missing: set it to the GitHub user or organization that owns the notes repository.",
-  NOTES_REPO_NAME:
-    "NOTES_REPO_NAME is missing: set it to the name of the notes repository.",
+  NOTES_REPO_NAME: "NOTES_REPO_NAME is missing: set it to the name of the notes repository.",
   NOTES_BRANCH:
     "NOTES_BRANCH is missing: set it to the branch that holds the notes, or leave it unset to use main.",
-  GITHUB_CLIENT_ID:
-    "GITHUB_CLIENT_ID is missing: set it to the Client ID of the GitHub OAuth app.",
+  GITHUB_CLIENT_ID: "GITHUB_CLIENT_ID is missing: set it to the Client ID of the GitHub OAuth app.",
   GITHUB_CLIENT_SECRET:
     "GITHUB_CLIENT_SECRET is missing: set it to a client secret of the GitHub OAuth app.",
   OWNER_GITHUB_LOGIN:
@@ -112,14 +110,11 @@ describe("ENV_SCHEMA", () => {
     expect(messages).toEqual([MISSING_MESSAGES[name]]);
   });
 
-  it.each(Object.keys(MISSING_MESSAGES) as EnvName[])(
-    "treats an empty %s as missing",
-    (name) => {
-      const messages = issueMessages({ ...VALID_ENV, [name]: "" });
+  it.each(Object.keys(MISSING_MESSAGES) as EnvName[])("treats an empty %s as missing", (name) => {
+    const messages = issueMessages({ ...VALID_ENV, [name]: "" });
 
-      expect(messages).toEqual([MISSING_MESSAGES[name]]);
-    },
-  );
+    expect(messages).toEqual([MISSING_MESSAGES[name]]);
+  });
 
   it.each(INVALID_CASES)("explains that %s is invalid", (name, value, msg) => {
     const messages = issueMessages({ ...VALID_ENV, [name]: value });
@@ -127,14 +122,11 @@ describe("ENV_SCHEMA", () => {
     expect(messages).toEqual([msg]);
   });
 
-  it.each(INVALID_CASES)(
-    "explains that a non-string %s is invalid",
-    (name, _value, msg) => {
-      const messages = issueMessages({ ...VALID_ENV, [name]: NOT_A_STRING });
+  it.each(INVALID_CASES)("explains that a non-string %s is invalid", (name, _value, msg) => {
+    const messages = issueMessages({ ...VALID_ENV, [name]: NOT_A_STRING });
 
-      expect(messages).toEqual([msg]);
-    },
-  );
+    expect(messages).toEqual([msg]);
+  });
 
   it("never echoes a secret value in its messages", () => {
     const secret = "github_pat_ with a space";

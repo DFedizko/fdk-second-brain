@@ -7,8 +7,7 @@ export const VALID_ENV = {
   GITHUB_CLIENT_SECRET: "0123456789abcdef0123456789abcdef01234567",
   OWNER_GITHUB_LOGIN: "octo-cat",
   GITHUB_WEBHOOK_SECRET: "webhook-secret-of-at-least-32-chars",
-  COOKIE_ENCRYPTION_KEY:
-    "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  COOKIE_ENCRYPTION_KEY: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
 } as const;
 
 export type EnvName = keyof typeof VALID_ENV;
