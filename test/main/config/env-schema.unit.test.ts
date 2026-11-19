@@ -4,6 +4,9 @@ import { VALID_ENV, type EnvName } from "../__stub__/valid-env";
 const DEFAULT_BRANCH = "main";
 const NOT_A_STRING = 42;
 const OPTIONAL_NAME = "NOTES_BRANCH";
+const SECRET_LENGTH = 32;
+const NOT_AN_OBJECT_MESSAGE =
+  "The Worker's env bindings are missing: expected an object holding the environment variables.";
 const EMPTY = "";
 
 type RequiredName = Exclude<EnvName, typeof OPTIONAL_NAME>;
@@ -34,7 +37,7 @@ const INVALID_CASES: ReadonlyArray<[EnvName, unknown, string]> = [
   [
     "NOTES_REPO_OWNER",
     "-not-a-login",
-    "NOTES_REPO_OWNER is invalid: expected a GitHub user or organization name (letters, digits and single hyphens, at most 39 characters).",
+    "NOTES_REPO_OWNER is invalid: expected a GitHub user or organization name (letters, digits and hyphens, not starting with a hyphen, at most 39 characters).",
   ],
   [
     "NOTES_REPO_NAME",
@@ -49,7 +52,7 @@ const INVALID_CASES: ReadonlyArray<[EnvName, unknown, string]> = [
   [
     "GITHUB_CLIENT_ID",
     "client id",
-    "GITHUB_CLIENT_ID is invalid: expected the GitHub OAuth app's Client ID (letters and digits only).",
+    "GITHUB_CLIENT_ID is invalid: expected the GitHub app's Client ID (letters, digits and dots only).",
   ],
   [
     "GITHUB_CLIENT_SECRET",
@@ -58,13 +61,13 @@ const INVALID_CASES: ReadonlyArray<[EnvName, unknown, string]> = [
   ],
   [
     "OWNER_GITHUB_LOGIN",
-    "double--hyphen",
-    "OWNER_GITHUB_LOGIN is invalid: expected a GitHub login (letters, digits and single hyphens, at most 39 characters).",
+    "-leading-hyphen",
+    "OWNER_GITHUB_LOGIN is invalid: expected a GitHub login (letters, digits and hyphens, not starting with a hyphen, at most 39 characters).",
   ],
   [
     "GITHUB_WEBHOOK_SECRET",
     "too-short",
-    "GITHUB_WEBHOOK_SECRET is invalid: expected at least 32 characters (openssl rand -hex 32).",
+    "GITHUB_WEBHOOK_SECRET is invalid: expected at least 32 characters with no spaces or line breaks (openssl rand -hex 32).",
   ],
   [
     "COOKIE_ENCRYPTION_KEY",
@@ -80,6 +83,25 @@ const MORE_INVALID_VALUES: ReadonlyArray<[EnvName, string]> = [
   ["NOTES_BRANCH", "main/"],
   ["NOTES_BRANCH", "notes//main"],
   ["NOTES_BRANCH", "main.lock"],
+  ["NOTES_BRANCH", ".main"],
+  ["NOTES_BRANCH", "notes/.hidden"],
+  ["NOTES_BRANCH", "main."],
+  ["NOTES_BRANCH", "-main"],
+  ["NOTES_BRANCH", "notes/-main"],
+  ["NOTES_BRANCH", "notes.lock/main"],
+  ["NOTES_BRANCH", "notes/."],
+  ["NOTES_BRANCH", "HEAD"],
+  ["GITHUB_WEBHOOK_SECRET", " ".repeat(SECRET_LENGTH)],
+  ["GITHUB_WEBHOOK_SECRET", "a".repeat(SECRET_LENGTH - 1) + "\n"],
+  ["GITHUB_WEBHOOK_SECRET", "a".repeat(SECRET_LENGTH) + "\n"],
+];
+
+const ACCEPTED_VALUES: ReadonlyArray<[EnvName, string]> = [
+  ["OWNER_GITHUB_LOGIN", "legacy--login"],
+  ["OWNER_GITHUB_LOGIN", "legacy-"],
+  ["NOTES_REPO_OWNER", "legacy--org"],
+  ["GITHUB_CLIENT_ID", "Iv1.0123456789abcdef"],
+  ["NOTES_BRANCH", "notes/v1.2-draft"],
 ];
 
 const REQUIRED_NAMES = Object.keys(MISSING_MESSAGES) as RequiredName[];
@@ -145,6 +167,18 @@ describe("ENV_SCHEMA", () => {
     const messages = issueMessages({ ...VALID_ENV, [name]: value });
 
     expect(messages).toEqual([invalidMessage(name)]);
+  });
+
+  it.each(ACCEPTED_VALUES)("accepts %s %p", (name, value) => {
+    const messages = issueMessages({ ...VALID_ENV, [name]: value });
+
+    expect(messages).toEqual([]);
+  });
+
+  it("explains that the env bindings are missing", () => {
+    const messages = issueMessages(undefined);
+
+    expect(messages).toEqual([NOT_AN_OBJECT_MESSAGE]);
   });
 
   it.each(INVALID_CASES)("explains that a non-string %s is invalid", (name, _value, msg) => {
