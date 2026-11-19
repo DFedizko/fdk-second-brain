@@ -1,12 +1,11 @@
 import type { MarkdownChunk } from "./markdown-chunk";
 import { MarkdownOutline, type OutlinePart } from "./markdown-outline";
+import { safeCutIndex } from "./safe-cut";
 
 export const MAX_CHUNK_CHARS = 1500;
-const PARAGRAPH_BREAK = /\n[ \t]*\n/;
+const PARAGRAPH_BREAK = /\n(?:[ \t]*\n)+/;
 const PARAGRAPH_JOINT = "\n\n";
 const WORD_GAP = " ";
-const HIGH_SURROGATE_MIN = 0xd800;
-const HIGH_SURROGATE_MAX = 0xdbff;
 
 export class MarkdownChunker {
   chunk(content: string): MarkdownChunk[] {
@@ -25,18 +24,12 @@ export class MarkdownChunker {
     if (paragraph.length <= MAX_CHUNK_CHARS) return [paragraph];
     const gap = paragraph.lastIndexOf(WORD_GAP, MAX_CHUNK_CHARS);
     if (gap > 0) return this.cutAt(paragraph, gap, gap + WORD_GAP.length);
-    const end = this.findSafeEnd(paragraph);
+    const end = safeCutIndex(paragraph, MAX_CHUNK_CHARS);
     return this.cutAt(paragraph, end, end);
   }
 
   private cutAt(paragraph: string, end: number, restStart: number): string[] {
     return [paragraph.slice(0, end), ...this.cutParagraph(paragraph.slice(restStart))];
-  }
-
-  private findSafeEnd(paragraph: string): number {
-    const last = paragraph.charCodeAt(MAX_CHUNK_CHARS - 1);
-    const splitsPair = last >= HIGH_SURROGATE_MIN && last <= HIGH_SURROGATE_MAX;
-    return splitsPair ? MAX_CHUNK_CHARS - 1 : MAX_CHUNK_CHARS;
   }
 
   private packPieces(pieces: string[]): string[] {

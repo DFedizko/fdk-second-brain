@@ -1,3 +1,4 @@
+import { safeCutIndex } from "../../domain/safe-cut";
 import { SearchQuery } from "../../domain/search-query";
 import type { SearchHit, SearchIndex } from "../ports/search-index";
 
@@ -39,6 +40,7 @@ export class SearchNotes {
 
   private shorten(snippet: string): string {
     if (snippet.length <= SNIPPET_MAX_CHARS) return snippet;
-    return `${snippet.slice(0, SNIPPET_MAX_CHARS - ELLIPSIS.length)}${ELLIPSIS}`;
+    const end = safeCutIndex(snippet, SNIPPET_MAX_CHARS - ELLIPSIS.length);
+    return `${snippet.slice(0, end)}${ELLIPSIS}`;
   }
 }
