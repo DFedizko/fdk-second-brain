@@ -52,7 +52,7 @@ const INVALID_CASES: ReadonlyArray<[EnvName, unknown, string]> = [
   [
     "GITHUB_CLIENT_ID",
     "client id",
-    "GITHUB_CLIENT_ID is invalid: expected the GitHub app's Client ID (letters, digits and dots only).",
+    "GITHUB_CLIENT_ID is invalid: expected the Client ID of a GitHub OAuth App, not a GitHub App (letters and digits only).",
   ],
   [
     "GITHUB_CLIENT_SECRET",
@@ -77,6 +77,7 @@ const INVALID_CASES: ReadonlyArray<[EnvName, unknown, string]> = [
 ];
 
 const MORE_INVALID_VALUES: ReadonlyArray<[EnvName, string]> = [
+  ["GITHUB_CLIENT_ID", "Iv1.0123456789abcdef"],
   ["NOTES_REPO_NAME", "."],
   ["NOTES_REPO_NAME", ".."],
   ["NOTES_BRANCH", "/main"],
@@ -100,7 +101,6 @@ const ACCEPTED_VALUES: ReadonlyArray<[EnvName, string]> = [
   ["OWNER_GITHUB_LOGIN", "legacy--login"],
   ["OWNER_GITHUB_LOGIN", "legacy-"],
   ["NOTES_REPO_OWNER", "legacy--org"],
-  ["GITHUB_CLIENT_ID", "Iv1.0123456789abcdef"],
   ["NOTES_BRANCH", "notes/v1.2-draft"],
 ];
 
