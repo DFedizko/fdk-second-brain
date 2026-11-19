@@ -43,6 +43,8 @@ export const MESSAGE = {
   noParent: "Parent SHA does not exist or is not a commit object",
   noReference: "Reference does not exist",
   noObject: "Object does not exist",
+  emptyRepo: "Git Repository is empty.",
+  emptyContents: "This repository is empty.",
 } as const;
 
 export class GitHubReplies {

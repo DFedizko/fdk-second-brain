@@ -35,7 +35,7 @@ export class ContentsRoutes {
   private putContent(call: FakeCall): Response {
     const path = this.pathOf(call);
     const branch = this.branchOf(call);
-    const files = this.parts.store.filesAt(branch);
+    const files = this.parts.store.hasRefs() ? this.parts.store.filesAt(branch) : new Map();
     if (!files) return this.notFound(call, `Branch ${branch} not found`);
     const current = files.get(path);
     const rejection = this.rejectWrongSha(call, path, current);
