@@ -77,6 +77,14 @@ describe("SearchNotes", () => {
     expect(results).toHaveLength(1);
   });
 
+  it("returns the default number of results when the limit is not a number", async () => {
+    await indexManyNotes();
+
+    const results = await searchNotes.execute({ query: "deploy", limit: Number.NaN });
+
+    expect(results).toHaveLength(DEFAULT_SEARCH_LIMIT);
+  });
+
   it("shortens a long snippet", async () => {
     await indexNote("work/long.md", "Log", `deploy ${"x".repeat(LONG_TEXT_CHARS)}`);
 
