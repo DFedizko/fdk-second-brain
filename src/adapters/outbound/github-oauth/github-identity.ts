@@ -67,8 +67,8 @@ export class GitHubIdentity implements IdentityProvider {
         code_verifier: codeVerifier,
       }),
     });
-    const reply = (await response.json()) as TokenReply;
-    if (!response.ok || !reply.access_token) throw new SignInFailedError(EXCHANGE_FAILED);
+    const reply = await this.readJson<TokenReply>(response, EXCHANGE_FAILED);
+    if (!reply.access_token) throw new SignInFailedError(EXCHANGE_FAILED);
     return reply.access_token;
   }
 
@@ -81,8 +81,16 @@ export class GitHubIdentity implements IdentityProvider {
         "x-github-api-version": API_VERSION,
       },
     });
-    if (!response.ok) throw new SignInFailedError(USER_FAILED);
-    return (await response.json()) as GitHubUser;
+    return this.readJson<GitHubUser>(response, USER_FAILED);
+  }
+
+  private async readJson<T>(response: Response, failure: string): Promise<T> {
+    if (!response.ok) throw new SignInFailedError(failure);
+    try {
+      return (await response.json()) as T;
+    } catch (cause) {
+      throw new SignInFailedError(failure, { cause });
+    }
   }
 
   private async send(url: URL, init: RequestInit): Promise<Response> {

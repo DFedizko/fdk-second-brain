@@ -101,4 +101,13 @@ describe("GitHubIdentity", () => {
 
     await expect(identify).rejects.toThrow(SignInFailedError);
   });
+
+  it("fails when GitHub answers with a page instead of JSON", async () => {
+    const outage = () => Promise.resolve(new Response("<html>Unicorn!</html>", { status: 502 }));
+    const identity = new GitHubIdentity(SETTINGS, outage);
+
+    const identify = identity.identify("code", VERIFIER);
+
+    await expect(identify).rejects.toThrow(SignInFailedError);
+  });
 });
