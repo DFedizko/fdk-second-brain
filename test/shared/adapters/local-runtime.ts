@@ -1,30 +1,31 @@
-import { Miniflare } from "miniflare";
+import { getPlatformProxy, type PlatformProxy } from "wrangler";
 
-// The newest compatibility date the stable Miniflare's workerd supports; wrangler.jsonc may be newer.
-const COMPATIBILITY_DATE = "2026-08-06";
-const DATABASE_BINDING = "DB";
-const DATABASE_ID = "local-second-brain";
-const IDLE_WORKER = "export default { fetch: () => new Response(null, { status: 404 }) };";
+const WRANGLER_CONFIG = "wrangler.jsonc";
 
 export class LocalRuntime {
-  private constructor(private readonly miniflare: Miniflare) {}
+  private stopped = false;
+
+  private constructor(private readonly proxy: PlatformProxy<Env>) {}
 
   static async start(): Promise<LocalRuntime> {
-    const miniflare = new Miniflare({
-      modules: true,
-      script: IDLE_WORKER,
-      compatibilityDate: COMPATIBILITY_DATE,
-      d1Databases: { [DATABASE_BINDING]: DATABASE_ID },
+    const proxy = await getPlatformProxy<Env>({
+      configPath: WRANGLER_CONFIG,
+      persist: false,
     });
-    await miniflare.ready;
-    return new LocalRuntime(miniflare);
+    return new LocalRuntime(proxy);
+  }
+
+  bindings(): Env {
+    return this.proxy.env;
   }
 
   async database(): Promise<D1Database> {
-    return this.miniflare.getD1Database(DATABASE_BINDING);
+    return this.proxy.env.DB;
   }
 
   async stop(): Promise<void> {
-    await this.miniflare.dispose();
+    if (this.stopped) return;
+    this.stopped = true;
+    await this.proxy.dispose();
   }
 }
