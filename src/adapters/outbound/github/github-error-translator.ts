@@ -4,6 +4,7 @@ import { NotesAccessDenied } from "../../../domain/errors/notes-access-denied";
 import { NotesRateLimited } from "../../../domain/errors/notes-rate-limited";
 import { NotesUnavailable } from "../../../domain/errors/notes-unavailable";
 import { VersionConflict } from "../../../domain/errors/version-conflict";
+import { EmptyRepository } from "./empty-repository";
 
 const UNAUTHORIZED = 401;
 const FORBIDDEN = 403;
@@ -16,6 +17,7 @@ const MILLIS_PER_SECOND = 1000;
 const RATE_LIMIT_MESSAGE = /rate limit/i;
 const SHA_MISSING = /"sha" wasn't supplied/;
 const NOT_FAST_FORWARD = /not a fast forward/i;
+const EMPTY_REPOSITORY = /Git Repository is empty/i;
 const NEWER_VERSION = "a newer version";
 const REMAINING_HEADER = "x-ratelimit-remaining";
 const RESET_HEADER = "x-ratelimit-reset";
@@ -54,6 +56,7 @@ export class GitHubErrorTranslator implements GitHubErrorMapper {
       case NOT_FOUND:
         return this.notFound(failure, context);
       case CONFLICT:
+        if (EMPTY_REPOSITORY.test(failure.message)) return new EmptyRepository();
         return this.conflict(failure, context);
       case UNPROCESSABLE:
         return this.unprocessable(failure, context);

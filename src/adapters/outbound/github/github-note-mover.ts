@@ -1,9 +1,11 @@
 import { NoteAlreadyExists } from "../../../domain/errors/note-already-exists";
+import { NoteNotFound } from "../../../domain/errors/note-not-found";
 import { NotesUnavailable } from "../../../domain/errors/notes-unavailable";
 import { Note } from "../../../domain/note";
 import type { NotePath } from "../../../domain/note-path";
 import type { NoteVersion } from "../../../domain/note-version";
 import { BranchMoved } from "./branch-moved";
+import { EmptyRepository } from "./empty-repository";
 import type { FailureContext } from "./github-error-translator";
 import type { GitHubAccess } from "./github-gateway";
 import type { NoteReader } from "./github-note-reader";
@@ -43,7 +45,9 @@ export class GitHubNoteMover implements NoteMover {
   }
 
   private async moveOnce(from: NotePath, to: NotePath): Promise<Note> {
-    const head = await this.reader.headCommit();
+    const head = await this.reader.headCommit().catch((error: unknown) => {
+      throw error instanceof EmptyRepository ? new NoteNotFound(from.value) : error;
+    });
     const note = await this.reader.read(from, head);
     if (await this.reader.exists(to, head)) throw new NoteAlreadyExists(to.value);
     const tree = await this.movedTree(from, to, note.version, head);

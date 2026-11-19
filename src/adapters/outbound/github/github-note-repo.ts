@@ -8,6 +8,7 @@ import type { NoteFolder } from "../../../domain/note-folder";
 import { NotePath } from "../../../domain/note-path";
 import { NoteVersion } from "../../../domain/note-version";
 import { encodeBase64 } from "./base64-text";
+import { EmptyRepository } from "./empty-repository";
 import type { FailureContext } from "./github-error-translator";
 import type { GitHubAccess } from "./github-gateway";
 import type { NoteMover } from "./github-note-mover";
@@ -33,16 +34,24 @@ export class GitHubNoteRepo implements NoteRepository {
   ) {}
 
   async list(folder: NoteFolder): Promise<NotePath[]> {
-    const { data } = await this.github.send(BRANCH_LEVEL, (client, repo) =>
-      client.rest.git.getTree({ ...repo, tree_sha: this.github.branch, recursive: RECURSIVE }),
-    );
-    if (data.truncated) throw new NotesUnavailable();
-    return data.tree
+    const entries = await this.treeEntries().catch((error: unknown) => {
+      if (error instanceof EmptyRepository) return [];
+      throw error;
+    });
+    return entries
       .filter((entry) => entry.type === BLOB && entry.path.endsWith(NOTE_EXTENSION))
       .map((entry) => entry.path)
       .sort()
       .flatMap((raw) => this.toNotePath(raw))
       .filter((path) => folder.contains(path));
+  }
+
+  private async treeEntries() {
+    const { data } = await this.github.send(BRANCH_LEVEL, (client, repo) =>
+      client.rest.git.getTree({ ...repo, tree_sha: this.github.branch, recursive: RECURSIVE }),
+    );
+    if (data.truncated) throw new NotesUnavailable();
+    return data.tree;
   }
 
   async read(path: NotePath): Promise<Note> {
@@ -107,7 +116,10 @@ export class GitHubNoteRepo implements NoteRepository {
   }
 
   private async confirmBranchThenThrow(error: unknown): Promise<never> {
-    if (error instanceof NoteNotFound) await this.reader.headCommit();
+    if (!(error instanceof NoteNotFound)) throw error;
+    await this.reader.headCommit().catch((failure: unknown) => {
+      if (!(failure instanceof EmptyRepository)) throw failure;
+    });
     throw error;
   }
 
