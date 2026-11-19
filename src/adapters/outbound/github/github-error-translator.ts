@@ -17,10 +17,14 @@ const RATE_LIMIT_MESSAGE = /rate limit/i;
 const SHA_MISSING = /"sha" wasn't supplied/;
 const NOT_FAST_FORWARD = /not a fast forward/i;
 const NEWER_VERSION = "a newer version";
+const REMAINING_HEADER = "x-ratelimit-remaining";
+const RESET_HEADER = "x-ratelimit-reset";
+const RETRY_AFTER_HEADER = "retry-after";
 
 export interface FailureContext {
   readonly path?: string;
   readonly expected?: string;
+  readonly mayBeMissing?: boolean;
 }
 
 export interface GitHubErrorMapper {
@@ -72,7 +76,9 @@ export class GitHubErrorTranslator implements GitHubErrorMapper {
   }
 
   private notFound(failure: HttpFailure, context: FailureContext): Error {
-    if (context.path === undefined) return new NotesUnavailable(failure.status);
+    if (context.path === undefined || !context.mayBeMissing) {
+      return new NotesUnavailable(failure.status);
+    }
     return new NoteNotFound(context.path);
   }
 
@@ -80,15 +86,15 @@ export class GitHubErrorTranslator implements GitHubErrorMapper {
     if (failure.status === TOO_MANY_REQUESTS) return true;
     if (failure.status !== FORBIDDEN) return false;
     return (
-      String(failure.headers["x-ratelimit-remaining"]) === NO_REQUESTS_LEFT ||
-      failure.headers["retry-after"] !== undefined ||
+      String(failure.headers[REMAINING_HEADER]) === NO_REQUESTS_LEFT ||
+      failure.headers[RETRY_AFTER_HEADER] !== undefined ||
       RATE_LIMIT_MESSAGE.test(failure.message)
     );
   }
 
   private rateLimited(failure: HttpFailure): NotesRateLimited {
-    const reset = this.numberHeader(failure, "x-ratelimit-reset");
-    const retryAfter = this.numberHeader(failure, "retry-after");
+    const reset = this.numberHeader(failure, RESET_HEADER);
+    const retryAfter = this.numberHeader(failure, RETRY_AFTER_HEADER);
     const resetsAt = reset === undefined ? undefined : new Date(reset * MILLIS_PER_SECOND);
     return new NotesRateLimited(resetsAt, retryAfter);
   }

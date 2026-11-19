@@ -3,6 +3,8 @@ import type { NoteRepository } from "../../../application/ports/note-repository"
 import { InvalidPath } from "../../../domain/errors/invalid-path";
 import { NoteAlreadyExists } from "../../../domain/errors/note-already-exists";
 import { NoteNotFound } from "../../../domain/errors/note-not-found";
+import { NotesUnavailable } from "../../../domain/errors/notes-unavailable";
+import { VersionConflict } from "../../../domain/errors/version-conflict";
 import { Note } from "../../../domain/note";
 import type { NoteFolder } from "../../../domain/note-folder";
 import { NotePath } from "../../../domain/note-path";
@@ -13,6 +15,7 @@ import type { FailureContext, GitHubErrorMapper } from "./github-error-translato
 
 const BLOB = "blob";
 const FILE = "file";
+const BASE64 = "base64";
 const FILE_MODE = "100644";
 const RECURSIVE = "1";
 const NOTE_EXTENSION = ".md";
@@ -22,6 +25,8 @@ const UPDATE = "Update";
 const DELETE = "Delete";
 const MOVE = "Move";
 const MOVE_TO = "to";
+const MOVE_ATTEMPTS = 2;
+const UNPROCESSABLE = 422;
 const BRANCH_LEVEL: FailureContext = {};
 
 export class GitHubNoteRepo implements NoteRepository {
@@ -39,6 +44,7 @@ export class GitHubNoteRepo implements NoteRepository {
         recursive: RECURSIVE,
       }),
     );
+    if (data.truncated) throw new NotesUnavailable();
     return data.tree
       .filter((entry) => entry.type === BLOB && entry.path.endsWith(NOTE_EXTENSION))
       .map((entry) => entry.path)
@@ -48,7 +54,9 @@ export class GitHubNoteRepo implements NoteRepository {
   }
 
   async read(path: NotePath): Promise<Note> {
-    return this.readAt(path, this.config.branch);
+    return this.fetchNote(path, this.config.branch).catch((error: unknown) =>
+      this.confirmBranchThenThrow(error),
+    );
   }
 
   async create(path: NotePath, content: string): Promise<Note> {
@@ -58,13 +66,16 @@ export class GitHubNoteRepo implements NoteRepository {
   async write(path: NotePath, content: string, expected: NoteVersion): Promise<Note> {
     const current = await this.read(path);
     current.ensureVersion(expected);
-    return this.putFile(path, content, `${UPDATE} ${path.value}`, expected);
+    return this.putFile(path, content, `${UPDATE} ${path.value}`, expected).catch(
+      (error: unknown) => this.reportActualVersion(error, path, expected),
+    );
   }
 
   async delete(path: NotePath): Promise<void> {
     const current = await this.read(path);
     const sha = current.version.value;
-    await this.call({ path: path.value, expected: sha }, () =>
+    const context = { path: path.value, expected: sha, mayBeMissing: true };
+    await this.call(context, () =>
       this.client.rest.repos.deleteFile({
         ...this.repo(),
         path: path.value,
@@ -72,20 +83,30 @@ export class GitHubNoteRepo implements NoteRepository {
         sha,
         branch: this.config.branch,
       }),
-    );
+    ).catch((error: unknown) => this.reportActualVersion(error, path, current.version));
   }
 
   async move(from: NotePath, to: NotePath): Promise<Note> {
+    return this.moveWithRetry(from, to, MOVE_ATTEMPTS);
+  }
+
+  private async moveWithRetry(from: NotePath, to: NotePath, attempts: number): Promise<Note> {
+    return this.moveOnce(from, to).catch((error: unknown) => {
+      if (attempts > 1 && this.isBranchMoved(error)) {
+        return this.moveWithRetry(from, to, attempts - 1);
+      }
+      throw error;
+    });
+  }
+
+  private async moveOnce(from: NotePath, to: NotePath): Promise<Note> {
     const head = await this.headCommit();
-    const note = await this.readAt(from, head);
+    const note = await this.fetchNote(from, head);
     await this.rejectExistingAt(to, head);
     const tree = await this.movedTree(from, to, note.version, head);
-    const commit = await this.commitTree(
-      tree,
-      head,
-      `${MOVE} ${from.value} ${MOVE_TO} ${to.value}`,
-    );
-    await this.call({ path: from.value, expected: head }, () =>
+    const message = `${MOVE} ${from.value} ${MOVE_TO} ${to.value}`;
+    const commit = await this.commitTree(tree, head, message);
+    await this.call(BRANCH_LEVEL, () =>
       this.client.rest.git.updateRef({
         ...this.repo(),
         ref: this.branchRef(),
@@ -96,18 +117,39 @@ export class GitHubNoteRepo implements NoteRepository {
     return new Note(to, note.content, note.version);
   }
 
-  private async readAt(path: NotePath, ref: string): Promise<Note> {
-    const { data } = await this.call({ path: path.value }, () =>
+  private isBranchMoved(error: unknown): boolean {
+    return error instanceof NotesUnavailable && error.status === UNPROCESSABLE;
+  }
+
+  private async fetchNote(path: NotePath, ref: string): Promise<Note> {
+    const context = { path: path.value, mayBeMissing: true };
+    const { data } = await this.call(context, () =>
       this.client.rest.repos.getContent({ ...this.repo(), path: path.value, ref }),
     );
     if (Array.isArray(data) || data.type !== FILE || !("content" in data)) {
       throw new NoteNotFound(path.value);
     }
+    if (data.encoding !== BASE64) throw new NotesUnavailable();
     return new Note(path, decodeBase64(data.content), NoteVersion.of(data.sha));
   }
 
+  private async confirmBranchThenThrow(error: unknown): Promise<never> {
+    if (error instanceof NoteNotFound) await this.headCommit();
+    throw error;
+  }
+
+  private async reportActualVersion(
+    error: unknown,
+    path: NotePath,
+    expected: NoteVersion,
+  ): Promise<never> {
+    if (!(error instanceof VersionConflict)) throw error;
+    const current = await this.read(path);
+    throw new VersionConflict(path.value, expected.value, current.version.value);
+  }
+
   private async rejectExistingAt(path: NotePath, ref: string): Promise<void> {
-    const exists = await this.readAt(path, ref).then(
+    const exists = await this.fetchNote(path, ref).then(
       () => true,
       (error: unknown) => this.treatMissingAsAbsent(error),
     );
