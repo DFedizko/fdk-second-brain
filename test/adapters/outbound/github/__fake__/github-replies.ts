@@ -29,6 +29,7 @@ export const DOCS_PAGE = {
 
 export const MESSAGE = {
   badCredentials: "Bad credentials",
+  requiresAuth: "Requires authentication",
   notFound: "Not Found",
   shaMissing: 'Invalid request.\n\n"sha" wasn\'t supplied.',
   notFastForward: "Update is not a fast forward",
