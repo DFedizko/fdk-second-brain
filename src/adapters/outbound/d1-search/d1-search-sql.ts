@@ -2,6 +2,7 @@ const SNIPPET_COLUMN = 1;
 const SNIPPET_TOKENS = 48;
 const HEADING_WEIGHT = 5.0;
 const TEXT_WEIGHT = 1.0;
+const HOLDS_EXPECTED = "(SELECT version FROM index_manifest WHERE path = ?1) IS ?2";
 
 export const SEARCH_CHUNKS = `
   SELECT c.path AS path, c.heading AS heading,
@@ -14,13 +15,14 @@ export const SEARCH_CHUNKS = `
 
 export const SELECT_VERSION = "SELECT version FROM index_manifest WHERE path = ?1";
 
-export const DELETE_CHUNKS = "DELETE FROM note_chunks WHERE path = ?1";
+export const DELETE_CHUNKS = `DELETE FROM note_chunks WHERE path = ?1 AND ${HOLDS_EXPECTED}`;
 
 export const INSERT_CHUNK = `
-  INSERT INTO note_chunks (path, heading, seq, text, version) VALUES (?1, ?2, ?3, ?4, ?5)`;
+  INSERT INTO note_chunks (path, heading, seq, text, version)
+  SELECT ?1, ?3, ?4, ?5, ?6 WHERE ${HOLDS_EXPECTED}`;
 
 export const UPSERT_VERSION = `
-  INSERT INTO index_manifest (path, version) VALUES (?1, ?2)
+  INSERT INTO index_manifest (path, version) SELECT ?1, ?3 WHERE ${HOLDS_EXPECTED}
   ON CONFLICT (path) DO UPDATE SET version = excluded.version`;
 
-export const DELETE_VERSION = "DELETE FROM index_manifest WHERE path = ?1";
+export const DELETE_VERSION = `DELETE FROM index_manifest WHERE path = ?1 AND ${HOLDS_EXPECTED}`;

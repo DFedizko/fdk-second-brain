@@ -27,7 +27,7 @@ describe("SearchNotes", () => {
   });
 
   const indexNote = (path: string, heading: string, text: string) =>
-    index.replace(NotePath.of(path), VERSION, [{ heading, seq: 0, text }]);
+    index.replace(NotePath.of(path), VERSION, [{ heading, seq: 0, text }], null);
 
   const indexManyNotes = () =>
     Promise.all(

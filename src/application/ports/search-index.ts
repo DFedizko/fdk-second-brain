@@ -12,6 +12,11 @@ export interface SearchHit {
 export interface SearchIndex {
   search(query: SearchQuery, limit: number): Promise<SearchHit[]>;
   versionOf(path: NotePath): Promise<NoteVersion | null>;
-  replace(path: NotePath, version: NoteVersion, chunks: readonly MarkdownChunk[]): Promise<void>;
-  remove(path: NotePath): Promise<void>;
+  replace(
+    path: NotePath,
+    version: NoteVersion,
+    chunks: readonly MarkdownChunk[],
+    expected: NoteVersion | null,
+  ): Promise<boolean>;
+  remove(path: NotePath, expected: NoteVersion | null): Promise<boolean>;
 }

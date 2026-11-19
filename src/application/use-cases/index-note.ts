@@ -1,33 +1,72 @@
+import { IndexWriteConflict } from "../../domain/errors/index-write-conflict";
+import { NoteNotFound } from "../../domain/errors/note-not-found";
 import type { MarkdownChunker } from "../../domain/markdown-chunker";
+import type { Note } from "../../domain/note";
 import { NotePath } from "../../domain/note-path";
-import { NoteVersion } from "../../domain/note-version";
+import type { NoteVersion } from "../../domain/note-version";
+import type { NoteRepository } from "../ports/note-repository";
 import type { SearchIndex } from "../ports/search-index";
+
+const MAX_INDEX_ATTEMPTS = 3;
 
 export interface IndexNoteInput {
   readonly path: string;
-  readonly content: string;
-  readonly version: string;
 }
 
-export type IndexStatus = "indexed" | "unchanged";
+export type IndexStatus = "indexed" | "removed" | "unchanged";
 
 export interface IndexNoteResult {
   readonly path: string;
   readonly status: IndexStatus;
 }
 
-export class IndexNote {
+export interface NoteIndexer {
+  execute(input: IndexNoteInput): Promise<IndexNoteResult>;
+}
+
+// Messages can arrive late or twice, so the note is re-read at the head and the
+// index is written only over the version seen before that read (compare-and-set).
+export class IndexNote implements NoteIndexer {
   constructor(
     private readonly index: SearchIndex,
+    private readonly notes: NoteRepository,
     private readonly chunker: MarkdownChunker,
   ) {}
 
   async execute(input: IndexNoteInput): Promise<IndexNoteResult> {
     const path = NotePath.of(input.path);
-    const version = NoteVersion.of(input.version);
+    return { path: path.value, status: await this.syncWithRetry(path, MAX_INDEX_ATTEMPTS) };
+  }
+
+  private async syncWithRetry(path: NotePath, attempts: number): Promise<IndexStatus> {
+    const status = await this.syncOnce(path);
+    if (status !== undefined) return status;
+    if (attempts <= 1) throw new IndexWriteConflict(path.value);
+    return this.syncWithRetry(path, attempts - 1);
+  }
+
+  private async syncOnce(path: NotePath): Promise<IndexStatus | undefined> {
     const indexed = await this.index.versionOf(path);
-    if (indexed?.equals(version)) return { path: path.value, status: "unchanged" };
-    await this.index.replace(path, version, this.chunker.chunk(input.content));
-    return { path: path.value, status: "indexed" };
+    const note = await this.readCurrent(path);
+    if (note === null) return this.removeIndexed(path, indexed);
+    if (indexed?.equals(note.version)) return "unchanged";
+    const chunks = this.chunker.chunk(note.content);
+    const applied = await this.index.replace(path, note.version, chunks, indexed);
+    return applied ? "indexed" : undefined;
+  }
+
+  private async removeIndexed(
+    path: NotePath,
+    indexed: NoteVersion | null,
+  ): Promise<IndexStatus | undefined> {
+    if (indexed === null) return "unchanged";
+    return (await this.index.remove(path, indexed)) ? "removed" : undefined;
+  }
+
+  private async readCurrent(path: NotePath): Promise<Note | null> {
+    return this.notes.read(path).catch((error: unknown) => {
+      if (error instanceof NoteNotFound) return null;
+      throw error;
+    });
   }
 }
