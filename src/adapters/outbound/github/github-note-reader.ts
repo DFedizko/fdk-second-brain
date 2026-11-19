@@ -1,4 +1,5 @@
 import { NoteNotFound } from "../../../domain/errors/note-not-found";
+import { UnreadableNote } from "../../../domain/errors/unreadable-note";
 import { NotesUnavailable } from "../../../domain/errors/notes-unavailable";
 import { Note } from "../../../domain/note";
 import type { NotePath } from "../../../domain/note-path";
@@ -25,8 +26,8 @@ export class GitHubNoteReader implements NoteReader {
     if (Array.isArray(data) || data.type !== FILE || !("content" in data)) {
       throw new NoteNotFound(path.value);
     }
-    if (data.encoding !== BASE64) throw new NotesUnavailable();
-    return new Note(path, decodeBase64(data.content), NoteVersion.of(data.sha));
+    const encoded = data.encoding === BASE64 ? data.content : await this.readBlob(data.sha);
+    return new Note(path, this.decode(path, encoded), NoteVersion.of(data.sha));
   }
 
   async exists(path: NotePath, ref: string): Promise<boolean> {
@@ -41,6 +42,23 @@ export class GitHubNoteReader implements NoteReader {
       client.rest.git.getRef({ ...repo, ref: this.github.branchRef }),
     );
     return data.object.sha;
+  }
+
+  private async readBlob(sha: string): Promise<string> {
+    const { data } = await this.github.send(BRANCH_LEVEL, (client, repo) =>
+      client.rest.git.getBlob({ ...repo, file_sha: sha }),
+    );
+    if (data.encoding !== BASE64) throw new NotesUnavailable();
+    return data.content;
+  }
+
+  private decode(path: NotePath, encoded: string): string {
+    try {
+      return decodeBase64(encoded);
+    } catch (error) {
+      if (error instanceof TypeError) throw new UnreadableNote(path.value);
+      throw error;
+    }
   }
 
   private async getContent(path: NotePath, ref: string) {

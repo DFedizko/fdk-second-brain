@@ -1,4 +1,6 @@
 const WHITESPACE = /\s/g;
+const UTF8 = "utf-8";
+const STRICT_UTF8 = { ignoreBOM: true, fatal: true };
 
 export function encodeBase64(text: string): string {
   const bytes = new TextEncoder().encode(text);
@@ -7,5 +9,7 @@ export function encodeBase64(text: string): string {
 
 export function decodeBase64(encoded: string): string {
   const binary = atob(encoded.replace(WHITESPACE, ""));
-  return new TextDecoder().decode(Uint8Array.from(binary, (char) => char.charCodeAt(0)));
+  return new TextDecoder(UTF8, STRICT_UTF8).decode(
+    Uint8Array.from(binary, (char) => char.charCodeAt(0)),
+  );
 }
