@@ -5,11 +5,13 @@ import {
 } from "../../../src/application/use-cases/index-note";
 import { IndexWriteConflict } from "../../../src/domain/errors/index-write-conflict";
 import { InvalidPath } from "../../../src/domain/errors/invalid-path";
+import { UnreadableNote } from "../../../src/domain/errors/unreadable-note";
 import { MarkdownChunker } from "../../../src/domain/markdown-chunker";
 import { NotePath } from "../../../src/domain/note-path";
 import { NoteVersion } from "../../../src/domain/note-version";
 import { InMemoryNoteRepo } from "../__fake__/in-memory-note-repo";
 import { InMemorySearchIndex } from "./__fake__/in-memory-search-index";
+import { UnreadableNoteLookup } from "./__stub__/unreadable-note-lookup";
 
 const PATH = "projects/plan.md";
 const NOTE = NotePath.of(PATH);
@@ -40,6 +42,33 @@ describe("IndexNote", () => {
     const current = await index.versionOf(NOTE);
     await index.replace(NOTE, NoteVersion.of(`${RACER_PREFIX}${attempt}`), STALE_CHUNKS, current);
   };
+
+  it("reports a note that can never be read", async () => {
+    const unreadable = new IndexNote(index, new UnreadableNoteLookup(), new MarkdownChunker());
+
+    const run = unreadable.execute({ path: PATH });
+
+    await expect(run).rejects.toThrow(UnreadableNote);
+  });
+
+  it("removes a note that can never be read from the index", async () => {
+    await writeStale();
+    const unreadable = new IndexNote(index, new UnreadableNoteLookup(), new MarkdownChunker());
+
+    await unreadable.execute({ path: PATH }).catch(() => undefined);
+
+    expect(await index.versionOf(NOTE)).toBeNull();
+  });
+
+  it("keeps an index entry written while the unreadable note was read", async () => {
+    await writeStale();
+    const lookup = new UnreadableNoteLookup(overwrite(1));
+    const unreadable = new IndexNote(index, lookup, new MarkdownChunker());
+
+    await unreadable.execute({ path: PATH }).catch(() => undefined);
+
+    expect(await index.versionOf(NOTE)).toEqual(NoteVersion.of(`${RACER_PREFIX}1`));
+  });
 
   it("stores the chunks of the note as it is now in the repository", async () => {
     await notes.create(NOTE, FIRST_CONTENT);

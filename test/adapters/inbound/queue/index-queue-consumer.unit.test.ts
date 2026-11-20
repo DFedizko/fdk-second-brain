@@ -14,7 +14,6 @@ import { SpyIndexFailureLog } from "../../../__spy__/spy-index-failure-log";
 import { SpyNoteIndexer } from "../../../application/use-cases/__spy__/spy-note-indexer";
 import { FailingNoteIndexer } from "../../../application/use-cases/__stub__/failing-note-indexer";
 import { FakeMessageBatch } from "./__fake__/fake-message-batch";
-import { SpyIndexDropper } from "./__spy__/spy-index-dropper";
 import { SpyPushedIndexer } from "./__spy__/spy-pushed-indexer";
 
 const PLAN = "projects/plan.md";
@@ -35,14 +34,12 @@ function secondsFromNow(seconds: number): Date {
 
 describe("IndexQueueConsumer", () => {
   let log: SpyIndexFailureLog;
-  let dropper: SpyIndexDropper;
 
   const consumerOf = (indexer: PushedNoteIndexer) =>
-    new IndexQueueConsumer(indexer, dropper, log, new FixedClock(NOW));
+    new IndexQueueConsumer(indexer, log, new FixedClock(NOW));
 
   beforeEach(() => {
     log = new SpyIndexFailureLog();
-    dropper = new SpyIndexDropper();
   });
 
   it("re-indexes each queued path from the head of the branch", async () => {
@@ -150,14 +147,6 @@ describe("IndexQueueConsumer", () => {
     await consumerOf(new FailingNoteIndexer(error)).handle(FakeMessageBatch.of([{ path: PLAN }]));
 
     expect(log.reported).toEqual([{ path: PLAN, error }]);
-  });
-
-  it("removes a note that can never be read from search", async () => {
-    const unreadable = new FailingNoteIndexer(new UnreadableNote(PLAN));
-
-    await consumerOf(unreadable).handle(FakeMessageBatch.of([{ path: PLAN }]));
-
-    expect(dropper.paths).toEqual([PLAN]);
   });
 
   it("drops and logs a message that holds no path", async () => {
