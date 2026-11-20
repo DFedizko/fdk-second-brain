@@ -86,14 +86,18 @@ export class GitHubNoteRepo implements NoteRepository {
     content: string,
     attemptsLeft: number,
   ): Promise<Note> {
-    const missing = error instanceof NotesUnavailable && error.status === NOT_FOUND;
-    if (!missing || attemptsLeft <= 1) throw error;
+    if (!this.isMissingBranch(error) || attemptsLeft <= 1) throw error;
     if (!(await this.isEmptyRepository())) {
       return this.createOnBranch(path, content).catch((failure: unknown) =>
         this.createFirstNote(failure, path, content, attemptsLeft - 1),
       );
     }
     return (await this.firstNote.create(path, content)) ?? this.createOnBranch(path, content);
+  }
+
+  private isMissingBranch(error: unknown): boolean {
+    if (error instanceof EmptyRepository) return true;
+    return error instanceof NotesUnavailable && error.status === NOT_FOUND;
   }
 
   private async isEmptyRepository(): Promise<boolean> {
