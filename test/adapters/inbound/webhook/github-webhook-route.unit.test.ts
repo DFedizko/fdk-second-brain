@@ -28,6 +28,15 @@ const UNAUTHORIZED = 401;
 const NOT_ALLOWED = 405;
 const UNSUPPORTED = 415;
 const FORM_TYPE = "application/x-www-form-urlencoded";
+const BYTE_MARKER = "projects/marker.md";
+const INVALID_UTF8 = 0xff;
+
+function withInvalidUtf8(json: string): Uint8Array {
+  const bytes = new TextEncoder().encode(json);
+  const at = json.indexOf(BYTE_MARKER);
+  bytes[at] = INVALID_UTF8;
+  return bytes;
+}
 
 describe("GitHubWebhookRoute", () => {
   let changes: SpyChangeQueue;
@@ -129,6 +138,15 @@ describe("GitHubWebhookRoute", () => {
       status: UNAUTHORIZED,
       calls: [],
     });
+  });
+
+  it("checks the signature over the raw bytes GitHub sent", async () => {
+    const spec = { branch: BRANCH, commits: [{ added: [BYTE_MARKER] }] };
+    const body = withInvalidUtf8(JSON.stringify(buildPushPayload(spec)));
+
+    const response = await route.fetch(github.deliver("push", body));
+
+    expect(response.status).toBe(ACCEPTED);
   });
 
   it("refuses a request that is not a POST", async () => {
