@@ -59,6 +59,16 @@ describe("GitHubNoteCatalog", () => {
     expect(treeReads(api)).toEqual([`GET ${TREES}${head}`]);
   });
 
+  it("names the head commit it read the notes at", async () => {
+    const api = buildFakeNotesRepo();
+    api.addEntry(NOTES_BRANCH, PLAN, FILE_MODE, PLAN_CONTENT);
+    const head = api.store.headOf(NOTES_BRANCH);
+
+    const snapshot = await connectCatalog(api).snapshot();
+
+    expect(snapshot.commit).toBe(head);
+  });
+
   it("lists nothing in an empty repository", async () => {
     const api = buildEmptyNotesRepo();
 
