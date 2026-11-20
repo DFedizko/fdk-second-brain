@@ -9,6 +9,7 @@ import { connectRepo } from "./__fake__/github-note-repo-on-fake";
 const INBOX = NotePath.of("inbox.md");
 const PLAN = NotePath.of("plan.md");
 const CONTENT = "# Inbox\n";
+const PLAN_CONTENT = "# Plan\n";
 const ROOT = NoteFolder.of("");
 
 describe("GitHubNoteRepo on an empty repository", () => {
@@ -30,6 +31,39 @@ describe("GitHubNoteRepo on an empty repository", () => {
     await repository.create(INBOX, CONTENT);
 
     expect(api.filesOn(NOTES_BRANCH)).toEqual({ [INBOX.value]: CONTENT });
+  });
+
+  it("puts both of two first notes created at once on the configured branch", async () => {
+    const other = connectRepo(api);
+
+    await Promise.all([repository.create(INBOX, CONTENT), other.create(PLAN, PLAN_CONTENT)]);
+
+    expect(api.filesOn(NOTES_BRANCH)).toEqual({
+      [INBOX.value]: CONTENT,
+      [PLAN.value]: PLAN_CONTENT,
+    });
+  });
+
+  it("creates a note after another client made the first commit", async () => {
+    api.createFirstNoteAfterBranchMiss({ [PLAN.value]: PLAN_CONTENT });
+
+    await repository.create(INBOX, CONTENT);
+
+    expect(api.filesOn(NOTES_BRANCH)).toEqual({
+      [INBOX.value]: CONTENT,
+      [PLAN.value]: PLAN_CONTENT,
+    });
+  });
+
+  it("puts the note on the configured branch when another first note won", async () => {
+    api.createFirstNoteBeforeFirstCommit({ [PLAN.value]: PLAN_CONTENT });
+
+    await repository.create(INBOX, CONTENT);
+
+    expect(api.filesOn(NOTES_BRANCH)).toEqual({
+      [INBOX.value]: CONTENT,
+      [PLAN.value]: PLAN_CONTENT,
+    });
   });
 
   it("reads back the first note from the configured branch", async () => {

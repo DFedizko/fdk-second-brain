@@ -53,6 +53,8 @@ export class FakeGitHubApi {
   private refRaces = 0;
   private contentRaces = 0;
   private refDrops = false;
+  private firstNoteRace?: Readonly<Record<string, string>>;
+  private firstCommitRace?: Readonly<Record<string, string>>;
   private readonly limits: FakeLimits = { truncateTrees: false };
   readonly served: number[] = [];
 
@@ -74,7 +76,9 @@ export class FakeGitHubApi {
     const request = new Request(input, init);
     if (this.outage === "network") throw new TypeError(NETWORK_FAILURE);
     const body = request.body ? await request.json() : {};
+    this.raceFirstCommit(request.method, body as Record<string, unknown>);
     const response = this.answer(request, body as Record<string, unknown>);
+    this.raceFirstNote(request.method, response.status);
     this.served.push(response.status);
     return response;
   };
@@ -120,6 +124,14 @@ export class FakeGitHubApi {
     this.contentRaces = times;
   }
 
+  createFirstNoteAfterBranchMiss(files: Readonly<Record<string, string>>): void {
+    this.firstNoteRace = files;
+  }
+
+  createFirstNoteBeforeFirstCommit(files: Readonly<Record<string, string>>): void {
+    this.firstCommitRace = files;
+  }
+
   truncateTrees(): void {
     this.limits.truncateTrees = true;
   }
@@ -161,6 +173,20 @@ export class FakeGitHubApi {
     if (this.refRaces <= 0) return;
     this.refRaces -= 1;
     this.store.advance(branch, this.store.filesAt(branch) ?? new Map(), RACING_MESSAGE);
+  }
+
+  private raceFirstNote(method: string, status: number): void {
+    const files = this.firstNoteRace;
+    if (!files || method !== PUT || status !== STATUS.notFound) return;
+    this.firstNoteRace = undefined;
+    this.seedFiles(files);
+  }
+
+  private raceFirstCommit(method: string, body: Record<string, unknown>): void {
+    const files = this.firstCommitRace;
+    if (!files || method !== PUT || body.branch !== undefined || this.store.hasRefs()) return;
+    this.firstCommitRace = undefined;
+    this.seedFiles(files);
   }
 
   private raceFileWrite(
@@ -253,8 +279,12 @@ export class FakeGitHubApi {
 
   private seedBranches(): void {
     if (this.setup.empty) return;
+    this.seedFiles(this.setup.seed);
+  }
+
+  private seedFiles(seed: Readonly<Record<string, string>>): void {
     const files = new Map(
-      Object.entries(this.setup.seed).map(([path, content]) => [path, this.store.addBlob(content)]),
+      Object.entries(seed).map(([path, content]) => [path, this.store.addBlob(content)]),
     );
     const commit = this.store.addCommit(this.store.addTree(files), [], SEED_MESSAGE);
     this.setup.branches.forEach((branch) => this.store.setRef(branch, commit.sha));
