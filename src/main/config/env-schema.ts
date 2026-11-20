@@ -21,15 +21,20 @@ const HOST_LABEL = "[a-z0-9](?:[a-z0-9-]*[a-z0-9])?";
 const HOST_NAME = `${HOST_LABEL}(?:\\.${HOST_LABEL})*`;
 const PORT_NUMBER =
   "(?:6553[0-5]|655[0-2]\\d|65[0-4]\\d{2}|6[0-4]\\d{3}|[1-5]\\d{4}|[1-9]\\d{0,3})";
-const PORT = `(?::${PORT_NUMBER})?`;
+const HTTPS_DEFAULT_PORT = "443";
+const HTTP_DEFAULT_PORT = "80";
+const HTTPS_PORT = `(?::(?!${HTTPS_DEFAULT_PORT}\\b)${PORT_NUMBER})?`;
+const HTTP_PORT = `(?::(?!${HTTP_DEFAULT_PORT}\\b)${PORT_NUMBER})?`;
 const LOOPBACK_HOST = "(?:localhost|127\\.0\\.0\\.1|\\[::1\\])";
-const URL_ORIGIN = `(?:https:\\/\\/${HOST_NAME}|http:\\/\\/${LOOPBACK_HOST})${PORT}`;
+const HTTPS_ORIGIN = `https:\\/\\/${HOST_NAME}${HTTPS_PORT}`;
+const HTTP_ORIGIN = `http:\\/\\/${LOOPBACK_HOST}${HTTP_PORT}`;
+const URL_ORIGIN = `(?:${HTTPS_ORIGIN}|${HTTP_ORIGIN})`;
 const URL_PATH = "(?:\\/[^\\s]*[^\\s/])?";
 const API_URL = new RegExp(`^${URL_ORIGIN}${URL_PATH}$`);
 const ORIGIN_URL = new RegExp(`^${URL_ORIGIN}$`);
 const DEFAULT_OAUTH_URL = "https://github.com";
 const PUBLIC_URL_SAMPLE = "https://second-brain.example.workers.dev";
-const LOOPBACK_RULE = "(http is allowed only for localhost, 127.0.0.1 or [::1]).";
+const URL_RULES = `(http is allowed only for localhost, 127.0.0.1 or [::1]). The host must be lowercase, with no default port (:${HTTPS_DEFAULT_PORT} for https, :${HTTP_DEFAULT_PORT} for http).`;
 const USER_ID = /^[1-9]\d*$/;
 const FIND_USER_ID = "see https://api.github.com/users/<login>";
 const CLIENT_ID = /^[A-Za-z0-9]+$/;
@@ -73,7 +78,7 @@ export const ENV_SCHEMA = z.object(
     GITHUB_API_URL: optionalEnvField(
       {
         name: "GITHUB_API_URL",
-        expected: `an https URL with no trailing slash, such as ${DEFAULT_API_URL} ${LOOPBACK_RULE}`,
+        expected: `an https URL with no trailing slash, such as ${DEFAULT_API_URL} ${URL_RULES}`,
         pattern: API_URL,
       },
       DEFAULT_API_URL,
@@ -81,7 +86,7 @@ export const ENV_SCHEMA = z.object(
     GITHUB_OAUTH_URL: optionalEnvField(
       {
         name: "GITHUB_OAUTH_URL",
-        expected: `an https origin with no path or trailing slash, such as ${DEFAULT_OAUTH_URL} ${LOOPBACK_RULE}`,
+        expected: `an https origin with no path or trailing slash, such as ${DEFAULT_OAUTH_URL} ${URL_RULES}`,
         pattern: ORIGIN_URL,
       },
       DEFAULT_OAUTH_URL,
@@ -89,7 +94,7 @@ export const ENV_SCHEMA = z.object(
     PUBLIC_URL: requiredEnvField({
       name: "PUBLIC_URL",
       whenMissing: `set it to the Worker's public https origin, such as ${PUBLIC_URL_SAMPLE}.`,
-      expected: `an https origin with no path or trailing slash, such as ${PUBLIC_URL_SAMPLE} ${LOOPBACK_RULE}`,
+      expected: `an https origin with no path or trailing slash, such as ${PUBLIC_URL_SAMPLE} ${URL_RULES}`,
       pattern: ORIGIN_URL,
     }),
     GITHUB_CLIENT_ID: requiredEnvField({
