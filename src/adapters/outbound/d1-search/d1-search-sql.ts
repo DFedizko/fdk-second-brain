@@ -36,3 +36,5 @@ export const UPSERT_VERSION = `
   ON CONFLICT (path) DO UPDATE SET version = excluded.version`;
 
 export const DELETE_VERSION = `DELETE FROM index_manifest WHERE path = ?1 AND ${HOLDS_EXPECTED}`;
+
+export const SELECT_MANIFEST = "SELECT path, version FROM index_manifest ORDER BY path";
