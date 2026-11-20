@@ -1,9 +1,11 @@
+import { FixedClock } from "../../../__stub__/fixed-clock";
 import { IndexQueueConsumer } from "../../../../src/adapters/inbound/queue/index-queue-consumer";
 import { NotePath } from "../../../../src/domain/note-path";
 import { StaleIndexRace } from "../../../application/use-cases/stale-index-race";
 import { LocalRuntime } from "../../../shared/adapters/local-runtime";
 import { FakeMessageBatch } from "./__fake__/fake-message-batch";
 
+const NOW = new Date("2026-11-20T12:00:00Z");
 const PLAN = "projects/plan.md";
 const IDEA = "ideas/idea.md";
 const PLAN_CONTENT = "# Plan\n\nShip the nebula release.\n";
@@ -19,7 +21,7 @@ describe("IndexQueueConsumer on D1", () => {
     runtime = await LocalRuntime.start();
     await runtime.migrate();
     race = await StaleIndexRace.on(runtime);
-    consumer = new IndexQueueConsumer(race.indexer, race.log);
+    consumer = new IndexQueueConsumer(race.indexer, race.log, new FixedClock(NOW));
   });
 
   afterEach(async () => {

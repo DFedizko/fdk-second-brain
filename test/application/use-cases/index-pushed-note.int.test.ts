@@ -51,7 +51,7 @@ describe("IndexPushedNote on D1 with a branch that lags behind the push", () => 
     const indexNote = new IndexNote(index, connectRepo(api), chunker);
     const head = new GitHubBranchHead(new GitHubNoteReader(github), new CommitCompare(github));
     const pushed = new IndexPushedNote(head, new IndexNoteFactory(index, chunker), indexNote);
-    consumer = new IndexQueueConsumer(pushed, log);
+    consumer = new IndexQueueConsumer(pushed, log, new FixedClock(FIXED_NOW));
     searchNotes = new SearchNotes(index);
     api.addEntry(NOTES_BRANCH, PLAN, FILE_MODE, PLAN_CONTENT);
     await indexNote.execute({ path: PLAN });
