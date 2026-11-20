@@ -1,6 +1,8 @@
 import { ContainerModule, type ServiceIdentifier } from "inversify";
+import { BACKGROUND } from "../../adapters/outbound/background/background.symbols";
 import { CLOCK } from "../../adapters/outbound/clock/clock.symbols";
 import { GITHUB } from "../../adapters/outbound/github/github.symbols";
+import type { BackgroundTasks } from "../../application/ports/background-tasks";
 import type { Clock } from "../../application/ports/clock";
 import type { NoteRepository } from "../../application/ports/note-repository";
 import {
@@ -22,10 +24,11 @@ import { SEARCH } from "../search/search.symbols";
 import { USE_CASES } from "./use-cases.symbols";
 
 const REPOSITORY: [ServiceIdentifier<NoteRepository>] = [GITHUB.noteRepository];
-const SYNCED: [ServiceIdentifier<NoteRepository>, ServiceIdentifier<IndexSync>] = [
-  GITHUB.noteRepository,
-  SEARCH.indexSync,
-];
+const SYNCED: [
+  ServiceIdentifier<NoteRepository>,
+  ServiceIdentifier<IndexSync>,
+  ServiceIdentifier<BackgroundTasks>,
+] = [GITHUB.noteRepository, SEARCH.indexSync, BACKGROUND.tasks];
 const SAVED = new SavedNotePaths();
 
 export const useCasesModule = new ContainerModule(({ bind }) => {
@@ -40,35 +43,37 @@ export const useCasesModule = new ContainerModule(({ bind }) => {
     .inSingletonScope();
   bind(USE_CASES.writeNote)
     .toResolvedValue(
-      (r: NoteRepository, sync: IndexSync) => new IndexedChange(new WriteNote(r), SAVED, sync),
+      (r: NoteRepository, sync: IndexSync, later: BackgroundTasks) =>
+        new IndexedChange(new WriteNote(r), SAVED, sync, later),
       SYNCED,
     )
     .inSingletonScope();
   bind(USE_CASES.editNote)
     .toResolvedValue(
-      (r: NoteRepository, sync: IndexSync) => new IndexedChange(new EditNote(r), SAVED, sync),
+      (r: NoteRepository, sync: IndexSync, later: BackgroundTasks) =>
+        new IndexedChange(new EditNote(r), SAVED, sync, later),
       SYNCED,
     )
     .inSingletonScope();
   bind(USE_CASES.deleteNote)
     .toResolvedValue(
-      (r: NoteRepository, sync: IndexSync) =>
-        new IndexedChange(new DeleteNote(r), new DeletedNotePaths(), sync),
+      (r: NoteRepository, sync: IndexSync, later: BackgroundTasks) =>
+        new IndexedChange(new DeleteNote(r), new DeletedNotePaths(), sync, later),
       SYNCED,
     )
     .inSingletonScope();
   bind(USE_CASES.moveNote)
     .toResolvedValue(
-      (r: NoteRepository, sync: IndexSync) =>
-        new IndexedChange(new MoveNote(r), new MovedNotePaths(), sync),
+      (r: NoteRepository, sync: IndexSync, later: BackgroundTasks) =>
+        new IndexedChange(new MoveNote(r), new MovedNotePaths(), sync, later),
       SYNCED,
     )
     .inSingletonScope();
   bind(USE_CASES.saveIdea)
     .toResolvedValue(
-      (r: NoteRepository, clock: Clock, sync: IndexSync) =>
-        new IndexedChange(new SaveIdea(r, clock), SAVED, sync),
-      [GITHUB.noteRepository, CLOCK.clock, SEARCH.indexSync],
+      (r: NoteRepository, clock: Clock, sync: IndexSync, later: BackgroundTasks) =>
+        new IndexedChange(new SaveIdea(r, clock), SAVED, sync, later),
+      [GITHUB.noteRepository, CLOCK.clock, SEARCH.indexSync, BACKGROUND.tasks],
     )
     .inSingletonScope();
 });

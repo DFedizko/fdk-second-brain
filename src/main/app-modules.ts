@@ -2,6 +2,7 @@ import type { ContainerModule } from "inversify";
 import { createMcpModule } from "../adapters/inbound/mcp/mcp.container";
 import { createOAuthModule } from "../adapters/inbound/oauth/oauth.container";
 import { createGitHubOAuthModule } from "../adapters/outbound/github-oauth/github-oauth.container";
+import { backgroundModule } from "../adapters/outbound/background/background.container";
 import { clockModule } from "../adapters/outbound/clock/clock.container";
 import { createD1SearchModule } from "../adapters/outbound/d1-search/d1-search.container";
 import { githubContainer } from "../adapters/outbound/github/github.container";
@@ -24,6 +25,7 @@ export const appModules: ModulesFactory = (config, bindings) => [
   githubContainer(toNotesRepoSettings(config)),
   createD1SearchModule(bindings.DB),
   clockModule,
+  backgroundModule,
   loggingModule,
   searchModule,
   useCasesModule,

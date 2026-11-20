@@ -1,3 +1,4 @@
+import type { BackgroundTasks } from "../ports/background-tasks";
 import type { IndexSync, PathChange } from "./note-index-sync";
 
 export interface NoteChange<Input, Output> {
@@ -13,11 +14,13 @@ export class IndexedChange<Input, Output> implements NoteChange<Input, Output> {
     private readonly change: NoteChange<Input, Output>,
     private readonly paths: ChangedPaths<Input, Output>,
     private readonly sync: IndexSync,
+    private readonly background: BackgroundTasks,
   ) {}
 
   async execute(input: Input): Promise<Output> {
     const output = await this.change.execute(input);
-    await this.sync.apply(this.paths.of(input, output));
+    const changed = this.paths.of(input, output);
+    this.background.runAfterReply(() => this.sync.apply(changed));
     return output;
   }
 }

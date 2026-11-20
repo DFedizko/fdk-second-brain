@@ -1,4 +1,5 @@
 import { Container, type ServiceIdentifier } from "inversify";
+import { BACKGROUND } from "../../../src/adapters/outbound/background/background.symbols";
 import { CLOCK } from "../../../src/adapters/outbound/clock/clock.symbols";
 import { GITHUB } from "../../../src/adapters/outbound/github/github.symbols";
 import { IndexedChange } from "../../../src/application/use-cases/indexed-change";
@@ -10,6 +11,7 @@ import { SEARCH } from "../../../src/main/search/search.symbols";
 import { useCasesModule } from "../../../src/main/use-cases/use-cases.container";
 import { USE_CASES } from "../../../src/main/use-cases/use-cases.symbols";
 import { InMemoryNoteRepo } from "../../application/__fake__/in-memory-note-repo";
+import { ManualBackgroundTasks } from "../../application/use-cases/__fake__/manual-background-tasks";
 import { SpyIndexSync } from "../../application/use-cases/__spy__/spy-index-sync";
 import { FixedClock } from "../../__stub__/fixed-clock";
 
@@ -34,12 +36,14 @@ const BINDINGS: ReadonlyArray<[keyof typeof USE_CASES, UseCaseClass]> = [
 
 let notes: InMemoryNoteRepo;
 let sync: SpyIndexSync;
+let background: ManualBackgroundTasks;
 
 function buildContainer(): Container {
   const container = new Container();
   container.bind(GITHUB.noteRepository).toConstantValue(notes);
   container.bind(CLOCK.clock).toConstantValue(new FixedClock(NOW));
   container.bind(SEARCH.indexSync).toConstantValue(sync);
+  container.bind(BACKGROUND.tasks).toConstantValue(background);
   container.load(useCasesModule);
   return container;
 }
@@ -47,6 +51,7 @@ function buildContainer(): Container {
 beforeEach(async () => {
   notes = new InMemoryNoteRepo();
   sync = new SpyIndexSync();
+  background = new ManualBackgroundTasks();
   await notes.create(NotePath.of(PLAN), PLAN_TEXT);
 });
 
@@ -62,6 +67,7 @@ describe("useCasesModule", () => {
   it("indexes a written note", async () => {
     await buildContainer().get(USE_CASES.writeNote).execute({ path: ARCHIVED, content: "x" });
 
+    await background.runQueued();
     expect(sync.changes).toEqual([
       { indexed: [expect.objectContaining({ path: ARCHIVED })], removed: [] },
     ]);
@@ -72,6 +78,7 @@ describe("useCasesModule", () => {
 
     await buildContainer().get(USE_CASES.editNote).execute(edit);
 
+    await background.runQueued();
     expect(sync.changes).toEqual([
       { indexed: [expect.objectContaining({ path: PLAN })], removed: [] },
     ]);
@@ -80,12 +87,14 @@ describe("useCasesModule", () => {
   it("removes a deleted note from the index", async () => {
     await buildContainer().get(USE_CASES.deleteNote).execute({ path: PLAN });
 
+    await background.runQueued();
     expect(sync.changes).toEqual([{ indexed: [], removed: [PLAN] }]);
   });
 
   it("moves a note in the index", async () => {
     await buildContainer().get(USE_CASES.moveNote).execute({ from: PLAN, to: ARCHIVED });
 
+    await background.runQueued();
     expect(sync.changes).toEqual([
       { indexed: [expect.objectContaining({ path: ARCHIVED })], removed: [PLAN] },
     ]);
@@ -96,6 +105,7 @@ describe("useCasesModule", () => {
 
     await buildContainer().get(USE_CASES.saveIdea).execute(idea);
 
+    await background.runQueued();
     expect(sync.changes).toEqual([
       { indexed: [expect.objectContaining({ path: IDEA })], removed: [] },
     ]);

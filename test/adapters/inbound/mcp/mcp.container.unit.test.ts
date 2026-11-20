@@ -3,6 +3,7 @@ import { ConsoleErrorLog } from "../../../../src/adapters/inbound/mcp/console-er
 import { createMcpModule } from "../../../../src/adapters/inbound/mcp/mcp.container";
 import { MCP } from "../../../../src/adapters/inbound/mcp/mcp.symbols";
 import { NotesMcpServer } from "../../../../src/adapters/inbound/mcp/notes-mcp-server";
+import { BACKGROUND } from "../../../../src/adapters/outbound/background/background.symbols";
 import { CLOCK } from "../../../../src/adapters/outbound/clock/clock.symbols";
 import { GITHUB } from "../../../../src/adapters/outbound/github/github.symbols";
 import { SearchNotes } from "../../../../src/application/use-cases/search-notes";
@@ -11,6 +12,7 @@ import { useCasesModule } from "../../../../src/main/use-cases/use-cases.contain
 import { USE_CASES } from "../../../../src/main/use-cases/use-cases.symbols";
 import { InMemoryNoteRepo } from "../../../application/__fake__/in-memory-note-repo";
 import { InMemorySearchIndex } from "../../../application/use-cases/__fake__/in-memory-search-index";
+import { ManualBackgroundTasks } from "../../../application/use-cases/__fake__/manual-background-tasks";
 import { SpyIndexSync } from "../../../application/use-cases/__spy__/spy-index-sync";
 import { FixedClock } from "../../../__stub__/fixed-clock";
 import { SpyErrorLog } from "./__spy__/spy-error-log";
@@ -29,6 +31,7 @@ function buildContainer(): Container {
   container.bind(GITHUB.noteRepository).toConstantValue(new InMemoryNoteRepo());
   container.bind(CLOCK.clock).toConstantValue(new FixedClock(NOW));
   container.bind(SEARCH.indexSync).toConstantValue(new SpyIndexSync());
+  container.bind(BACKGROUND.tasks).toConstantValue(new ManualBackgroundTasks());
   container.bind(SEARCH.searchNotes).toConstantValue(new SearchNotes(new InMemorySearchIndex()));
   container.load(
     useCasesModule,

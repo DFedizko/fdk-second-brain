@@ -9,6 +9,7 @@ import { InMemoryNoteRepo } from "../__fake__/in-memory-note-repo";
 import { SpyIndexFailureLog } from "../../__spy__/spy-index-failure-log";
 import { SpyIndexSync } from "./__spy__/spy-index-sync";
 import { SpyNoteIndexer } from "./__spy__/spy-note-indexer";
+import { ManualBackgroundTasks } from "./__fake__/manual-background-tasks";
 import { FailingNoteIndexer } from "./__stub__/failing-note-indexer";
 
 const PATH = "projects/plan.md";
@@ -19,12 +20,15 @@ const INDEX_DOWN = new Error("D1 is down");
 describe("IndexedChange", () => {
   let repository: InMemoryNoteRepo;
   let sync: SpyIndexSync;
+  let background: ManualBackgroundTasks;
   let writeNote: IndexedChange<WriteNoteInput, NoteView>;
 
   beforeEach(() => {
     repository = new InMemoryNoteRepo();
     sync = new SpyIndexSync();
-    writeNote = new IndexedChange(new WriteNote(repository), new SavedNotePaths(), sync);
+    background = new ManualBackgroundTasks();
+    const write = new WriteNote(repository);
+    writeNote = new IndexedChange(write, new SavedNotePaths(), sync, background);
   });
 
   it("returns what the change returned", async () => {
@@ -33,8 +37,16 @@ describe("IndexedChange", () => {
     expect(view.path).toBe(PATH);
   });
 
-  it("syncs the index with the paths the change touched", async () => {
+  it("replies before the index is synced", async () => {
     await writeNote.execute(INPUT);
+
+    expect(sync.changes).toEqual([]);
+  });
+
+  it("syncs the index with the paths the change touched after the reply", async () => {
+    await writeNote.execute(INPUT);
+
+    await background.runQueued();
 
     expect(sync.changes).toEqual([
       { indexed: [expect.objectContaining({ path: PATH })], removed: [] },
@@ -54,14 +66,17 @@ describe("IndexedChange", () => {
 
     await writeNote.execute(INPUT).catch(() => undefined);
 
+    await background.runQueued();
     expect(sync.changes).toEqual([]);
   });
 
   it("keeps the write when the index update fails", async () => {
     const failing = new FailingNoteIndexer(INDEX_DOWN);
     const indexSync = new NoteIndexSync(failing, new SpyNoteIndexer(), new SpyIndexFailureLog());
-    const write = new IndexedChange(new WriteNote(repository), new SavedNotePaths(), indexSync);
+    const change = new WriteNote(repository);
+    const write = new IndexedChange(change, new SavedNotePaths(), indexSync, background);
     await write.execute(INPUT);
+    await background.runQueued();
 
     const saved = await repository.read(NotePath.of(PATH));
 
