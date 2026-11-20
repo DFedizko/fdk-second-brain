@@ -1,9 +1,17 @@
 import type { MarkdownChunk } from "./markdown-chunk";
 import { MarkdownOutline, type OutlinePart } from "./markdown-outline";
+import { nextFence } from "./code-fence";
 import { safeCutIndex } from "./safe-cut";
 
 export const MAX_CHUNK_CHARS = 1500;
-const PARAGRAPH_BREAK = /\n(?:[ \t]*\n)+/;
+
+interface ParagraphScan {
+  readonly fence: string | null;
+  readonly paragraphs: readonly (readonly string[])[];
+}
+const LINE_BREAK = "\n";
+const BLANK_LINE = /^[ \t]*$/;
+const NO_TEXT = "";
 const PARAGRAPH_JOINT = "\n\n";
 const WORD_GAP = " ";
 
@@ -16,8 +24,24 @@ export class MarkdownChunker {
   }
 
   private splitPart(part: OutlinePart): Omit<MarkdownChunk, "seq">[] {
-    const pieces = part.body.split(PARAGRAPH_BREAK).flatMap((p) => this.cutParagraph(p));
+    const pieces = this.paragraphsOf(part.body).flatMap((p) => this.cutParagraph(p));
     return this.packPieces(pieces).map((text) => ({ heading: part.heading, text }));
+  }
+
+  private paragraphsOf(body: string): string[] {
+    const start: ParagraphScan = { fence: null, paragraphs: [[]] };
+    const scan = body.split(LINE_BREAK).reduce((state, line) => this.scanLine(state, line), start);
+    const paragraphs = scan.paragraphs.filter((lines) => lines.length > 0);
+    return paragraphs.length === 0 ? [NO_TEXT] : paragraphs.map((lines) => lines.join(LINE_BREAK));
+  }
+
+  private scanLine(scan: ParagraphScan, line: string): ParagraphScan {
+    if (scan.fence === null && BLANK_LINE.test(line)) {
+      return { ...scan, paragraphs: [...scan.paragraphs, []] };
+    }
+    const last = scan.paragraphs.at(-1) ?? [];
+    const paragraphs = [...scan.paragraphs.slice(0, -1), [...last, line]];
+    return { fence: nextFence(scan.fence, line), paragraphs };
   }
 
   private cutParagraph(paragraph: string): string[] {

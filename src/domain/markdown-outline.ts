@@ -1,15 +1,12 @@
+import { isFenceLine, nextFence } from "./code-fence";
 import { SectionNotFound } from "./errors/section-not-found";
 
 const LINE_BREAK = "\n";
 const ANY_LINE_BREAK = /\r?\n/;
 const HEADING_LINE = /^ {0,3}(#{1,6})[ \t]+(.*?)(?:[ \t]+#+)?[ \t]*$/;
-const FENCE_LINE = /^ {0,3}(`{3,}|~{3,})(.*)$/;
 const LEADING_HASHES = /^#+/;
 const LEVEL_GROUP = 1;
 const TITLE_GROUP = 2;
-const FENCE_GROUP = 1;
-const INFO_GROUP = 2;
-const FENCE_CHAR_INDEX = 0;
 const NOTHING = "";
 const LEADING_BLANK_LINES = /^(?:[ \t]*\n)+/;
 const FIRST_LINE = 0;
@@ -76,26 +73,11 @@ export class MarkdownOutline {
   }
 
   private scanLine(scan: Scan, line: string, index: number): Scan {
-    const fenceMatch = FENCE_LINE.exec(line);
-    if (fenceMatch) return { ...scan, fence: this.toggleFence(scan.fence, fenceMatch) };
+    if (isFenceLine(line)) return { ...scan, fence: nextFence(scan.fence, line) };
     const match = scan.fence ? null : HEADING_LINE.exec(line);
     if (!match) return scan;
     const heading = { index, level: match[LEVEL_GROUP]!.length, title: match[TITLE_GROUP]! };
     return { ...scan, headings: [...scan.headings, heading] };
-  }
-
-  private toggleFence(open: string | null, fenceMatch: RegExpExecArray): string | null {
-    const marker = fenceMatch[FENCE_GROUP]!;
-    if (open === null) return marker;
-    return this.closesFence(open, marker, fenceMatch[INFO_GROUP]!) ? null : open;
-  }
-
-  private closesFence(open: string, marker: string, info: string): boolean {
-    return (
-      marker[FENCE_CHAR_INDEX] === open[FENCE_CHAR_INDEX] &&
-      marker.length >= open.length &&
-      info.trim() === NOTHING
-    );
   }
 
   private findEnd(start: Heading): number {
