@@ -30,7 +30,7 @@ export class ConsentRoute {
   }
 
   async decide(request: Request, oauth: OAuthHelpers): Promise<Response> {
-    const form = await request.formData();
+    const form = await request.formData().catch(() => new FormData());
     const handle = String(form.get(HANDLE_FIELD) ?? NO_HANDLE);
     if (form.get(DECISION_FIELD) !== APPROVE) return this.deny(request, handle, oauth);
     return this.startGitHubSignIn(request, handle, oauth);

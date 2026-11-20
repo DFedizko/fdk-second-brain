@@ -18,6 +18,7 @@ const ERROR_PARAM = "error";
 const ACCESS_DENIED = "access_denied";
 const SERVER_ERROR = "server_error";
 const DECLINED_ON_GITHUB = "The GitHub sign-in was not completed.";
+const GITHUB_REFUSED_APP = "GitHub refused this server's OAuth app.";
 const GITHUB_FAILED = "GitHub could not confirm who signed in.";
 
 export class CallbackRoute {
@@ -32,9 +33,11 @@ export class CallbackRoute {
     const resumed = await oauth.finishUpstream<UpstreamData>(request);
     const query = new URL(request.url).searchParams;
     const code = query.get(CODE_PARAM);
-    if (query.has(ERROR_PARAM) || !code) {
-      return this.answerClient(resumed, ACCESS_DENIED, DECLINED_ON_GITHUB);
+    const githubError = query.get(ERROR_PARAM);
+    if (githubError && githubError !== ACCESS_DENIED) {
+      return this.answerClient(resumed, SERVER_ERROR, GITHUB_REFUSED_APP);
     }
+    if (githubError || !code) return this.answerClient(resumed, ACCESS_DENIED, DECLINED_ON_GITHUB);
     try {
       return await this.admit(code, resumed, oauth);
     } catch (error) {

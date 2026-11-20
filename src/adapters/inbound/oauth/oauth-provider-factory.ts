@@ -8,6 +8,8 @@ interface ProviderEnv {
 }
 
 const MCP_PATH = "/mcp";
+const MCP_PATHS = new Set([MCP_PATH, `${MCP_PATH}/`]);
+const NOT_FOUND = 404;
 const TOKEN_PATH = "/oauth/token";
 const REGISTER_PATH = "/oauth/register";
 
@@ -18,7 +20,7 @@ export function createOAuthProvider(
 ): OAuthProvider<object> {
   return new OAuthProvider<object>({
     apiRoute: MCP_PATH,
-    apiHandler: { fetch: (request) => mcp.fetch(request) },
+    apiHandler: { fetch: (request) => serveMcp(request, mcp) },
     defaultHandler: {
       fetch: (request, env) => router.fetch(request, (env as ProviderEnv).OAUTH_PROVIDER),
     },
@@ -30,4 +32,9 @@ export function createOAuthProvider(
       authorization_servers: [settings.publicUrl],
     },
   });
+}
+
+function serveMcp(request: Request, mcp: McpHttpHandler): Promise<Response> {
+  if (MCP_PATHS.has(new URL(request.url).pathname)) return mcp.fetch(request);
+  return Promise.resolve(new Response(null, { status: NOT_FOUND }));
 }

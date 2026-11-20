@@ -18,7 +18,7 @@ const BRANCH_RULES = [
 const BRANCH_NAME = new RegExp(`^${BRANCH_RULES.join("")}[\\w./-]+$`);
 const DEFAULT_API_URL = "https://api.github.com";
 const URL_ORIGIN =
-  "(?:https:\\/\\/[^\\s/]+|http:\\/\\/(?:localhost|127\\.0\\.0\\.1|\\[::1\\])(?::\\d+)?)";
+  "(?:https:\\/\\/[^\\s/?#@]+|http:\\/\\/(?:localhost|127\\.0\\.0\\.1|\\[::1\\])(?::\\d+)?)";
 const URL_PATH = "(?:\\/[^\\s]*[^\\s/])?";
 const API_URL = new RegExp(`^${URL_ORIGIN}${URL_PATH}$`);
 const ORIGIN_URL = new RegExp(`^${URL_ORIGIN}$`);
