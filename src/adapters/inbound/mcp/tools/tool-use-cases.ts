@@ -1,20 +1,29 @@
 import type { ServiceIdentifier } from "inversify";
-import type { DeleteNote } from "../../../../application/use-cases/delete-note";
-import type { EditNote } from "../../../../application/use-cases/edit-note";
-import type { ListNotes } from "../../../../application/use-cases/list-notes";
-import type { MoveNote } from "../../../../application/use-cases/move-note";
-import type { ReadNote } from "../../../../application/use-cases/read-note";
-import type { ReadSection } from "../../../../application/use-cases/read-section";
-import type { SaveIdea } from "../../../../application/use-cases/save-idea";
-import type { WriteNote } from "../../../../application/use-cases/write-note";
+import type { DeleteNoteInput } from "../../../../application/use-cases/delete-note";
+import type { EditNoteInput } from "../../../../application/use-cases/edit-note";
+import type { ListNotesInput } from "../../../../application/use-cases/list-notes";
+import type { MoveNoteInput } from "../../../../application/use-cases/move-note";
+import type { NoteView } from "../../../../application/use-cases/note-view";
+import type { ReadNoteInput } from "../../../../application/use-cases/read-note";
+import type { ReadSectionInput, SectionView } from "../../../../application/use-cases/read-section";
+import type { SaveIdeaInput } from "../../../../application/use-cases/save-idea";
+import type {
+  SearchNotesInput,
+  SearchResult,
+} from "../../../../application/use-cases/search-notes";
+import type { WriteNoteInput } from "../../../../application/use-cases/write-note";
+import type { UseCase } from "./use-case";
+
+type Driven<Input, Output = NoteView> = ServiceIdentifier<UseCase<Input, Output>>;
 
 export interface ToolUseCases {
-  readonly listNotes: ServiceIdentifier<ListNotes>;
-  readonly readNote: ServiceIdentifier<ReadNote>;
-  readonly readSection: ServiceIdentifier<ReadSection>;
-  readonly writeNote: ServiceIdentifier<WriteNote>;
-  readonly editNote: ServiceIdentifier<EditNote>;
-  readonly deleteNote: ServiceIdentifier<DeleteNote>;
-  readonly moveNote: ServiceIdentifier<MoveNote>;
-  readonly saveIdea: ServiceIdentifier<SaveIdea>;
+  readonly listNotes: Driven<ListNotesInput, string[]>;
+  readonly readNote: Driven<ReadNoteInput>;
+  readonly readSection: Driven<ReadSectionInput, SectionView>;
+  readonly writeNote: Driven<WriteNoteInput>;
+  readonly editNote: Driven<EditNoteInput>;
+  readonly deleteNote: Driven<DeleteNoteInput, void>;
+  readonly moveNote: Driven<MoveNoteInput>;
+  readonly saveIdea: Driven<SaveIdeaInput>;
+  readonly searchNotes: Driven<SearchNotesInput, SearchResult[]>;
 }

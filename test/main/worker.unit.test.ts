@@ -1,7 +1,7 @@
 import { InvalidEnvError } from "../../src/main/config/invalid-env-error";
 import worker from "../../src/main/worker";
 import { DUMMY_CONTEXT } from "./__dummy__/dummy-execution-context";
-import { VALID_ENV } from "./__stub__/valid-env";
+import { WORKER_ENV } from "./__stub__/worker-env";
 
 const NOT_FOUND = 404;
 const UNAUTHORIZED = 401;
@@ -12,7 +12,7 @@ const NEAR_MISS_URL = "https://second-brain.example/mcpx";
 
 describe("worker", () => {
   it("answers not found outside the MCP path", async () => {
-    const env = { ...VALID_ENV } as unknown as Env;
+    const env = { ...WORKER_ENV } as unknown as Env;
 
     const response = await worker.fetch(new Request(ANY_URL), env, DUMMY_CONTEXT);
 
@@ -20,7 +20,7 @@ describe("worker", () => {
   });
 
   it("guards MCP at /mcp behind sign-in", async () => {
-    const env = { ...VALID_ENV } as unknown as Env;
+    const env = { ...WORKER_ENV } as unknown as Env;
 
     const response = await worker.fetch(new Request(MCP_URL), env, DUMMY_CONTEXT);
 
@@ -28,7 +28,7 @@ describe("worker", () => {
   });
 
   it("guards MCP at /mcp/ with a trailing slash", async () => {
-    const env = { ...VALID_ENV } as unknown as Env;
+    const env = { ...WORKER_ENV } as unknown as Env;
 
     const response = await worker.fetch(new Request(MCP_URL_WITH_SLASH), env, DUMMY_CONTEXT);
 
@@ -36,7 +36,7 @@ describe("worker", () => {
   });
 
   it("does not serve paths that only start with /mcp", async () => {
-    const env = { ...VALID_ENV } as unknown as Env;
+    const env = { ...WORKER_ENV } as unknown as Env;
 
     const response = await worker.fetch(new Request(NEAR_MISS_URL), env, DUMMY_CONTEXT);
 

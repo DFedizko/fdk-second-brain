@@ -10,6 +10,7 @@ import { MoveNoteTool } from "./move-note-tool";
 import { ReadNoteTool } from "./read-note-tool";
 import { ReadSectionTool } from "./read-section-tool";
 import { SaveIdeaTool } from "./save-idea-tool";
+import { SearchNotesTool } from "./search-notes-tool";
 import type { ToolUseCases } from "./tool-use-cases";
 import { WriteNoteTool } from "./write-note-tool";
 
@@ -45,5 +46,6 @@ export function toolBindings(useCases: ToolUseCases): ToolBinding[] {
     bindTool(DeleteNoteTool, useCases.deleteNote),
     bindTool(MoveNoteTool, useCases.moveNote),
     bindTool(SaveIdeaTool, useCases.saveIdea),
+    bindTool(SearchNotesTool, useCases.searchNotes),
   ];
 }

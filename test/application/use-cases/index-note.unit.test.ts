@@ -1,4 +1,8 @@
-import { IndexNote, MAX_INDEX_ATTEMPTS } from "../../../src/application/use-cases/index-note";
+import {
+  IndexNote,
+  MAX_INDEX_ATTEMPTS,
+  MAX_INDEX_PASSES,
+} from "../../../src/application/use-cases/index-note";
 import { IndexWriteConflict } from "../../../src/domain/errors/index-write-conflict";
 import { InvalidPath } from "../../../src/domain/errors/invalid-path";
 import { MarkdownChunker } from "../../../src/domain/markdown-chunker";
@@ -14,6 +18,8 @@ const SECOND_CONTENT = "# Plan\nship the sync";
 const STALE_VERSION = NoteVersion.of("aaa111");
 const STALE_CHUNKS = [{ heading: "Plan", seq: 0, text: "stale words" }];
 const RACER_PREFIX = "bbb00";
+const QUICK_SAVES = 5;
+const LATEST_TEXT = `ship save ${QUICK_SAVES}`;
 
 describe("IndexNote", () => {
   let index: InMemorySearchIndex;
@@ -112,6 +118,33 @@ describe("IndexNote", () => {
     await indexNote.execute({ path: PATH });
 
     expect(index.chunksOf(PATH)).toEqual([{ heading: "Plan", seq: 0, text: "ship the search" }]);
+  });
+
+  it("ends at the latest version after five quick saves while it writes", async () => {
+    let current = await notes.create(NOTE, FIRST_CONTENT);
+    const save = (n: number) => async () => {
+      current = await notes.write(NOTE, `# Plan\nship save ${n}`, current.version);
+    };
+    index.beforeNextWrites(...Array.from({ length: QUICK_SAVES }, (_, n) => save(n + 1)));
+
+    const result = await indexNote.execute({ path: PATH });
+
+    expect({ result, chunks: index.chunksOf(PATH) }).toEqual({
+      result: { path: PATH, status: "indexed" },
+      chunks: [{ heading: "Plan", seq: 0, text: LATEST_TEXT }],
+    });
+  });
+
+  it("gives up with IndexWriteConflict when saves never stop", async () => {
+    let current = await notes.create(NOTE, FIRST_CONTENT);
+    const save = (n: number) => async () => {
+      current = await notes.write(NOTE, `# Plan\nship save ${n}`, current.version);
+    };
+    index.beforeNextWrites(...Array.from({ length: MAX_INDEX_PASSES }, (_, n) => save(n + 1)));
+
+    const run = indexNote.execute({ path: PATH });
+
+    await expect(run).rejects.toThrow(IndexWriteConflict);
   });
 
   it("gives up with IndexWriteConflict when every write loses a race", async () => {

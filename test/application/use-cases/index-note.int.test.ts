@@ -1,3 +1,4 @@
+import { SpyIndexFailureLog } from "../../__spy__/spy-index-failure-log";
 import { D1SearchIndex } from "../../../src/adapters/outbound/d1-search/d1-search-index";
 import { IndexNote } from "../../../src/application/use-cases/index-note";
 import { SearchNotes } from "../../../src/application/use-cases/search-notes";
@@ -20,7 +21,7 @@ describe("IndexNote on D1", () => {
   beforeEach(async () => {
     runtime = await LocalRuntime.start();
     await runtime.migrate();
-    const index = new D1SearchIndex(await runtime.database());
+    const index = new D1SearchIndex(await runtime.database(), new SpyIndexFailureLog());
     notes = new InMemoryNoteRepo();
     indexNote = new IndexNote(index, notes, new MarkdownChunker());
     searchNotes = new SearchNotes(index);

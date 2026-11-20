@@ -5,7 +5,7 @@ import type { SearchHit, SearchIndex } from "../ports/search-index";
 export const DEFAULT_SEARCH_LIMIT = 5;
 export const MAX_SEARCH_LIMIT = 20;
 export const SNIPPET_MAX_CHARS = 300;
-const MIN_SEARCH_LIMIT = 1;
+export const MIN_SEARCH_LIMIT = 1;
 const ELLIPSIS = "…";
 
 export interface SearchNotesInput {
