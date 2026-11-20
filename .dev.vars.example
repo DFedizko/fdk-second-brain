@@ -8,7 +8,8 @@ NOTES_BRANCH=main
 # Optional: defaults to https://api.github.com. Must be https; http only for localhost (tests use a local fake).
 GITHUB_API_URL=https://api.github.com
 # The Worker's public origin, no trailing slash. MCP clients connect to <PUBLIC_URL>/mcp.
-PUBLIC_URL=https://second-brain-mcp.your-subdomain.workers.dev
+# wrangler dev serves on localhost; use a second OAuth app whose callback is http://localhost:8787/callback.
+PUBLIC_URL=http://localhost:8787
 # Optional: defaults to https://github.com. Must be https; http only for localhost (tests use a local fake).
 GITHUB_OAUTH_URL=https://github.com
 # GitHub OAuth App used to sign in. It must be an OAuth App, not a GitHub App.

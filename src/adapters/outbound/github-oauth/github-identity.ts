@@ -5,6 +5,7 @@ import type {
   SignedInUser,
 } from "../../../shared/contracts/identity-provider";
 import type { OAuthSettings } from "../../../shared/contracts/oauth-settings";
+import { CALLBACK_PATH } from "../../../shared/contracts/sign-in-paths";
 import { SignInFailedError } from "../../../shared/contracts/sign-in-failed-error";
 import { TOKEN_REPLY, USER_REPLY } from "./github-replies";
 
@@ -15,7 +16,6 @@ type GitHubUser = z.infer<typeof USER_REPLY>;
 const AUTHORIZE_PATH = "/login/oauth/authorize";
 const TOKEN_PATH = "/login/oauth/access_token";
 const USER_PATH = "/user";
-const CALLBACK_PATH = "/callback";
 const PKCE_METHOD = "S256";
 const NO_SIGNUP = "false";
 const JSON_TYPE = "application/json";

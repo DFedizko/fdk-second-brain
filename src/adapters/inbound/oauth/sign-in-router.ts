@@ -3,13 +3,13 @@ import {
   CimdFetchError,
   type OAuthHelpers,
 } from "@cloudflare/workers-oauth-provider";
+import { CALLBACK_PATH } from "../../../shared/contracts/sign-in-paths";
 import type { CallbackRoute } from "./callback-route";
 import type { ConsentRoute } from "./consent-route";
 import type { HtmlReplies } from "./html-replies";
 import type { SignInPages } from "./sign-in-pages";
 
 export const AUTHORIZE_PATH = "/authorize";
-export const CALLBACK_PATH = "/callback";
 
 const GET = "GET";
 const POST = "POST";
