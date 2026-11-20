@@ -1,7 +1,4 @@
-import type {
-  IndexFailure,
-  IndexFailureLog,
-} from "../../../application/ports/index-failure-log";
+import type { IndexFailure, IndexFailureLog } from "../../../application/ports/index-failure-log";
 
 const LABEL = "Search index update failed:";
 

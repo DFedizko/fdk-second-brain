@@ -1,20 +1,24 @@
 import type { ServiceIdentifier } from "inversify";
-import type { DeleteNote } from "../../application/use-cases/delete-note";
-import type { EditNote } from "../../application/use-cases/edit-note";
+import type { DeleteNoteInput } from "../../application/use-cases/delete-note";
+import type { EditNoteInput } from "../../application/use-cases/edit-note";
+import type { NoteChange } from "../../application/use-cases/indexed-change";
 import type { ListNotes } from "../../application/use-cases/list-notes";
-import type { MoveNote } from "../../application/use-cases/move-note";
+import type { MoveNoteInput } from "../../application/use-cases/move-note";
+import type { NoteView } from "../../application/use-cases/note-view";
 import type { ReadNote } from "../../application/use-cases/read-note";
 import type { ReadSection } from "../../application/use-cases/read-section";
-import type { SaveIdea } from "../../application/use-cases/save-idea";
-import type { WriteNote } from "../../application/use-cases/write-note";
+import type { SaveIdeaInput } from "../../application/use-cases/save-idea";
+import type { WriteNoteInput } from "../../application/use-cases/write-note";
+
+type Change<Input, Output = NoteView> = ServiceIdentifier<NoteChange<Input, Output>>;
 
 export const USE_CASES = {
   listNotes: Symbol.for("ListNotes") as ServiceIdentifier<ListNotes>,
   readNote: Symbol.for("ReadNote") as ServiceIdentifier<ReadNote>,
   readSection: Symbol.for("ReadSection") as ServiceIdentifier<ReadSection>,
-  writeNote: Symbol.for("WriteNote") as ServiceIdentifier<WriteNote>,
-  editNote: Symbol.for("EditNote") as ServiceIdentifier<EditNote>,
-  deleteNote: Symbol.for("DeleteNote") as ServiceIdentifier<DeleteNote>,
-  moveNote: Symbol.for("MoveNote") as ServiceIdentifier<MoveNote>,
-  saveIdea: Symbol.for("SaveIdea") as ServiceIdentifier<SaveIdea>,
+  writeNote: Symbol.for("WriteNote") as Change<WriteNoteInput>,
+  editNote: Symbol.for("EditNote") as Change<EditNoteInput>,
+  deleteNote: Symbol.for("DeleteNote") as Change<DeleteNoteInput, void>,
+  moveNote: Symbol.for("MoveNote") as Change<MoveNoteInput>,
+  saveIdea: Symbol.for("SaveIdea") as Change<SaveIdeaInput>,
 } as const;

@@ -5,9 +5,11 @@ import { MCP } from "../../../../src/adapters/inbound/mcp/mcp.symbols";
 import { NotesMcpServer } from "../../../../src/adapters/inbound/mcp/notes-mcp-server";
 import { CLOCK } from "../../../../src/adapters/outbound/clock/clock.symbols";
 import { GITHUB } from "../../../../src/adapters/outbound/github/github.symbols";
+import { SEARCH } from "../../../../src/main/search/search.symbols";
 import { useCasesModule } from "../../../../src/main/use-cases/use-cases.container";
 import { USE_CASES } from "../../../../src/main/use-cases/use-cases.symbols";
 import { InMemoryNoteRepo } from "../../../application/__fake__/in-memory-note-repo";
+import { SpyIndexSync } from "../../../application/use-cases/__spy__/spy-index-sync";
 import { FixedClock } from "../../../__stub__/fixed-clock";
 import { SpyErrorLog } from "./__spy__/spy-error-log";
 
@@ -24,6 +26,7 @@ function buildContainer(): Container {
   const container = new Container();
   container.bind(GITHUB.noteRepository).toConstantValue(new InMemoryNoteRepo());
   container.bind(CLOCK.clock).toConstantValue(new FixedClock(NOW));
+  container.bind(SEARCH.indexSync).toConstantValue(new SpyIndexSync());
   container.load(useCasesModule, createMcpModule(USE_CASES));
   return container;
 }

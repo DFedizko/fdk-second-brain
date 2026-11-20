@@ -52,7 +52,9 @@ describe("searchModule", () => {
   it("syncs the index from the note repository", async () => {
     await notes.create(NotePath.of(PATH), "# Plan\nship it");
 
-    await buildContainer().get(SEARCH.indexSync).apply({ indexed: [PATH], removed: [] });
+    await buildContainer()
+      .get(SEARCH.indexSync)
+      .apply({ indexed: [PATH], removed: [] });
 
     expect(index.chunksOf(PATH)).toEqual([{ heading: "Plan", seq: 0, text: "ship it" }]);
   });

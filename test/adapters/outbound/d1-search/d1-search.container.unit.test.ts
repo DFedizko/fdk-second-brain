@@ -3,7 +3,7 @@ import { createD1SearchModule } from "../../../../src/adapters/outbound/d1-searc
 import { D1_SEARCH_SYMBOLS } from "../../../../src/adapters/outbound/d1-search/d1-search.symbols";
 import { D1SearchIndex } from "../../../../src/adapters/outbound/d1-search/d1-search-index";
 import type { SearchIndex } from "../../../../src/application/ports/search-index";
-import { DUMMY_D1_DATABASE } from "./__dummy__/dummy-d1-database";
+import { DUMMY_D1_DATABASE } from "../../../__dummy__/dummy-d1-database";
 
 describe("createD1SearchModule", () => {
   let container: Container;
