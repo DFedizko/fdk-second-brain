@@ -44,6 +44,7 @@ export const MESSAGE = {
   noReference: "Reference does not exist",
   noObject: "Object does not exist",
   emptyRepo: "Git Repository is empty.",
+  refExists: "Reference already exists",
   emptyContents: "This repository is empty.",
 } as const;
 

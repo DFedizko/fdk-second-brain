@@ -3,6 +3,8 @@ import { DOCS_PAGE, MESSAGE, STATUS } from "./github-replies";
 
 const GET_REF = /^git\/ref\/heads\/(.+)$/;
 const UPDATE_REF = /^git\/refs\/heads\/(.+)$/;
+const REFS = /^git\/refs$/;
+const BRANCH_PREFIX = "refs/heads/";
 const ONE_COMMIT = /^git\/commits\/([0-9a-f]+)$/;
 const COMMITS = /^git\/commits$/;
 const ONE_TREE = /^git\/trees\/(.+)$/;
@@ -32,6 +34,7 @@ export class GitDataRoutes {
     return [
       { method: "GET", pattern: GET_REF, reply: (call) => this.getRef(call) },
       { method: "PATCH", pattern: UPDATE_REF, reply: (call) => this.updateRef(call) },
+      { method: "POST", pattern: REFS, reply: (call) => this.createRef(call) },
       { method: "GET", pattern: ONE_COMMIT, reply: (call) => this.getCommit(call) },
       { method: "POST", pattern: COMMITS, reply: (call) => this.createCommit(call) },
       { method: "GET", pattern: ONE_TREE, reply: (call) => this.getTree(call) },
@@ -59,6 +62,19 @@ export class GitDataRoutes {
     }
     this.parts.store.setRef(branch, target.sha);
     return this.reply(call, STATUS.ok, this.parts.shapes.gitRef(branch, target.sha));
+  }
+
+  private createRef(call: FakeCall): Response {
+    const ref = String(call.body.ref);
+    const branch = ref.slice(BRANCH_PREFIX.length);
+    const target = this.parts.store.commit(String(call.body.sha));
+    const unprocessable = STATUS.unprocessable;
+    if (!ref.startsWith(BRANCH_PREFIX) || this.parts.store.headOf(branch)) {
+      return this.fail(call, unprocessable, MESSAGE.refExists, DOCS_PAGE.refs);
+    }
+    if (!target) return this.fail(call, unprocessable, MESSAGE.noObject, DOCS_PAGE.refs);
+    this.parts.store.setRef(branch, target.sha);
+    return this.reply(call, STATUS.created, this.parts.shapes.gitRef(branch, target.sha));
   }
 
   private getCommit(call: FakeCall): Response {

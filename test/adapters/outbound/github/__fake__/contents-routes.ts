@@ -35,7 +35,7 @@ export class ContentsRoutes {
   private putContent(call: FakeCall): Response {
     const path = this.pathOf(call);
     const branch = this.branchOf(call);
-    const files = this.parts.store.hasRefs() ? this.parts.store.filesAt(branch) : new Map();
+    const files = this.parts.store.filesAt(branch) ?? this.firstCommitFiles(call);
     if (!files) return this.notFound(call, `Branch ${branch} not found`);
     const current = files.get(path);
     const rejection = this.rejectWrongSha(call, path, current);
@@ -68,6 +68,14 @@ export class ContentsRoutes {
       this.parts.shapes.fileCommit(commit, branch),
       call.headers,
     );
+  }
+
+  // Checked 2026-11-19: the docs say only that `branch` defaults to the default branch, and
+  // that refs can't be created in an empty repository. So the first commit is accepted only
+  // without `branch`; naming a branch that doesn't exist yet answers 404 as on any repository.
+  private firstCommitFiles(call: FakeCall): FileTable | undefined {
+    const firstCommit = !this.parts.store.hasRefs() && call.body.branch === undefined;
+    return firstCommit ? new Map() : undefined;
   }
 
   private rejectWrongSha(call: FakeCall, path: string, current?: string): Response | undefined {

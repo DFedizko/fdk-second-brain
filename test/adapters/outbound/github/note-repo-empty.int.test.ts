@@ -32,6 +32,14 @@ describe("GitHubNoteRepo on an empty repository", () => {
     expect(api.filesOn(NOTES_BRANCH)).toEqual({ [INBOX.value]: CONTENT });
   });
 
+  it("reads back the first note from the configured branch", async () => {
+    await repository.create(INBOX, CONTENT);
+
+    const note = await repository.read(INBOX);
+
+    expect(note.content).toBe(CONTENT);
+  });
+
   it("reports a note it reads as missing", async () => {
     const read = repository.read(INBOX);
 
