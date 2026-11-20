@@ -66,7 +66,7 @@ This repository holds only the server code. Notes never go here; the notes repos
   - Scopes: none. The Worker asks for no scope, which grants read-only access to public information, enough for `GET /user` to return the login. No `repo` or `read:user` scope is needed: notes are read and written with `GITHUB_TOKEN`, never with the signed-in user's token.
   - Put your numeric GitHub user ID (the `"id"` at `https://api.github.com/users/<your-login>`) in `OWNER_GITHUB_ID`.
   - Copy the Client ID into `GITHUB_CLIENT_ID`, generate a client secret and put it in `GITHUB_CLIENT_SECRET` (`bunx wrangler secret put GITHUB_CLIENT_SECRET` in production).
-- **KV namespace.** The provider stores clients, grants and hashed tokens in a KV namespace bound as `OAUTH_KV` in `wrangler.jsonc`. Workers KV is included in the Workers Free plan: 100,000 reads, 1,000 writes, 1,000 deletes and 1,000 lists per day, 1 GB storage (checked 2026-11-19 on developers.cloudflare.com/kv/platform/limits and /pricing). One owner signing in a few times a day stays far below that. `wrangler.jsonc` holds a placeholder `id` until the deploy task creates it with `bunx wrangler kv namespace create OAUTH_KV`.
+- **KV namespace.** The provider stores clients, grants and hashed tokens in a KV namespace bound as `OAUTH_KV` in `wrangler.jsonc`. Workers KV is included in the Workers Free plan: 100,000 reads, 1,000 writes, 1,000 deletes and 1,000 lists per day, 1 GB storage (checked 2026-11-19 on developers.cloudflare.com/kv/platform/limits and /pricing). One owner signing in a few times a day stays far below that. `wrangler.jsonc` holds the real namespace `id`, created with `bunx wrangler kv namespace create OAUTH_KV`.
 
 ## Indexing outside the MCP server
 
@@ -102,4 +102,4 @@ Notes edited on GitHub or in Obsidian reach the search index in two ways. Both o
 - Workers runtime and binding types: `bun install` generates `worker-configuration.d.ts` (`postinstall` runs `wrangler types`); after changing `wrangler.jsonc`, run `bun run types`. The file is generated and gitignored: never edit or commit it
 - D1 schema: SQL migrations in `migrations/` (wired as `migrations_dir` in `wrangler.jsonc`). Apply them locally with `bunx wrangler d1 migrations apply second-brain --local`; integration tests apply them with `LocalRuntime.migrate()`
 - Local dev server: `bun run dev` (`wrangler dev`)
-- Deploy: `bun run deploy` (`wrangler deploy`). Not ready yet: `wrangler.jsonc` still has placeholder D1 `database_id` and KV `id` values until the deploy task creates the real resources
+- Deploy: `bun run deploy` (`wrangler deploy`). First-time setup (notes repository, Cloudflare resources, secrets, webhook, clients) is in `README.md`
