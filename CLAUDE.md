@@ -46,7 +46,7 @@ Dependency direction: `adapters → application → domain`. Never the reverse. 
 - **Extract logic into declarative private methods** named with an imperative verb (`buildSearchQuery`, `rejectInvalidPath`). The callback of a loop method that does more than one trivial expression becomes its own named method.
 - **At most 300 lines per file**, and each file has a single responsibility. Split before you reach the limit.
 - **No magic numbers or strings.** Name them as `UPPER_SNAKE_CASE` constants (`MAX_SEARCH_RESULTS`, `NOTE_EXTENSION`).
-- **No comments.** The code must explain itself through names. A comment is allowed only, and rarely, to explain a _decision_ (why), never what the code does.
+- **No comments, ever.** The code must explain itself through names. When a decision needs explaining (why), put it in the PR description, or in `TECHNOLOGIES.md` if it shapes the project. Directives the tooling needs (`/// <reference …>`, `@ts-expect-error`, `prettier-ignore`) are not comments and stay.
 - **Identifiers have at most 30 characters**: variables, functions, classes, interfaces, constants and files.
 
 Generated files (type definitions, lockfiles and the like) are exempt from these rules. Never edit them by hand; regenerate them with their tool, and gitignore them when the tool can rebuild them.

@@ -79,4 +79,4 @@ For each feature's e2e tests, cover the happy path, then add whatever else prove
   - Before you write or change an integration, **look up the API's latest official documentation**.
   - Take the exact request and response types and example payloads from it. Prefer the provider's official type package when one exists.
   - Cover the documented errors too, not only success.
-  - A short comment naming the docs URL and the date you checked them is allowed in the fake, as it records a decision.
+  - Name the docs URL and the date you checked them in the PR description, not in a code comment.
