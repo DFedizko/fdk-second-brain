@@ -1,4 +1,3 @@
-import { DropNoteIndex } from "../../../src/application/use-cases/drop-note-index";
 import { IndexQueueConsumer } from "../../../src/adapters/inbound/queue/index-queue-consumer";
 import { D1SearchIndex } from "../../../src/adapters/outbound/d1-search/d1-search-index";
 import {
@@ -54,12 +53,7 @@ describe("IndexPushedNote on D1 with a branch that lags behind the push", () => 
     const indexNote = new IndexNote(index, connectRepo(api), chunker);
     const head = new GitHubBranchHead(new BudgetedHeadNotes(github, REQUESTS_PER_MESSAGE));
     const pushed = new IndexPushedNote(head, new IndexNoteFactory(index, chunker));
-    consumer = new IndexQueueConsumer(
-      pushed,
-      new DropNoteIndex(index),
-      log,
-      new FixedClock(FIXED_NOW),
-    );
+    consumer = new IndexQueueConsumer(pushed, log, new FixedClock(FIXED_NOW));
     searchNotes = new SearchNotes(index);
     api.addEntry(NOTES_BRANCH, PLAN, FILE_MODE, PLAN_CONTENT);
     await indexNote.execute({ path: PLAN });

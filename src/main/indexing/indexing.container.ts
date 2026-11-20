@@ -7,7 +7,6 @@ import type { NoteCatalog } from "../../application/ports/note-catalog";
 import type { NoteTree } from "../../application/ports/note-tree";
 import type { PathQueue } from "../../application/ports/path-queue";
 import type { SearchIndex } from "../../application/ports/search-index";
-import { DropNoteIndex } from "../../application/use-cases/drop-note-index";
 import { IndexNoteFactory } from "../../application/use-cases/index-note-factory";
 import {
   IndexPushedNote,
@@ -40,12 +39,6 @@ export const indexingModule = new ContainerModule(({ bind }) => {
       (notes: NoteTree, index: NoteCatalog, queue: PathQueue) =>
         new ReconcileIndex(notes, index, queue),
       [GITHUB.noteCatalog, D1_SEARCH_SYMBOLS.IndexManifest, QUEUE.pathQueue],
-    )
-    .inSingletonScope();
-  bind(INDEXING.dropIndex)
-    .toResolvedValue(
-      (index: SearchIndex) => new DropNoteIndex(index),
-      [D1_SEARCH_SYMBOLS.SearchIndex],
     )
     .inSingletonScope();
 });

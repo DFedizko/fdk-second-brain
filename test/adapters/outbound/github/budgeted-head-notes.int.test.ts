@@ -6,7 +6,6 @@ import {
 import { GitHubBranchHead } from "../../../../src/adapters/outbound/github/github-branch-head";
 import { GitHubErrorTranslator } from "../../../../src/adapters/outbound/github/github-error-translator";
 import { GitHubGateway } from "../../../../src/adapters/outbound/github/github-gateway";
-import { DropNoteIndex } from "../../../../src/application/use-cases/drop-note-index";
 import { IndexNoteFactory } from "../../../../src/application/use-cases/index-note-factory";
 import { IndexPushedNote } from "../../../../src/application/use-cases/index-pushed-note";
 import { MarkdownChunker } from "../../../../src/domain/markdown-chunker";
@@ -42,7 +41,7 @@ function connectConsumer(api: FakeGitHubApi): IndexQueueConsumer {
   const head = new GitHubBranchHead(new BudgetedHeadNotes(github, REQUESTS_PER_MESSAGE));
   const indexer = new IndexPushedNote(head, new IndexNoteFactory(index, new MarkdownChunker()));
   const log = new SpyIndexFailureLog();
-  return new IndexQueueConsumer(indexer, new DropNoteIndex(index), log, new FixedClock(FIXED_NOW));
+  return new IndexQueueConsumer(indexer, log, new FixedClock(FIXED_NOW));
 }
 
 async function fullBatch(api: FakeGitHubApi): Promise<FakeMessageBatch> {

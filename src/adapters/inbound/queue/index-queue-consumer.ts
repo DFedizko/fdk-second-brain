@@ -1,5 +1,4 @@
 import type { Clock } from "../../../application/ports/clock";
-import type { IndexDropper } from "../../../application/use-cases/drop-note-index";
 import type { IndexFailureLog } from "../../../application/ports/index-failure-log";
 import type {
   PushedNoteIndexer,
@@ -27,7 +26,6 @@ class UnreadableMessage extends Error {
 export class IndexQueueConsumer {
   constructor(
     private readonly indexer: PushedNoteIndexer,
-    private readonly dropper: IndexDropper,
     private readonly log: IndexFailureLog,
     private readonly clock: Clock,
   ) {}
@@ -55,30 +53,9 @@ export class IndexQueueConsumer {
     message.ack();
   }
 
-  private async handleFailure(
-    message: Message<unknown>,
-    path: string,
-    error: unknown,
-  ): Promise<void> {
+  private handleFailure(message: Message<unknown>, path: string, error: unknown): void {
     if (!this.isFirstWait(message, error)) this.log.report({ path, error });
-    if (error instanceof InvalidPath) return message.ack();
-    if (error instanceof UnreadableNote) return this.dropUnindexable(message, path);
-    this.retryLater(message, error);
-  }
-
-  private async dropUnindexable(message: Message<unknown>, path: string): Promise<void> {
-    await this.dropper.execute({ path }).then(
-      () => message.ack(),
-      (error: unknown) => this.reportAndRetry(message, path, error),
-    );
-  }
-
-  private reportAndRetry(message: Message<unknown>, path: string, error: unknown): void {
-    this.log.report({ path, error });
-    this.retryLater(message, error);
-  }
-
-  private retryLater(message: Message<unknown>, error: unknown): void {
+    if (error instanceof InvalidPath || error instanceof UnreadableNote) return message.ack();
     message.retry({ delaySeconds: this.retryDelay(message.attempts, error) });
   }
 

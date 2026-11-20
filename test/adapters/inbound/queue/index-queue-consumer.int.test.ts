@@ -1,4 +1,3 @@
-import { DropNoteIndex } from "../../../../src/application/use-cases/drop-note-index";
 import { FixedClock } from "../../../__stub__/fixed-clock";
 import { IndexQueueConsumer } from "../../../../src/adapters/inbound/queue/index-queue-consumer";
 import { NotePath } from "../../../../src/domain/note-path";
@@ -22,12 +21,7 @@ describe("IndexQueueConsumer on D1", () => {
     runtime = await LocalRuntime.start();
     await runtime.migrate();
     race = await StaleIndexRace.on(runtime);
-    consumer = new IndexQueueConsumer(
-      race.indexer,
-      new DropNoteIndex(race.index),
-      race.log,
-      new FixedClock(NOW),
-    );
+    consumer = new IndexQueueConsumer(race.indexer, race.log, new FixedClock(NOW));
   });
 
   afterEach(async () => {
