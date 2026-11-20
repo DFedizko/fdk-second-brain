@@ -92,4 +92,21 @@ describe("GitHubNoteRepo creating the first notes of an empty repository", () =>
 
     expect(api.filesOn(NOTES_BRANCH)).toEqual({ [INBOX.value]: CONTENT });
   });
+
+  it("creates the first note while GitHub still reads the new commit as empty", async () => {
+    api.lagRefReadsAsEmpty(1);
+
+    await repository.create(INBOX, CONTENT);
+
+    expect(api.filesOn(NOTES_BRANCH)).toEqual({ [INBOX.value]: CONTENT });
+  });
+
+  it("creates the first note when another client makes the branch while reads lag", async () => {
+    api.lagRefReadsAsEmpty(2);
+    api.raceOnce.beforeRefCreate(pointNotesAtDefault);
+
+    await repository.create(INBOX, CONTENT);
+
+    expect(api.filesOn(NOTES_BRANCH)).toEqual({ [INBOX.value]: CONTENT });
+  });
 });
