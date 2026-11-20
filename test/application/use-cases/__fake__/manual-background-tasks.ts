@@ -6,7 +6,7 @@ import type {
 export class ManualBackgroundTasks implements BackgroundTasks {
   private queued: BackgroundTask[] = [];
 
-  runAfterReply(task: BackgroundTask): void {
+  runInBackground(task: BackgroundTask): void {
     this.queued.push(task);
   }
 

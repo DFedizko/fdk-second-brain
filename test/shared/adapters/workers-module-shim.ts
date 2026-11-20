@@ -2,7 +2,11 @@ const WORKERS_MODULE = "cloudflare:workers";
 
 class WorkerEntrypoint {}
 
-function waitUntil(_promise: Promise<unknown>): void {}
+export const KEPT_ALIVE: Promise<unknown>[] = [];
+
+function waitUntil(promise: Promise<unknown>): void {
+  KEPT_ALIVE.push(promise);
+}
 
 Bun.plugin({
   name: "cloudflare-workers-shim",

@@ -1,5 +1,5 @@
 export type BackgroundTask = () => Promise<void>;
 
 export interface BackgroundTasks {
-  runAfterReply(task: BackgroundTask): void;
+  runInBackground(task: BackgroundTask): void;
 }

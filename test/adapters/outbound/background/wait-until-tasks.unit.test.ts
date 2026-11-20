@@ -14,7 +14,7 @@ describe("WaitUntilTasks", () => {
   it("starts the task right away", () => {
     let started = false;
 
-    tasks.runAfterReply(async () => {
+    tasks.runInBackground(async () => {
       started = true;
     });
 
@@ -24,7 +24,7 @@ describe("WaitUntilTasks", () => {
   it("keeps the Worker alive until the task settles", async () => {
     const finished = Promise.resolve();
 
-    tasks.runAfterReply(() => finished);
+    tasks.runInBackground(() => finished);
 
     expect(kept).toEqual([finished]);
   });

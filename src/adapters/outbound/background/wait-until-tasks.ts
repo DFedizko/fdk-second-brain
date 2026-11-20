@@ -5,7 +5,7 @@ export type KeepAlive = (promise: Promise<unknown>) => void;
 export class WaitUntilTasks implements BackgroundTasks {
   constructor(private readonly keepAlive: KeepAlive) {}
 
-  runAfterReply(task: BackgroundTask): void {
+  runInBackground(task: BackgroundTask): void {
     this.keepAlive(task());
   }
 }

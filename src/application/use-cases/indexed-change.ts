@@ -20,7 +20,7 @@ export class IndexedChange<Input, Output> implements NoteChange<Input, Output> {
   async execute(input: Input): Promise<Output> {
     const output = await this.change.execute(input);
     const changed = this.paths.of(input, output);
-    this.background.runAfterReply(() => this.sync.apply(changed));
+    this.background.runInBackground(() => this.sync.apply(changed));
     return output;
   }
 }
