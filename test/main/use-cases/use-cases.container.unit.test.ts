@@ -62,7 +62,9 @@ describe("useCasesModule", () => {
   it("indexes a written note", async () => {
     await buildContainer().get(USE_CASES.writeNote).execute({ path: ARCHIVED, content: "x" });
 
-    expect(sync.changes).toEqual([{ indexed: [ARCHIVED], removed: [] }]);
+    expect(sync.changes).toEqual([
+      { indexed: [expect.objectContaining({ path: ARCHIVED })], removed: [] },
+    ]);
   });
 
   it("indexes an edited note", async () => {
@@ -70,7 +72,9 @@ describe("useCasesModule", () => {
 
     await buildContainer().get(USE_CASES.editNote).execute(edit);
 
-    expect(sync.changes).toEqual([{ indexed: [PLAN], removed: [] }]);
+    expect(sync.changes).toEqual([
+      { indexed: [expect.objectContaining({ path: PLAN })], removed: [] },
+    ]);
   });
 
   it("removes a deleted note from the index", async () => {
@@ -82,7 +86,9 @@ describe("useCasesModule", () => {
   it("moves a note in the index", async () => {
     await buildContainer().get(USE_CASES.moveNote).execute({ from: PLAN, to: ARCHIVED });
 
-    expect(sync.changes).toEqual([{ indexed: [ARCHIVED], removed: [PLAN] }]);
+    expect(sync.changes).toEqual([
+      { indexed: [expect.objectContaining({ path: ARCHIVED })], removed: [PLAN] },
+    ]);
   });
 
   it("indexes a saved idea", async () => {
@@ -90,6 +96,8 @@ describe("useCasesModule", () => {
 
     await buildContainer().get(USE_CASES.saveIdea).execute(idea);
 
-    expect(sync.changes).toEqual([{ indexed: [IDEA], removed: [] }]);
+    expect(sync.changes).toEqual([
+      { indexed: [expect.objectContaining({ path: IDEA })], removed: [] },
+    ]);
   });
 });

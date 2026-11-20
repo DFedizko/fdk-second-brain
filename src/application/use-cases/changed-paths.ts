@@ -4,22 +4,23 @@ import type { MoveNoteInput } from "./move-note";
 import type { PathChange } from "./note-index-sync";
 import type { NoteView } from "./note-view";
 
-const NONE: readonly string[] = [];
+const NO_PATHS: readonly string[] = [];
+const NO_NOTES: readonly NoteView[] = [];
 
 export class SavedNotePaths implements ChangedPaths<unknown, NoteView> {
   of(_input: unknown, saved: NoteView): PathChange {
-    return { indexed: [saved.path], removed: NONE };
+    return { indexed: [saved], removed: NO_PATHS };
   }
 }
 
 export class MovedNotePaths implements ChangedPaths<MoveNoteInput, NoteView> {
   of(input: MoveNoteInput, moved: NoteView): PathChange {
-    return { indexed: [moved.path], removed: [input.from] };
+    return { indexed: [moved], removed: [input.from] };
   }
 }
 
 export class DeletedNotePaths implements ChangedPaths<DeleteNoteInput, void> {
   of(input: DeleteNoteInput): PathChange {
-    return { indexed: NONE, removed: [input.path] };
+    return { indexed: NO_NOTES, removed: [input.path] };
   }
 }

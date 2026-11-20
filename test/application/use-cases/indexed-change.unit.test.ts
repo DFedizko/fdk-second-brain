@@ -36,7 +36,9 @@ describe("IndexedChange", () => {
   it("syncs the index with the paths the change touched", async () => {
     await writeNote.execute(INPUT);
 
-    expect(sync.changes).toEqual([{ indexed: [PATH], removed: [] }]);
+    expect(sync.changes).toEqual([
+      { indexed: [expect.objectContaining({ path: PATH })], removed: [] },
+    ]);
   });
 
   it("rejects with the error of a failed change", async () => {

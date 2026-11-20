@@ -1,8 +1,9 @@
 import type { IndexFailureLog } from "../ports/index-failure-log";
-import type { NoteIndexer } from "./index-note";
+import type { IndexNoteInput, NoteIndexer } from "./index-note";
+import type { NoteView } from "./note-view";
 
 export interface PathChange {
-  readonly indexed: readonly string[];
+  readonly indexed: readonly NoteView[];
   readonly removed: readonly string[];
 }
 
@@ -21,15 +22,15 @@ export class NoteIndexSync implements IndexSync {
 
   async apply(change: PathChange): Promise<void> {
     await Promise.all([
-      ...change.indexed.map((path) => this.runSafely(this.indexer, path)),
-      ...change.removed.map((path) => this.runSafely(this.remover, path)),
+      ...change.indexed.map((saved) => this.runSafely(this.indexer, { path: saved.path, saved })),
+      ...change.removed.map((path) => this.runSafely(this.remover, { path })),
     ]);
   }
 
-  private async runSafely(job: NoteIndexer, path: string): Promise<void> {
-    await job.execute({ path }).then(
+  private async runSafely(job: NoteIndexer, input: IndexNoteInput): Promise<void> {
+    await job.execute(input).then(
       () => undefined,
-      (error: unknown) => this.log.report({ path, error }),
+      (error: unknown) => this.log.report({ path: input.path, error }),
     );
   }
 }
