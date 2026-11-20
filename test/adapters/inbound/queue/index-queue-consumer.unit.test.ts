@@ -3,6 +3,7 @@ import {
   MAX_RETRY_DELAY_SECONDS,
   RETRY_DELAY_SECONDS,
 } from "../../../../src/adapters/inbound/queue/index-queue-consumer";
+import { BranchBehind } from "../../../../src/domain/errors/branch-behind";
 import { InvalidPath } from "../../../../src/domain/errors/invalid-path";
 import { NotesRateLimited } from "../../../../src/domain/errors/notes-rate-limited";
 import { NotesUnavailable } from "../../../../src/domain/errors/notes-unavailable";
@@ -10,6 +11,7 @@ import { SpyIndexFailureLog } from "../../../__spy__/spy-index-failure-log";
 import { SpyNoteIndexer } from "../../../application/use-cases/__spy__/spy-note-indexer";
 import { FailingNoteIndexer } from "../../../application/use-cases/__stub__/failing-note-indexer";
 import { FakeMessageBatch } from "./__fake__/fake-message-batch";
+import { SpyPushedIndexer } from "./__spy__/spy-pushed-indexer";
 
 const PLAN = "projects/plan.md";
 const IDEA = "ideas/idea.md";
@@ -17,6 +19,7 @@ const ACKED = { acked: true } as const;
 const THIRD_ATTEMPT = 3;
 const MANY_ATTEMPTS = 30;
 const RATE_LIMIT_WAIT = 90;
+const COMMIT = "0d1a26e67d8f5eaf1f6ba5c57fc3c7d91ac0fd1c";
 
 describe("IndexQueueConsumer", () => {
   let log: SpyIndexFailureLog;
@@ -109,5 +112,27 @@ describe("IndexQueueConsumer", () => {
       indexed: indexer.inputs,
       logged: log.reported.length,
     }).toEqual({ outcomes: [ACKED], indexed: [], logged: 1 });
+  });
+
+  it("passes the pushed commit along with the path", async () => {
+    const indexer = new SpyPushedIndexer();
+
+    await new IndexQueueConsumer(indexer, log).handle(
+      FakeMessageBatch.of([{ path: PLAN, commit: COMMIT }]),
+    );
+
+    expect(indexer.inputs).toEqual([{ path: PLAN, commit: COMMIT }]);
+  });
+
+  it("retries without logging while the branch has not reached the pushed commit", async () => {
+    const batch = FakeMessageBatch.of([{ path: PLAN, commit: COMMIT }]);
+    const consumer = new IndexQueueConsumer(new FailingNoteIndexer(new BranchBehind(COMMIT)), log);
+
+    await consumer.handle(batch);
+
+    expect({ outcomes: batch.outcomes(), logged: log.reported }).toEqual({
+      outcomes: [{ retryDelay: RETRY_DELAY_SECONDS }],
+      logged: [],
+    });
   });
 });

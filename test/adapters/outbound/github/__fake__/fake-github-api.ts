@@ -1,5 +1,6 @@
 import { Octokit } from "@octokit/rest";
 import { SILENT_LOG } from "../../../../../src/adapters/outbound/github/silent-log";
+import { CompareRoutes } from "./compare-routes";
 import { ContentsRoutes } from "./contents-routes";
 import { FakeGitStore } from "./fake-git-store";
 import type { FakeLimits, FakeRepoParts, FakeRoute } from "./fake-route";
@@ -8,7 +9,7 @@ import { DOCS_PAGE, GitHubReplies, MESSAGE, STATUS } from "./github-replies";
 import { GitHubShapes } from "./github-shapes";
 
 // Built from https://docs.github.com/en/rest/repos/contents, /git/refs, /git/trees,
-// /git/commits, /git/blobs and /using-the-rest-api/rate-limits-for-the-rest-api, checked 2026-11-19.
+// /git/commits, /git/blobs, /commits/commits#compare-two-commits and /using-the-rest-api/rate-limits-for-the-rest-api, checked 2026-11-19.
 
 export interface FakeRepoSetup {
   readonly owner: string;
@@ -66,7 +67,12 @@ export class FakeGitHubApi {
       defaultBranch,
       limits: this.limits,
     };
-    this.routes = [...new ContentsRoutes(parts).all(), ...new GitDataRoutes(parts).all()];
+    const repoPath = `${setup.owner}${SEPARATOR}${setup.repo}`;
+    this.routes = [
+      ...new ContentsRoutes(parts).all(),
+      ...new GitDataRoutes(parts).all(),
+      ...new CompareRoutes(parts, repoPath).all(),
+    ];
     this.seedBranches();
   }
 

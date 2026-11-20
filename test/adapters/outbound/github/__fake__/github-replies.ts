@@ -24,6 +24,7 @@ export const DOCS_PAGE = {
   trees: `${DOCS}/git/trees`,
   commits: `${DOCS}/git/commits`,
   blobs: `${DOCS}/git/blobs`,
+  compare: `${DOCS}/commits/commits#compare-two-commits`,
   rateLimits: `${DOCS}/using-the-rest-api/rate-limits-for-the-rest-api`,
   root: DOCS,
 } as const;

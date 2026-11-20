@@ -1,5 +1,9 @@
 import type { IndexFailureLog } from "../../../application/ports/index-failure-log";
-import type { NoteIndexer } from "../../../application/use-cases/index-note";
+import type {
+  PushedNoteIndexer,
+  PushedNoteInput,
+} from "../../../application/use-cases/index-pushed-note";
+import { BranchBehind } from "../../../domain/errors/branch-behind";
 import { InvalidPath } from "../../../domain/errors/invalid-path";
 import { NotesRateLimited } from "../../../domain/errors/notes-rate-limited";
 import { z } from "zod";
@@ -10,7 +14,7 @@ const BACKOFF_FACTOR = 2;
 const FIRST_ATTEMPT = 1;
 const UNREADABLE_LABEL = "queue message ";
 
-const MESSAGE_SCHEMA = z.object({ path: z.string() });
+const MESSAGE_SCHEMA = z.object({ path: z.string(), commit: z.string().optional() });
 
 class UnreadableMessage extends Error {
   override readonly name = "UnreadableMessage";
@@ -20,7 +24,7 @@ class UnreadableMessage extends Error {
 // messages handled late or out of order still leave the index matching the repo.
 export class IndexQueueConsumer {
   constructor(
-    private readonly indexer: NoteIndexer,
+    private readonly indexer: PushedNoteIndexer,
     private readonly log: IndexFailureLog,
   ) {}
 
@@ -31,11 +35,15 @@ export class IndexQueueConsumer {
   private async process(message: Message<unknown>): Promise<void> {
     const parsed = MESSAGE_SCHEMA.safeParse(message.body);
     if (!parsed.success) return this.dropUnreadable(message);
-    const path = parsed.data.path;
-    await this.indexer.execute({ path }).then(
+    const input = this.toInput(parsed.data.path, parsed.data.commit);
+    await this.indexer.execute(input).then(
       () => message.ack(),
-      (error: unknown) => this.handleFailure(message, path, error),
+      (error: unknown) => this.handleFailure(message, input.path, error),
     );
+  }
+
+  private toInput(path: string, commit?: string): PushedNoteInput {
+    return commit === undefined ? { path } : { path, commit };
   }
 
   private dropUnreadable(message: Message<unknown>): void {
@@ -44,7 +52,7 @@ export class IndexQueueConsumer {
   }
 
   private handleFailure(message: Message<unknown>, path: string, error: unknown): void {
-    this.log.report({ path, error });
+    if (!(error instanceof BranchBehind)) this.log.report({ path, error });
     if (error instanceof InvalidPath) return message.ack();
     message.retry({ delaySeconds: this.retryDelay(message.attempts, error) });
   }
