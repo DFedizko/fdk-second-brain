@@ -16,6 +16,7 @@ import type { FirstNoteWriter } from "./github-first-note";
 import type { GitHubAccess } from "./github-gateway";
 import type { NoteMover } from "./github-note-mover";
 import type { NoteReader } from "./github-note-reader";
+import type { RetryPause } from "./retry-pause";
 
 const BLOB = "blob";
 const RECURSIVE = "1";
@@ -27,6 +28,7 @@ const CONFLICT = 409;
 const NOT_FOUND = 404;
 const FILE_WRITE_ATTEMPTS = 3;
 const FIRST_NOTE_ATTEMPTS = 3;
+const FIRST_NOTE_RETRY_MILLIS = 500;
 const BRANCH_LEVEL: FailureContext = {};
 
 type BranchMoveCheck = (error: unknown) => Promise<boolean>;
@@ -37,6 +39,7 @@ export class GitHubNoteRepo implements NoteRepository {
     private readonly reader: NoteReader,
     private readonly mover: NoteMover,
     private readonly firstNote: FirstNoteWriter,
+    private readonly pause: RetryPause,
   ) {}
 
   async list(folder: NoteFolder): Promise<NotePath[]> {
@@ -88,6 +91,7 @@ export class GitHubNoteRepo implements NoteRepository {
   ): Promise<Note> {
     if (!this.isMissingBranch(error) || attemptsLeft <= 1) throw error;
     if (!(await this.isEmptyRepository())) {
+      await this.pause.wait(FIRST_NOTE_RETRY_MILLIS);
       return this.createOnBranch(path, content).catch((failure: unknown) =>
         this.createFirstNote(failure, path, content, attemptsLeft - 1),
       );

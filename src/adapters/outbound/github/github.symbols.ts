@@ -7,6 +7,7 @@ import type { FirstNoteWriter } from "./github-first-note";
 import type { GitHubAccess } from "./github-gateway";
 import type { NoteMover } from "./github-note-mover";
 import type { NoteReader } from "./github-note-reader";
+import type { RetryPause } from "./retry-pause";
 
 export const GITHUB = {
   config: Symbol.for("GitHubConfig") as ServiceIdentifier<GitHubConfig>,
@@ -16,5 +17,6 @@ export const GITHUB = {
   reader: Symbol.for("GitHubNoteReader") as ServiceIdentifier<NoteReader>,
   mover: Symbol.for("GitHubNoteMover") as ServiceIdentifier<NoteMover>,
   firstNote: Symbol.for("GitHubFirstNote") as ServiceIdentifier<FirstNoteWriter>,
+  pause: Symbol.for("GitHubRetryPause") as ServiceIdentifier<RetryPause>,
   noteRepository: Symbol.for("NoteRepository") as ServiceIdentifier<NoteRepository>,
 } as const;

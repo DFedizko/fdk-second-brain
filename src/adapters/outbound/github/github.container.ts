@@ -9,6 +9,7 @@ import { GitHubNoteMover, type NoteMover } from "./github-note-mover";
 import { GitHubNoteReader, type NoteReader } from "./github-note-reader";
 import { GitHubNoteRepo } from "./github-note-repo";
 import { GITHUB } from "./github.symbols";
+import { TimerPause, type RetryPause } from "./retry-pause";
 import { SILENT_LOG } from "./silent-log";
 import { CLOCK } from "../clock/clock.symbols";
 
@@ -43,10 +44,16 @@ export function githubContainer(config: GitHubConfig): ContainerModule {
       (github: GitHubAccess, reader: NoteReader) => new GitHubFirstNote(github, reader),
       [GITHUB.access, GITHUB.reader],
     );
+    bind(GITHUB.pause).toConstantValue(new TimerPause());
     bind(GITHUB.noteRepository).toResolvedValue(
-      (github: GitHubAccess, reader: NoteReader, mover: NoteMover, first: FirstNoteWriter) =>
-        new GitHubNoteRepo(github, reader, mover, first),
-      [GITHUB.access, GITHUB.reader, GITHUB.mover, GITHUB.firstNote],
+      (
+        github: GitHubAccess,
+        reader: NoteReader,
+        mover: NoteMover,
+        first: FirstNoteWriter,
+        pause: RetryPause,
+      ) => new GitHubNoteRepo(github, reader, mover, first, pause),
+      [GITHUB.access, GITHUB.reader, GITHUB.mover, GITHUB.firstNote, GITHUB.pause],
     );
   });
 }
