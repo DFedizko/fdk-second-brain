@@ -1,7 +1,8 @@
 import { SearchNotesTool } from "../../../../../src/adapters/inbound/mcp/tools/search-notes-tool";
-import type {
-  SearchNotesInput,
-  SearchResult,
+import {
+  MAX_SEARCH_LIMIT,
+  type SearchNotesInput,
+  type SearchResult,
 } from "../../../../../src/application/use-cases/search-notes";
 import { SpyUseCase } from "./__spy__/spy-use-case";
 import { InProcessTool } from "./in-process-tool";
@@ -10,7 +11,6 @@ import { EMPTY, newReplies, newRunner, NOT_A_STRING, PATH, textOfLength } from "
 const NAME = "search_notes";
 const QUERY = "ship plan";
 const MAX_QUERY_LENGTH = 500;
-const MAX_LIMIT = 20;
 const HIT: SearchResult = { path: PATH, heading: "Plan", snippet: "Ship it." };
 
 let useCase: SpyUseCase<SearchNotesInput, SearchResult[]>;
@@ -51,7 +51,7 @@ describe("search_notes tool", () => {
     ["a query that is not a string", { query: NOT_A_STRING }],
     ["a query longer than allowed", { query: textOfLength(MAX_QUERY_LENGTH + 1) }],
     ["a limit below one", { query: QUERY, limit: 0 }],
-    ["a limit above the maximum", { query: QUERY, limit: MAX_LIMIT + 1 }],
+    ["a limit above the maximum", { query: QUERY, limit: MAX_SEARCH_LIMIT + 1 }],
     ["a limit that is not whole", { query: QUERY, limit: 2.5 }],
   ])("rejects %s", async (_case, input) => {
     const result = await tool.call(input);
