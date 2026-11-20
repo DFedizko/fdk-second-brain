@@ -6,6 +6,7 @@ import { GitHubErrorTranslator, type GitHubErrorMapper } from "./github-error-tr
 import { GitHubGateway, type GitHubAccess } from "./github-gateway";
 import { GitHubNoteMover, type NoteMover } from "./github-note-mover";
 import { GitHubNoteReader, type NoteReader } from "./github-note-reader";
+import { CommitCompare } from "./commit-compare";
 import { GitHubBranchHead } from "./github-branch-head";
 import { GitHubNoteCatalog } from "./github-note-catalog";
 import { GitHubNoteRepo } from "./github-note-repo";
@@ -46,7 +47,8 @@ export function githubContainer(config: GitHubConfig): ContainerModule {
       [GITHUB.access, GITHUB.reader, GITHUB.mover],
     );
     bind(GITHUB.branchHead).toResolvedValue(
-      (github: GitHubAccess, reader: NoteReader) => new GitHubBranchHead(github, reader),
+      (github: GitHubAccess, reader: NoteReader) =>
+        new GitHubBranchHead(reader, new CommitCompare(github)),
       [GITHUB.access, GITHUB.reader],
     );
     bind(GITHUB.noteCatalog).toResolvedValue(

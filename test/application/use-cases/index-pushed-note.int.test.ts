@@ -1,5 +1,6 @@
 import { IndexQueueConsumer } from "../../../src/adapters/inbound/queue/index-queue-consumer";
 import { D1SearchIndex } from "../../../src/adapters/outbound/d1-search/d1-search-index";
+import { CommitCompare } from "../../../src/adapters/outbound/github/commit-compare";
 import { GitHubBranchHead } from "../../../src/adapters/outbound/github/github-branch-head";
 import { GitHubErrorTranslator } from "../../../src/adapters/outbound/github/github-error-translator";
 import { GitHubGateway } from "../../../src/adapters/outbound/github/github-gateway";
@@ -47,7 +48,7 @@ describe("IndexPushedNote on D1 with a branch that lags behind the push", () => 
     const github = new GitHubGateway(api.octokit(GITHUB_CONFIG.token), GITHUB_CONFIG, errors);
     const chunker = new MarkdownChunker();
     const indexNote = new IndexNote(index, connectRepo(api), chunker);
-    const head = new GitHubBranchHead(github, new GitHubNoteReader(github));
+    const head = new GitHubBranchHead(new GitHubNoteReader(github), new CommitCompare(github));
     const pushed = new IndexPushedNote(head, new IndexNoteFactory(index, chunker), indexNote);
     consumer = new IndexQueueConsumer(pushed, log);
     searchNotes = new SearchNotes(index);

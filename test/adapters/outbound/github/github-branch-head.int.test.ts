@@ -1,3 +1,4 @@
+import { CommitCompare } from "../../../../src/adapters/outbound/github/commit-compare";
 import { GitHubBranchHead } from "../../../../src/adapters/outbound/github/github-branch-head";
 import { GitHubErrorTranslator } from "../../../../src/adapters/outbound/github/github-error-translator";
 import { GitHubGateway } from "../../../../src/adapters/outbound/github/github-gateway";
@@ -21,7 +22,7 @@ const UNKNOWN_COMMIT = "abcdefabcdefabcdefabcdefabcdefabcdefabcd";
 function connectHead(api: FakeGitHubApi): GitHubBranchHead {
   const errors = new GitHubErrorTranslator(new FixedClock(FIXED_NOW));
   const github = new GitHubGateway(api.octokit(GITHUB_CONFIG.token), GITHUB_CONFIG, errors);
-  return new GitHubBranchHead(github, new GitHubNoteReader(github));
+  return new GitHubBranchHead(new GitHubNoteReader(github), new CommitCompare(github));
 }
 
 describe("GitHubBranchHead", () => {
@@ -86,6 +87,33 @@ describe("GitHubBranchHead", () => {
     const read = reader?.read(PLAN);
 
     await expect(read).rejects.toThrow(NoteNotFound);
+  });
+
+  it("moves on to a newer head the branch reaches before a later read", async () => {
+    write(PLAN.value, FIRST);
+    const reader = await head.readerAt(headOf());
+    const files = new Map(api.store.filesAt(NOTES_BRANCH));
+    files.delete(PLAN.value);
+    api.store.advance(NOTES_BRANCH, files, "Delete plan");
+
+    const read = reader?.read(PLAN);
+
+    await expect(read).rejects.toThrow(NoteNotFound);
+  });
+
+  it("follows a force push that moved the branch away from the head it checked", async () => {
+    write(PLAN.value, FIRST);
+    const reader = await head.readerAt(headOf());
+    const rewritten = api.store.addCommit(
+      api.store.addTree(new Map([[PLAN.value, api.store.addBlob(SECOND)]])),
+      [],
+      "Rewrite history",
+    );
+    api.store.setRef(NOTES_BRANCH, rewritten.sha);
+
+    const note = await reader?.read(PLAN);
+
+    expect(note?.content).toBe(SECOND);
   });
 
   it("checks the head once even when it already is the pushed commit", async () => {
