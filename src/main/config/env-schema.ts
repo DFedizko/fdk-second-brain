@@ -28,12 +28,10 @@ const LOOPBACK_RULE = "(http is allowed only for localhost, 127.0.0.1 or [::1]).
 const CLIENT_ID = /^[A-Za-z0-9]+$/;
 const CLIENT_SECRET = /^[0-9a-fA-F]{40}$/;
 const LONG_SECRET = /^\S{32,}$/;
-const HEX_KEY = /^[0-9a-fA-F]{64}$/;
 const LOGIN_RULES =
   "letters, digits and hyphens, not starting with a hyphen, at most 39 characters";
 const NOT_AN_OBJECT =
   "The Worker's env bindings are missing: expected an object holding the environment variables.";
-const HEX_KEY_RULES = "64 hexadecimal characters (openssl rand -hex 32).";
 
 export const ENV_SCHEMA = z.object(
   {
@@ -110,12 +108,6 @@ export const ENV_SCHEMA = z.object(
       whenMissing: "set it to the secret of the notes repository's push webhook.",
       expected: "at least 32 characters with no spaces or line breaks (openssl rand -hex 32).",
       pattern: LONG_SECRET,
-    }),
-    COOKIE_ENCRYPTION_KEY: requiredEnvField({
-      name: "COOKIE_ENCRYPTION_KEY",
-      whenMissing: `set it to ${HEX_KEY_RULES}`,
-      expected: HEX_KEY_RULES,
-      pattern: HEX_KEY,
     }),
   },
   { error: NOT_AN_OBJECT },
