@@ -2,9 +2,13 @@ import { createTestHarness, type TestHarness } from "wrangler";
 
 const WRANGLER_CONFIG = "./wrangler.jsonc";
 const DATABASE_BINDING = "DB";
+const DAILY_CRON = "17 4 * * *";
+const SCHEDULED_OK = "ok";
+const CRON_FAILED = "The daily cron ended with: ";
 
 interface WorkerEntry {
   fetch(request: Request): Promise<Response>;
+  scheduled(options: { cron: string; scheduledTime: Date }): Promise<{ outcome: string }>;
 }
 
 export class LocalWorker {
@@ -26,6 +30,15 @@ export class LocalWorker {
 
   fetch(request: Request): Promise<Response> {
     return this.entry.fetch(request);
+  }
+
+  async runDailyCron(): Promise<void> {
+    const { outcome } = await this.entry.scheduled({ cron: DAILY_CRON, scheduledTime: new Date() });
+    if (outcome !== SCHEDULED_OK) throw new Error(`${CRON_FAILED}${outcome}`);
+  }
+
+  async database(): Promise<D1Database> {
+    return (await this.harness.getWorker<Env>().getEnv()).DB;
   }
 
   async stop(): Promise<void> {
