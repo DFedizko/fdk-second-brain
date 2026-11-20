@@ -1,8 +1,5 @@
 import { buildPushPayload, type PushSpec } from "./push-payload";
 
-// Delivery headers from https://docs.github.com/en/webhooks/webhook-events-and-payloads#delivery-headers
-// and signing from /using-webhooks/validating-webhook-deliveries, checked 2026-11-19.
-
 export const WEBHOOK_URL = "https://second-brain.example/webhooks/github";
 const POST = "POST";
 const JSON_TYPE = "application/json";

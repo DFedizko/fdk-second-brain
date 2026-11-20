@@ -20,8 +20,6 @@ class UnreadableMessage extends Error {
   override readonly name = "UnreadableMessage";
 }
 
-// Each path is re-read at the head of the branch, never taken from the push, so
-// messages handled late or out of order still leave the index matching the repo.
 export class IndexQueueConsumer {
   constructor(
     private readonly indexer: PushedNoteIndexer,

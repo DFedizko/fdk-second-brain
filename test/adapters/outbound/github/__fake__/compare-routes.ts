@@ -1,9 +1,6 @@
 import type { FakeCall, FakeRepoParts, FakeRoute } from "./fake-route";
 import { DOCS_PAGE, MESSAGE, STATUS } from "./github-replies";
 
-// Built from https://docs.github.com/en/rest/commits/commits#compare-two-commits, checked 2026-11-19.
-// Only the fields the adapter and a reader of the reply need; commits and files stay empty.
-
 const COMPARE = /^compare\/([^.]+)\.\.\.(.+)$/;
 const API_ROOT = "https://api.github.com/repos/";
 const WEB_ROOT = "https://github.com/";

@@ -9,7 +9,6 @@ import { DOCS_PAGE, GitHubReplies, MESSAGE, STATUS } from "./github-replies";
 import { GitHubShapes } from "./github-shapes";
 
 // Built from https://docs.github.com/en/rest/repos/contents, /git/refs, /git/trees,
-// /git/commits, /git/blobs, /commits/commits#compare-two-commits and /using-the-rest-api/rate-limits-for-the-rest-api, checked 2026-11-19.
 
 export interface FakeRepoSetup {
   readonly owner: string;

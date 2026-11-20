@@ -12,7 +12,6 @@ export interface SignatureCheck {
   verify(payload: string, header: string | null): Promise<boolean>;
 }
 
-// crypto.subtle.verify compares in constant time, as GitHub asks.
 export class WebhookSignature implements SignatureCheck {
   private key?: Promise<CryptoKey>;
 

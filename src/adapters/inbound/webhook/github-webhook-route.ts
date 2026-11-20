@@ -43,8 +43,6 @@ export interface FullReconcile {
   readonly log: IndexFailureLog;
 }
 
-// Only paths go to the queue: the consumer re-reads each note at the branch head,
-// so a late or repeated delivery can't put an old version back in the index.
 export class GitHubWebhookRoute {
   constructor(
     private readonly signature: SignatureCheck,

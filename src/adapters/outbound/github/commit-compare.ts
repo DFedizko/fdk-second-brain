@@ -15,9 +15,6 @@ export interface CommitHistory {
   descendsFrom(head: string, commit: string): Promise<boolean>;
 }
 
-// "includes" also accepts "diverged" (a force push moved past the commit);
-// "descendsFrom" accepts only a head built on top of the commit.
-// A commit GitHub doesn't know yet is in neither.
 export class CommitCompare implements CommitHistory {
   constructor(private readonly github: GitHubAccess) {}
 

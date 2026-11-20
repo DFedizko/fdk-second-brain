@@ -1,7 +1,5 @@
 import { z } from "zod";
 
-// GitHub lists at most 2048 commits per push and 3000 files per commit:
-// https://docs.github.com/en/webhooks/webhook-events-and-payloads#push, checked 2026-11-19.
 export const MAX_PUSH_COMMITS = 2048;
 export const MAX_COMMIT_FILES = 3000;
 const BRANCH_REF_PREFIX = "refs/heads/";

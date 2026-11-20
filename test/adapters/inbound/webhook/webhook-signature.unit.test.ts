@@ -1,6 +1,5 @@
 import { WebhookSignature } from "../../../../src/adapters/inbound/webhook/webhook-signature";
 
-// The test vector from https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries, checked 2026-11-19.
 const DOCS_SECRET = "It's a Secret to Everybody";
 const DOCS_PAYLOAD = "Hello, World!";
 const DOCS_SIGNATURE = "sha256=757107ea0eb2509fc211221cce984b8a37570b6d7586c22c46f4379c8b043e17";

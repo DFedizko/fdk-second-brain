@@ -2,7 +2,6 @@ import type { PathQueue } from "../../../application/ports/path-queue";
 import type { NotePath } from "../../../domain/note-path";
 import type { IndexMessage } from "../../../shared/contracts/index-message";
 
-// A sendBatch takes at most 100 messages and 256 KB; 50 keeps even 4 KB paths under it.
 export const MAX_BATCH_MESSAGES = 50;
 
 export type BatchSender = Pick<Queue<IndexMessage>, "sendBatch">;

@@ -16,8 +16,6 @@ export interface IndexerFactory {
   over(notes: NoteLookup): NoteIndexer;
 }
 
-// Reads by branch name can lag just after a push, so a pushed path is read at
-// one head commit that was checked to include the push, never by branch name.
 export class IndexPushedNote implements PushedNoteIndexer {
   constructor(
     private readonly head: BranchHead,

@@ -10,8 +10,6 @@ export interface ReconcileResult {
 
 type VersionsByPath = ReadonlyMap<string, string>;
 
-// Fixes are queued, not applied here: the consumer re-reads each path at the head,
-// and a cron run on the free plan has only a few milliseconds of CPU.
 export class ReconcileIndex {
   constructor(
     private readonly notes: NoteCatalog,

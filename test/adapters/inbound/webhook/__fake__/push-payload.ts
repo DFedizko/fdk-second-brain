@@ -1,8 +1,5 @@
 import type { components } from "@octokit/openapi-types";
 
-// Shapes from https://docs.github.com/en/webhooks/webhook-events-and-payloads#push
-// and @octokit/openapi-types "webhook-push", checked 2026-11-19.
-
 export type WebhookPush = components["schemas"]["webhook-push"];
 export type PushCommit = WebhookPush["commits"][number];
 
