@@ -44,6 +44,15 @@ describe("MarkdownChunker", () => {
     expect(chunks).toEqual([{ heading: "Code", seq: 0, text: "```\n# not a heading\n```" }]);
   });
 
+  it("splits at a heading after inline code that only looks like a fence", () => {
+    const chunks = chunker.chunk("# Code\n```js inline``` here\n# Next\nbody");
+
+    expect(chunks).toEqual([
+      { heading: "Code", seq: 0, text: "```js inline``` here" },
+      { heading: "Next", seq: 1, text: "body" },
+    ]);
+  });
+
   it("returns no chunks for an empty note", () => {
     const chunks = chunker.chunk("  \n");
 

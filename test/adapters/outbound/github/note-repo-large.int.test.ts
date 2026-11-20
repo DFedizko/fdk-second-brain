@@ -1,5 +1,6 @@
 import { UnreadableNote } from "../../../../src/domain/errors/unreadable-note";
 import { NotePath } from "../../../../src/domain/note-path";
+import { NoteVersion } from "../../../../src/domain/note-version";
 import type { GitHubNoteRepo } from "../../../../src/adapters/outbound/github/github-note-repo";
 import type { FakeGitHubApi } from "./__fake__/fake-github-api";
 import { NOTES_BRANCH, buildFakeNotesRepo } from "./__fake__/fake-notes-repo";
@@ -83,6 +84,31 @@ describe("GitHubNoteRepo decoding note text", () => {
 
     const moved = api.store.filesAt(NOTES_BRANCH)?.get(PLAN.value) ?? "";
     expect(api.store.bytesOf(moved)).toEqual(INVALID_UTF8);
+  });
+
+  it("moves a note that is not valid UTF-8 without returning garbled text", async () => {
+    api.addEntry(NOTES_BRANCH, INBOX.value, FILE_MODE, INVALID_UTF8);
+
+    const moved = await repository.move(INBOX, PLAN);
+
+    expect(moved.content).toBeUndefined();
+  });
+
+  it("returns the text of a moved note", async () => {
+    await repository.create(INBOX, WITH_BOM);
+
+    const moved = await repository.move(INBOX, PLAN);
+
+    expect(moved.content).toBe(WITH_BOM);
+  });
+
+  it("overwrites a note that is not valid UTF-8", async () => {
+    api.addEntry(NOTES_BRANCH, INBOX.value, FILE_MODE, INVALID_UTF8);
+    const version = api.store.filesAt(NOTES_BRANCH)?.get(INBOX.value) ?? "";
+
+    await repository.write(INBOX, EDITED, NoteVersion.of(version));
+
+    expect(api.filesOn(NOTES_BRANCH)).toMatchObject({ [INBOX.value]: EDITED });
   });
 
   it("refuses a note that is not valid UTF-8 instead of corrupting it", async () => {

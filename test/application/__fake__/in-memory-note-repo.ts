@@ -1,4 +1,5 @@
 import type { NoteRepository } from "../../../src/application/ports/note-repository";
+import { MovedNote } from "../../../src/domain/moved-note";
 import { Note } from "../../../src/domain/note";
 import type { NoteFolder } from "../../../src/domain/note-folder";
 import { NotePath } from "../../../src/domain/note-path";
@@ -38,11 +39,12 @@ export class InMemoryNoteRepo implements NoteRepository {
     this.contents.delete(path.value);
   }
 
-  async move(from: NotePath, to: NotePath): Promise<Note> {
+  async move(from: NotePath, to: NotePath): Promise<MovedNote> {
     const content = this.contentOf(from);
     this.rejectExisting(to);
     this.contents.delete(from.value);
-    return this.store(to, content);
+    const moved = this.store(to, content);
+    return new MovedNote(moved.path, moved.version, moved.content);
   }
 
   private contentOf(path: NotePath): string {

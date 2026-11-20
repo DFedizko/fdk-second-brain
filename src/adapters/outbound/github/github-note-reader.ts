@@ -10,13 +10,10 @@ import type { FailureContext } from "./github-error-translator";
 
 const FILE = "file";
 const BASE64 = "base64";
-const STRICT: TextDecoding = "strict";
 const BRANCH_LEVEL: FailureContext = {};
 
-export type TextDecoding = "strict" | "lossy";
-
 export interface NoteReader {
-  read(path: NotePath, ref: string, decoding?: TextDecoding): Promise<Note>;
+  read(path: NotePath, ref: string): Promise<Note>;
   versionOf(path: NotePath, ref: string): Promise<NoteVersion>;
   exists(path: NotePath, ref: string): Promise<boolean>;
   headCommit(): Promise<string>;
@@ -25,10 +22,10 @@ export interface NoteReader {
 export class GitHubNoteReader implements NoteReader {
   constructor(private readonly github: GitHubAccess) {}
 
-  async read(path: NotePath, ref: string, decoding: TextDecoding = STRICT): Promise<Note> {
+  async read(path: NotePath, ref: string): Promise<Note> {
     const data = await this.getFile(path, ref);
     const encoded = data.encoding === BASE64 ? data.content : await this.readBlob(data.sha);
-    const content = this.decode(path, encoded, decoding === STRICT);
+    const content = this.decode(path, encoded);
     return new Note(path, content, NoteVersion.of(data.sha));
   }
 
@@ -66,9 +63,9 @@ export class GitHubNoteReader implements NoteReader {
     return data;
   }
 
-  private decode(path: NotePath, encoded: string, strict: boolean): string {
+  private decode(path: NotePath, encoded: string): string {
     try {
-      return decodeBase64(encoded, strict);
+      return decodeBase64(encoded);
     } catch (error) {
       if (error instanceof TypeError) throw new UnreadableNote(path.value);
       throw error;

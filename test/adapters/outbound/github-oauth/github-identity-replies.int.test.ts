@@ -8,6 +8,17 @@ const SETTINGS = toOAuthSettings({ ...VALID_ENV });
 const VERIFIER = "a-verifier-of-at-least-forty-three-characters-long";
 const GOOD_TOKEN = { access_token: "gho_abc", scope: "", token_type: "bearer" };
 const GOOD_USER = { login: "octo-cat", id: 583231 };
+const OK = 200;
+const HTML_PAGE = "<html>Unicorn!</html>";
+const SCHEMA_ERROR = "ZodError";
+const PARSE_ERROR = "SyntaxError";
+
+async function failureOf(action: Promise<unknown>): Promise<unknown> {
+  return action.then(
+    () => undefined,
+    (error: unknown) => error,
+  );
+}
 
 const BAD_TOKEN_REPLIES: ReadonlyArray<[string, unknown]> = [
   ["null", null],
@@ -39,6 +50,23 @@ describe("GitHubIdentity with unexpected GitHub replies", () => {
     const identify = identity.identify("code", VERIFIER);
 
     await expect(identify).rejects.toThrow(SignInFailedError);
+  });
+
+  it("keeps why a reply was rejected as the cause of the failure", async () => {
+    const identity = new GitHubIdentity(SETTINGS, scriptedGitHub({}, GOOD_USER));
+
+    const error = await failureOf(identity.identify("code", VERIFIER));
+
+    expect(error).toMatchObject({ cause: { name: SCHEMA_ERROR } });
+  });
+
+  it("keeps the parse error as the cause when a reply is not JSON", async () => {
+    const page = () => Promise.resolve(new Response(HTML_PAGE, { status: OK }));
+    const identity = new GitHubIdentity(SETTINGS, page);
+
+    const error = await failureOf(identity.identify("code", VERIFIER));
+
+    expect(error).toMatchObject({ cause: { name: PARSE_ERROR } });
   });
 
   it("identifies the user from well-formed replies", async () => {

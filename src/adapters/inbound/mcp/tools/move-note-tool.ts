@@ -1,7 +1,7 @@
 import type { CallToolResult } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import type { MoveNoteInput } from "../../../../application/use-cases/move-note";
-import type { NoteView } from "../../../../application/use-cases/note-view";
+import type { MovedNoteView } from "../../../../application/use-cases/note-view";
 import type { ToolReplies } from "../tool-results";
 import type { ToolCallRunner } from "../tool-runner";
 import { NoteTool } from "./note-tool";
@@ -21,7 +21,7 @@ export class MoveNoteTool extends NoteTool<typeof SCHEMA> {
   constructor(
     runner: ToolCallRunner,
     private readonly results: ToolReplies,
-    private readonly useCase: UseCase<MoveNoteInput, NoteView>,
+    private readonly useCase: UseCase<MoveNoteInput, MovedNoteView>,
   ) {
     super(runner);
   }

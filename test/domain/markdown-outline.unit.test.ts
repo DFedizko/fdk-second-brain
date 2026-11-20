@@ -82,6 +82,12 @@ describe("MarkdownOutline", () => {
     expect(outline.section("A").content).toBe("## A\n~~~\n```\n~~~");
   });
 
+  it("does not open a fence on a backtick line whose info string has a backtick", () => {
+    const outline = new MarkdownOutline("## A\n```js inline``` here\n## B\nx");
+
+    expect(outline.section("A").content).toBe("## A\n```js inline``` here");
+  });
+
   it("returns the heading as the note writes it", () => {
     const outline = new MarkdownOutline(NOTE);
 

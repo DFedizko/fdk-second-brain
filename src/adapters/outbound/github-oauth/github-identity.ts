@@ -81,9 +81,11 @@ export class GitHubIdentity implements IdentityProvider {
 
   private async readJson<T>(response: Response, shape: z.ZodType<T>, failure: string): Promise<T> {
     if (!response.ok) throw new SignInFailedError(failure);
-    const body: unknown = await response.json().catch(() => undefined);
+    const body: unknown = await response.json().catch((cause: unknown) => {
+      throw new SignInFailedError(failure, { cause });
+    });
     const parsed = shape.safeParse(body);
-    if (!parsed.success) throw new SignInFailedError(failure);
+    if (!parsed.success) throw new SignInFailedError(failure, { cause: parsed.error });
     return parsed.data;
   }
 

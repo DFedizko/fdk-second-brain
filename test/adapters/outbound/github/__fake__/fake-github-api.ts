@@ -2,6 +2,7 @@ import { Octokit } from "@octokit/rest";
 import { SILENT_LOG } from "../../../../../src/adapters/outbound/github/silent-log";
 import { ContentsRoutes } from "./contents-routes";
 import { FakeGitStore } from "./fake-git-store";
+import { FirstCommitRaces, type FakeFiles } from "./first-commit-races";
 import type { FakeLimits, FakeRepoParts, FakeRoute } from "./fake-route";
 import { GitDataRoutes } from "./git-data-routes";
 import { DOCS_PAGE, GitHubReplies, MESSAGE, STATUS } from "./github-replies";
@@ -53,6 +54,8 @@ export class FakeGitHubApi {
   private refRaces = 0;
   private contentRaces = 0;
   private refDrops = false;
+  private readonly races = new FirstCommitRaces(this.store);
+  private emptyBranchConflict = false;
   private readonly limits: FakeLimits = { truncateTrees: false };
   readonly served: number[] = [];
 
@@ -73,8 +76,11 @@ export class FakeGitHubApi {
   readonly fetch = async (input: string | URL | Request, init?: RequestInit) => {
     const request = new Request(input, init);
     if (this.outage === "network") throw new TypeError(NETWORK_FAILURE);
-    const body = request.body ? await request.json() : {};
-    const response = this.answer(request, body as Record<string, unknown>);
+    const body: Record<string, unknown> = request.body ? await request.json() : {};
+    const step = { method: request.method, path: new URL(request.url).pathname, body };
+    this.races.beforeRequest(step);
+    const response = this.answer(request, body);
+    this.races.afterReply({ ...step, status: response.status });
     this.served.push(response.status);
     return response;
   };
@@ -118,6 +124,24 @@ export class FakeGitHubApi {
 
   commitDuringFileWrites(times: number): void {
     this.contentRaces = times;
+  }
+
+  get raceOnce(): FirstCommitRaces {
+    return this.races;
+  }
+
+  seedAllBranches(seed: FakeFiles): void {
+    const commit = this.store.addCommit(this.store.addTree(this.blobsOf(seed)), [], SEED_MESSAGE);
+    this.setup.branches.forEach((branch) => this.store.setRef(branch, commit.sha));
+  }
+
+  commitFiles(branch: string, added: FakeFiles): void {
+    const files = new Map([...(this.store.filesAt(branch) ?? []), ...this.blobsOf(added)]);
+    this.store.advance(branch, files, `${ADD_MESSAGE} ${Object.keys(added).join(" ")}`);
+  }
+
+  rejectBranchWritesAsEmpty(): void {
+    this.emptyBranchConflict = true;
   }
 
   truncateTrees(): void {
@@ -186,6 +210,8 @@ export class FakeGitHubApi {
 
   // Checked 2026-11-19: Git data endpoints answer 409 on an empty repository, reading
   // contents answers 404, and creating a file through the contents API makes the first commit.
+  // Checked 2026-11-20: the contents PUT documents both 404 and 409, so a write naming a
+  // branch that the empty repository lacks can answer either.
   private emptyRepoReply(
     request: Request,
     route: string,
@@ -194,6 +220,9 @@ export class FakeGitHubApi {
   ): Response {
     if (GIT_DATA.test(route)) {
       return this.replies.error(STATUS.conflict, MESSAGE.emptyRepo, DOCS_PAGE.root, headers);
+    }
+    if (request.method === PUT && body.branch !== undefined && this.emptyBranchConflict) {
+      return this.replies.error(STATUS.conflict, MESSAGE.emptyRepo, DOCS_PAGE.contents, headers);
     }
     if (request.method === PUT) return this.dispatch(request, route, body, headers);
     return this.replies.error(STATUS.notFound, MESSAGE.emptyContents, DOCS_PAGE.contents, headers);
@@ -253,10 +282,12 @@ export class FakeGitHubApi {
 
   private seedBranches(): void {
     if (this.setup.empty) return;
-    const files = new Map(
-      Object.entries(this.setup.seed).map(([path, content]) => [path, this.store.addBlob(content)]),
+    this.seedAllBranches(this.setup.seed);
+  }
+
+  private blobsOf(files: FakeFiles): Map<string, string> {
+    return new Map(
+      Object.entries(files).map(([path, content]) => [path, this.store.addBlob(content)]),
     );
-    const commit = this.store.addCommit(this.store.addTree(files), [], SEED_MESSAGE);
-    this.setup.branches.forEach((branch) => this.store.setRef(branch, commit.sha));
   }
 }

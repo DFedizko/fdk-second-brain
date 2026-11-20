@@ -126,6 +126,16 @@ const MORE_INVALID_VALUES: ReadonlyArray<[EnvName, string]> = [
   ["PUBLIC_URL", "https://user:pass@second-brain.example"],
   ["GITHUB_OAUTH_URL", "https://github.com?x=1"],
   ["GITHUB_OAUTH_URL", "https://github.com/login"],
+  ["PUBLIC_URL", "https://second-brain.example\\evil.example"],
+  ["PUBLIC_URL", "https://second-brain.example:0"],
+  ["PUBLIC_URL", "https://second-brain.example:65536"],
+  ["PUBLIC_URL", "https://second-brain.example:"],
+  ["PUBLIC_URL", "https://second-brain.example:08443"],
+  ["PUBLIC_URL", "https://second-brain.example:port"],
+  ["PUBLIC_URL", "http://localhost:99999"],
+  ["GITHUB_OAUTH_URL", "https://github.com\\login"],
+  ["GITHUB_OAUTH_URL", "https://github.com:70000"],
+  ["GITHUB_OAUTH_URL", "https://GitHub.com"],
   ["GITHUB_WEBHOOK_SECRET", " ".repeat(SECRET_LENGTH)],
   ["GITHUB_WEBHOOK_SECRET", "a".repeat(SECRET_LENGTH - 1) + "\n"],
   ["GITHUB_WEBHOOK_SECRET", "a".repeat(SECRET_LENGTH) + "\n"],
@@ -143,6 +153,9 @@ const ACCEPTED_VALUES: ReadonlyArray<[EnvName, string]> = [
   ["GITHUB_API_URL", "https://github.example.com/api/v3"],
   ["PUBLIC_URL", "http://localhost:8787"],
   ["GITHUB_OAUTH_URL", "http://127.0.0.1:9000"],
+  ["PUBLIC_URL", "https://second-brain.example:8443"],
+  ["PUBLIC_URL", "https://second-brain.example:65535"],
+  ["GITHUB_OAUTH_URL", "https://github.example.com:1"],
 ];
 
 const REQUIRED_NAMES = Object.keys(MISSING_MESSAGES) as RequiredName[];
