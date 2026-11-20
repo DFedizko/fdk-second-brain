@@ -25,8 +25,8 @@ const MISSING_MESSAGES: Record<RequiredName, string> = {
   GITHUB_CLIENT_ID: "GITHUB_CLIENT_ID is missing: set it to the Client ID of the GitHub OAuth app.",
   GITHUB_CLIENT_SECRET:
     "GITHUB_CLIENT_SECRET is missing: set it to a client secret of the GitHub OAuth app.",
-  OWNER_GITHUB_LOGIN:
-    "OWNER_GITHUB_LOGIN is missing: set it to the GitHub login of the only account allowed to sign in.",
+  OWNER_GITHUB_ID:
+    "OWNER_GITHUB_ID is missing: set it to the numeric GitHub user ID of the only account allowed to sign in (see https://api.github.com/users/<login>).",
   GITHUB_WEBHOOK_SECRET:
     "GITHUB_WEBHOOK_SECRET is missing: set it to the secret of the notes repository's push webhook.",
   PUBLIC_URL:
@@ -70,9 +70,9 @@ const INVALID_CASES: ReadonlyArray<[EnvName, unknown, string]> = [
     "GITHUB_CLIENT_SECRET is invalid: expected a GitHub OAuth app client secret (40 hexadecimal characters).",
   ],
   [
-    "OWNER_GITHUB_LOGIN",
-    "-leading-hyphen",
-    "OWNER_GITHUB_LOGIN is invalid: expected a GitHub login (letters, digits and hyphens, not starting with a hyphen, at most 39 characters).",
+    "OWNER_GITHUB_ID",
+    "octo-cat",
+    "OWNER_GITHUB_ID is invalid: expected a numeric GitHub user ID such as 583231, not a login (see https://api.github.com/users/<login>).",
   ],
   [
     "GITHUB_WEBHOOK_SECRET",
@@ -113,6 +113,11 @@ const MORE_INVALID_VALUES: ReadonlyArray<[EnvName, string]> = [
   ["GITHUB_API_URL", "http://localhost.attacker.example"],
   ["GITHUB_API_URL", "http://127.0.0.1.attacker.example"],
   ["GITHUB_API_URL", "http://10.0.0.5:8787"],
+  ["OWNER_GITHUB_ID", "0"],
+  ["OWNER_GITHUB_ID", "0583231"],
+  ["OWNER_GITHUB_ID", "-583231"],
+  ["OWNER_GITHUB_ID", "583231.5"],
+  ["OWNER_GITHUB_ID", " 583231"],
   ["PUBLIC_URL", "https://second-brain.example/"],
   ["PUBLIC_URL", "https://second-brain.example/mcp"],
   ["PUBLIC_URL", "http://second-brain.example"],
@@ -123,8 +128,8 @@ const MORE_INVALID_VALUES: ReadonlyArray<[EnvName, string]> = [
 ];
 
 const ACCEPTED_VALUES: ReadonlyArray<[EnvName, string]> = [
-  ["OWNER_GITHUB_LOGIN", "legacy--login"],
-  ["OWNER_GITHUB_LOGIN", "legacy-"],
+  ["OWNER_GITHUB_ID", "1"],
+  ["OWNER_GITHUB_ID", "1234567890123"],
   ["NOTES_REPO_OWNER", "legacy--org"],
   ["NOTES_BRANCH", "notes/v1.2-draft"],
   ["GITHUB_API_URL", "http://127.0.0.1:8787"],

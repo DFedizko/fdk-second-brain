@@ -8,7 +8,7 @@ import { SignInClient, WORKER_ORIGIN } from "../oauth/sign-in-client";
 import { McpTestClient } from "./mcp-test-client";
 
 const CALLBACK_PATH = "/callback";
-export const OWNER = { login: VALID_ENV.OWNER_GITHUB_LOGIN, id: 583231 };
+export const OWNER = { login: "octo-cat", id: Number(VALID_ENV.OWNER_GITHUB_ID) };
 
 export type NoteSeed = Readonly<Record<string, string>>;
 

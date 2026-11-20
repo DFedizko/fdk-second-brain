@@ -6,7 +6,7 @@ import { FakeGitHubOAuth } from "./__fake__/fake-github-oauth";
 
 const SETTINGS = toOAuthSettings({ ...VALID_ENV });
 const CALLBACK_URL = `${VALID_ENV.PUBLIC_URL}/callback`;
-const OWNER = { login: VALID_ENV.OWNER_GITHUB_LOGIN, id: 583231 };
+const OWNER = { login: "octo-cat", id: Number(VALID_ENV.OWNER_GITHUB_ID) };
 const STATE = "opaque-state";
 const VERIFIER = "a-verifier-of-at-least-forty-three-characters-long";
 const WRONG_SECRET = "ffffffffffffffffffffffffffffffffffffffff";

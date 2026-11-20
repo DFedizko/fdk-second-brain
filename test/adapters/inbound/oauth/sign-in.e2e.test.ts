@@ -8,6 +8,7 @@ const FOUND = 302;
 const OK = 200;
 const SERVER_NAME = "second-brain";
 const STRANGER = { login: "octo-dog", id: 777 };
+const LOGIN_SQUATTER = { login: OWNER.login, id: 999 };
 const MADE_UP_TOKEN = "not-a-real-token";
 const RESOURCE_METADATA = `${WORKER_ORIGIN}/.well-known/oauth-protected-resource/mcp`;
 
@@ -76,6 +77,22 @@ describe("signing in to the MCP server", () => {
     const response = await stack.signInClient().signIn();
 
     expect([response.status, response.headers.get("location")]).toEqual([FORBIDDEN, null]);
+  });
+
+  it("refuses someone who took over the owner's old login", async () => {
+    stack.oauth.signInAs(LOGIN_SQUATTER);
+
+    const response = await stack.signInClient().signIn();
+
+    expect([response.status, response.headers.get("location")]).toEqual([FORBIDDEN, null]);
+  });
+
+  it("still admits the owner after a rename", async () => {
+    stack.oauth.signInAs({ login: "renamed-octo", id: OWNER.id });
+
+    const response = await stack.signInClient().signIn();
+
+    expect(new URL(response.headers.get("location") ?? "").searchParams.has("code")).toBe(true);
   });
 
   it("returns access_denied to the client when the user denies consent", async () => {

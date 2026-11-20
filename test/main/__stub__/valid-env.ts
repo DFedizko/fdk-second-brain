@@ -6,7 +6,7 @@ export const VALID_ENV = {
   GITHUB_API_URL: "https://api.github.com",
   GITHUB_CLIENT_ID: "Ov23liAAAAAAAAAAAAAA",
   GITHUB_CLIENT_SECRET: "0123456789abcdef0123456789abcdef01234567",
-  OWNER_GITHUB_LOGIN: "octo-cat",
+  OWNER_GITHUB_ID: "583231",
   GITHUB_WEBHOOK_SECRET: "webhook-secret-of-at-least-32-chars",
   PUBLIC_URL: "https://second-brain.example",
   GITHUB_OAUTH_URL: "https://github.com",
