@@ -33,6 +33,14 @@ describe("GitHubNoteRepo on an empty repository", () => {
     expect(api.filesOn(NOTES_BRANCH)).toEqual({ [INBOX.value]: CONTENT });
   });
 
+  it("creates the first note when GitHub answers that the repository is empty", async () => {
+    api.rejectBranchWritesAsEmpty();
+
+    await repository.create(INBOX, CONTENT);
+
+    expect(api.filesOn(NOTES_BRANCH)).toEqual({ [INBOX.value]: CONTENT });
+  });
+
   it("puts both of two first notes created at once on the configured branch", async () => {
     const other = connectRepo(api);
 

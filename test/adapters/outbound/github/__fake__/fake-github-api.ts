@@ -2,6 +2,7 @@ import { Octokit } from "@octokit/rest";
 import { SILENT_LOG } from "../../../../../src/adapters/outbound/github/silent-log";
 import { ContentsRoutes } from "./contents-routes";
 import { FakeGitStore } from "./fake-git-store";
+import { FirstCommitRaces, type FakeFiles } from "./first-commit-races";
 import type { FakeLimits, FakeRepoParts, FakeRoute } from "./fake-route";
 import { GitDataRoutes } from "./git-data-routes";
 import { DOCS_PAGE, GitHubReplies, MESSAGE, STATUS } from "./github-replies";
@@ -53,8 +54,10 @@ export class FakeGitHubApi {
   private refRaces = 0;
   private contentRaces = 0;
   private refDrops = false;
-  private firstNoteRace?: Readonly<Record<string, string>>;
-  private firstCommitRace?: Readonly<Record<string, string>>;
+  private readonly firstCommits = new FirstCommitRaces(this.store, (files) =>
+    this.seedFiles(files),
+  );
+  private emptyBranchConflict = false;
   private readonly limits: FakeLimits = { truncateTrees: false };
   readonly served: number[] = [];
 
@@ -76,9 +79,9 @@ export class FakeGitHubApi {
     const request = new Request(input, init);
     if (this.outage === "network") throw new TypeError(NETWORK_FAILURE);
     const body = request.body ? await request.json() : {};
-    this.raceFirstCommit(request.method, body as Record<string, unknown>);
+    this.firstCommits.beforeRequest(request.method, body as Record<string, unknown>);
     const response = this.answer(request, body as Record<string, unknown>);
-    this.raceFirstNote(request.method, response.status);
+    this.firstCommits.afterReply(request.method, response.status);
     this.served.push(response.status);
     return response;
   };
@@ -124,12 +127,16 @@ export class FakeGitHubApi {
     this.contentRaces = times;
   }
 
-  createFirstNoteAfterBranchMiss(files: Readonly<Record<string, string>>): void {
-    this.firstNoteRace = files;
+  createFirstNoteAfterBranchMiss(files: FakeFiles): void {
+    this.firstCommits.landAfterBranchMiss(files);
   }
 
-  createFirstNoteBeforeFirstCommit(files: Readonly<Record<string, string>>): void {
-    this.firstCommitRace = files;
+  createFirstNoteBeforeFirstCommit(files: FakeFiles): void {
+    this.firstCommits.landBeforeFirstCommit(files);
+  }
+
+  rejectBranchWritesAsEmpty(): void {
+    this.emptyBranchConflict = true;
   }
 
   truncateTrees(): void {
@@ -175,20 +182,6 @@ export class FakeGitHubApi {
     this.store.advance(branch, this.store.filesAt(branch) ?? new Map(), RACING_MESSAGE);
   }
 
-  private raceFirstNote(method: string, status: number): void {
-    const files = this.firstNoteRace;
-    if (!files || method !== PUT || status !== STATUS.notFound) return;
-    this.firstNoteRace = undefined;
-    this.seedFiles(files);
-  }
-
-  private raceFirstCommit(method: string, body: Record<string, unknown>): void {
-    const files = this.firstCommitRace;
-    if (!files || method !== PUT || body.branch !== undefined || this.store.hasRefs()) return;
-    this.firstCommitRace = undefined;
-    this.seedFiles(files);
-  }
-
   private raceFileWrite(
     method: string,
     route: string,
@@ -212,6 +205,8 @@ export class FakeGitHubApi {
 
   // Checked 2026-11-19: Git data endpoints answer 409 on an empty repository, reading
   // contents answers 404, and creating a file through the contents API makes the first commit.
+  // Checked 2026-11-20: the contents PUT documents both 404 and 409, so a write naming a
+  // branch that the empty repository lacks can answer either.
   private emptyRepoReply(
     request: Request,
     route: string,
@@ -220,6 +215,9 @@ export class FakeGitHubApi {
   ): Response {
     if (GIT_DATA.test(route)) {
       return this.replies.error(STATUS.conflict, MESSAGE.emptyRepo, DOCS_PAGE.root, headers);
+    }
+    if (request.method === PUT && body.branch !== undefined && this.emptyBranchConflict) {
+      return this.replies.error(STATUS.conflict, MESSAGE.emptyRepo, DOCS_PAGE.contents, headers);
     }
     if (request.method === PUT) return this.dispatch(request, route, body, headers);
     return this.replies.error(STATUS.notFound, MESSAGE.emptyContents, DOCS_PAGE.contents, headers);
@@ -282,7 +280,7 @@ export class FakeGitHubApi {
     this.seedFiles(this.setup.seed);
   }
 
-  private seedFiles(seed: Readonly<Record<string, string>>): void {
+  private seedFiles(seed: FakeFiles): void {
     const files = new Map(
       Object.entries(seed).map(([path, content]) => [path, this.store.addBlob(content)]),
     );
