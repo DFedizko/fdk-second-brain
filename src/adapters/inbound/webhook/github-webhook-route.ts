@@ -3,6 +3,7 @@ import type {
   QueueNoteChangesResult,
 } from "../../../application/use-cases/queue-note-changes";
 import type { BackgroundTasks } from "../../../application/ports/background-tasks";
+import type { IndexFailureLog } from "../../../application/ports/index-failure-log";
 import type { ReconcileResult } from "../../../application/use-cases/reconcile-index";
 import { PUSH_SCHEMA, PushEvent } from "./push-event";
 import type { SignatureCheck } from "./webhook-signature";
@@ -10,6 +11,7 @@ import type { SignatureCheck } from "./webhook-signature";
 export { MAX_PUSH_COMMITS } from "./push-event";
 
 export const WEBHOOK_PATH = "/webhooks/github";
+export const RECONCILE_LABEL = "full reconciliation after a push";
 
 const POST = "POST";
 const PUSH = "push";
@@ -35,14 +37,19 @@ export interface Reconciler {
   execute(): Promise<ReconcileResult>;
 }
 
+export interface FullReconcile {
+  readonly reconciler: Reconciler;
+  readonly background: BackgroundTasks;
+  readonly log: IndexFailureLog;
+}
+
 // Only paths go to the queue: the consumer re-reads each note at the branch head,
 // so a late or repeated delivery can't put an old version back in the index.
 export class GitHubWebhookRoute {
   constructor(
     private readonly signature: SignatureCheck,
     private readonly changes: ChangeQueue,
-    private readonly reconciler: Reconciler,
-    private readonly background: BackgroundTasks,
+    private readonly fallback: FullReconcile,
     private readonly branch: string,
   ) {}
 
@@ -61,7 +68,7 @@ export class GitHubWebhookRoute {
   private async handlePush(push: PushEvent): Promise<Response> {
     if (!push.isTo(this.branch) || push.deletesBranch) return this.reply(STATUS.ignored);
     if (push.listsEveryChange) await this.queueChanges(push);
-    else this.background.runInBackground(() => this.reconcile());
+    else this.fallback.background.runInBackground(() => this.reconcile());
     return this.reply(STATUS.accepted);
   }
 
@@ -70,7 +77,10 @@ export class GitHubWebhookRoute {
   }
 
   private async reconcile(): Promise<void> {
-    await this.reconciler.execute();
+    await this.fallback.reconciler.execute().then(
+      () => undefined,
+      (error: unknown) => this.fallback.log.report({ path: RECONCILE_LABEL, error }),
+    );
   }
 
   private isJson(request: Request): boolean {

@@ -1,11 +1,15 @@
 import {
   GitHubWebhookRoute,
   MAX_PUSH_COMMITS,
+  RECONCILE_LABEL,
 } from "../../../../src/adapters/inbound/webhook/github-webhook-route";
 import { WebhookSignature } from "../../../../src/adapters/inbound/webhook/webhook-signature";
 import { FakeGitHubWebhook, WEBHOOK_URL } from "./__fake__/fake-github-webhook";
 import { buildPushPayload } from "./__fake__/push-payload";
 import { ManualBackgroundTasks } from "../../../application/use-cases/__fake__/manual-background-tasks";
+import { NotesUnavailable } from "../../../../src/domain/errors/notes-unavailable";
+import { SpyIndexFailureLog } from "../../../__spy__/spy-index-failure-log";
+import { FailingReconciler } from "./__stub__/failing-reconciler";
 import { SpyChangeQueue } from "./__spy__/spy-change-queue";
 import { SpyReconciler } from "./__spy__/spy-reconciler";
 
@@ -27,6 +31,7 @@ describe("GitHubWebhookRoute", () => {
   let changes: SpyChangeQueue;
   let reconciler: SpyReconciler;
   let background: ManualBackgroundTasks;
+  let log: SpyIndexFailureLog;
   let route: GitHubWebhookRoute;
   const github = new FakeGitHubWebhook(SECRET);
 
@@ -34,11 +39,11 @@ describe("GitHubWebhookRoute", () => {
     changes = new SpyChangeQueue();
     reconciler = new SpyReconciler();
     background = new ManualBackgroundTasks();
+    log = new SpyIndexFailureLog();
     route = new GitHubWebhookRoute(
       new WebhookSignature({ secret: SECRET }),
       changes,
-      reconciler,
-      background,
+      { reconciler, background, log },
       BRANCH,
     );
   });
@@ -179,5 +184,20 @@ describe("GitHubWebhookRoute", () => {
       status: ACCEPTED,
       runs: 0,
     });
+  });
+
+  it("logs a reconciliation that failed after the reply", async () => {
+    const error = new NotesUnavailable();
+    const failing = new GitHubWebhookRoute(
+      new WebhookSignature({ secret: SECRET }),
+      changes,
+      { reconciler: new FailingReconciler(error), background, log },
+      BRANCH,
+    );
+    await failing.fetch(github.push({ branch: BRANCH, forced: true, commits: [] }));
+
+    await background.runQueued();
+
+    expect(log.reported).toEqual([{ path: RECONCILE_LABEL, error }]);
   });
 });

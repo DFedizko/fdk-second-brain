@@ -135,4 +135,13 @@ describe("IndexQueueConsumer", () => {
       logged: [],
     });
   });
+
+  it("logs a branch that is still behind on a later attempt", async () => {
+    const batch = FakeMessageBatch.of([{ path: PLAN, commit: COMMIT }], THIRD_ATTEMPT);
+    const behind = new BranchBehind(COMMIT);
+
+    await new IndexQueueConsumer(new FailingNoteIndexer(behind), log).handle(batch);
+
+    expect(log.reported).toEqual([{ path: PLAN, error: behind }]);
+  });
 });

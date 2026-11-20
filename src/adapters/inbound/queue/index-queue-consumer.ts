@@ -52,9 +52,13 @@ export class IndexQueueConsumer {
   }
 
   private handleFailure(message: Message<unknown>, path: string, error: unknown): void {
-    if (!(error instanceof BranchBehind)) this.log.report({ path, error });
+    if (!this.isFirstWait(message, error)) this.log.report({ path, error });
     if (error instanceof InvalidPath) return message.ack();
     message.retry({ delaySeconds: this.retryDelay(message.attempts, error) });
+  }
+
+  private isFirstWait(message: Message<unknown>, error: unknown): boolean {
+    return error instanceof BranchBehind && message.attempts <= FIRST_ATTEMPT;
   }
 
   private retryDelay(attempts: number, error: unknown): number {
