@@ -25,6 +25,8 @@ const ORIGIN_URL = new RegExp(`^${URL_ORIGIN}$`);
 const DEFAULT_OAUTH_URL = "https://github.com";
 const PUBLIC_URL_SAMPLE = "https://second-brain.example.workers.dev";
 const LOOPBACK_RULE = "(http is allowed only for localhost, 127.0.0.1 or [::1]).";
+const USER_ID = /^[1-9]\d*$/;
+const FIND_USER_ID = "see https://api.github.com/users/<login>";
 const CLIENT_ID = /^[A-Za-z0-9]+$/;
 const CLIENT_SECRET = /^[0-9a-fA-F]{40}$/;
 const LONG_SECRET = /^\S{32,}$/;
@@ -97,11 +99,11 @@ export const ENV_SCHEMA = z.object(
       expected: "a GitHub OAuth app client secret (40 hexadecimal characters).",
       pattern: CLIENT_SECRET,
     }),
-    OWNER_GITHUB_LOGIN: requiredEnvField({
-      name: "OWNER_GITHUB_LOGIN",
-      whenMissing: "set it to the GitHub login of the only account allowed to sign in.",
-      expected: `a GitHub login (${LOGIN_RULES}).`,
-      pattern: GITHUB_LOGIN,
+    OWNER_GITHUB_ID: requiredEnvField({
+      name: "OWNER_GITHUB_ID",
+      whenMissing: `set it to the numeric GitHub user ID of the only account allowed to sign in (${FIND_USER_ID}).`,
+      expected: `a numeric GitHub user ID such as 583231, not a login (${FIND_USER_ID}).`,
+      pattern: USER_ID,
     }),
     GITHUB_WEBHOOK_SECRET: requiredEnvField({
       name: "GITHUB_WEBHOOK_SECRET",

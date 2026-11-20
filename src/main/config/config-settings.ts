@@ -17,7 +17,7 @@ export function toOAuthSettings(config: AppConfig): OAuthSettings {
   return {
     clientId: config.GITHUB_CLIENT_ID,
     clientSecret: config.GITHUB_CLIENT_SECRET,
-    ownerLogin: config.OWNER_GITHUB_LOGIN,
+    ownerId: config.OWNER_GITHUB_ID,
     publicUrl: config.PUBLIC_URL,
     oauthUrl: config.GITHUB_OAUTH_URL,
     apiUrl: config.GITHUB_API_URL,

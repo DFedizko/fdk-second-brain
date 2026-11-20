@@ -16,7 +16,7 @@ import { SignInRouter } from "./sign-in-router";
 
 export function createOAuthModule(settings: OAuthSettings): ContainerModule {
   return new ContainerModule(({ bind }) => {
-    bind(OAUTH.policy).toConstantValue(new OwnerGate(settings.ownerLogin));
+    bind(OAUTH.policy).toConstantValue(new OwnerGate(settings.ownerId));
     bind(OAUTH.pkce).toConstantValue(new PkceGenerator());
     bind(OAUTH.pages).toConstantValue(new SignInPages());
     bind(OAUTH.replies).toConstantValue(new HtmlReplies());

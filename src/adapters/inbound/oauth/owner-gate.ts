@@ -5,13 +5,9 @@ export interface AccessPolicy {
 }
 
 export class OwnerGate implements AccessPolicy {
-  private readonly owner: string;
-
-  constructor(ownerLogin: string) {
-    this.owner = ownerLogin.toLowerCase();
-  }
+  constructor(private readonly ownerId: string) {}
 
   admits(user: SignedInUser): boolean {
-    return user.login.toLowerCase() === this.owner;
+    return user.id === this.ownerId;
   }
 }
