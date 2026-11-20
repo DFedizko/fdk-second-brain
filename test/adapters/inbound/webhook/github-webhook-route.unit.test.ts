@@ -1,6 +1,7 @@
 import {
   GitHubWebhookRoute,
   MAX_PUSH_COMMITS,
+  QUEUE_LABEL,
   RECONCILE_LABEL,
 } from "../../../../src/adapters/inbound/webhook/github-webhook-route";
 import { WebhookSignature } from "../../../../src/adapters/inbound/webhook/webhook-signature";
@@ -9,6 +10,7 @@ import { buildPushPayload } from "./__fake__/push-payload";
 import { ManualBackgroundTasks } from "../../../application/use-cases/__fake__/manual-background-tasks";
 import { NotesUnavailable } from "../../../../src/domain/errors/notes-unavailable";
 import { SpyIndexFailureLog } from "../../../__spy__/spy-index-failure-log";
+import { FailingChangeQueue } from "./__stub__/failing-change-queue";
 import { FailingReconciler } from "./__stub__/failing-reconciler";
 import { SpyChangeQueue } from "./__spy__/spy-change-queue";
 import { SpyReconciler } from "./__spy__/spy-reconciler";
@@ -26,6 +28,15 @@ const UNAUTHORIZED = 401;
 const NOT_ALLOWED = 405;
 const UNSUPPORTED = 415;
 const FORM_TYPE = "application/x-www-form-urlencoded";
+const BYTE_MARKER = "projects/marker.md";
+const INVALID_UTF8 = 0xff;
+
+function withInvalidUtf8(json: string): Uint8Array {
+  const bytes = new TextEncoder().encode(json);
+  const at = json.indexOf(BYTE_MARKER);
+  bytes[at] = INVALID_UTF8;
+  return bytes;
+}
 
 describe("GitHubWebhookRoute", () => {
   let changes: SpyChangeQueue;
@@ -129,6 +140,15 @@ describe("GitHubWebhookRoute", () => {
     });
   });
 
+  it("checks the signature over the raw bytes GitHub sent", async () => {
+    const spec = { branch: BRANCH, commits: [{ added: [BYTE_MARKER] }] };
+    const body = withInvalidUtf8(JSON.stringify(buildPushPayload(spec)));
+
+    const response = await route.fetch(github.deliver("push", body));
+
+    expect(response.status).toBe(ACCEPTED);
+  });
+
   it("refuses a request that is not a POST", async () => {
     const response = await route.fetch(new Request(WEBHOOK_URL));
 
@@ -167,6 +187,15 @@ describe("GitHubWebhookRoute", () => {
     expect({ runs: reconciler.runs, calls: changes.calls }).toEqual({ runs: 1, calls: [] });
   });
 
+  it("reconciles at a head that includes the force push", async () => {
+    const spec = { branch: BRANCH, forced: true, commits: [] };
+    await route.fetch(github.push(spec));
+
+    await background.runQueued();
+
+    expect(reconciler.afters).toEqual([buildPushPayload(spec).after]);
+  });
+
   it("tags the queued paths with the push's head commit", async () => {
     const payload = buildPushPayload({ branch: BRANCH, commits: [{ added: [PLAN] }] });
 
@@ -199,5 +228,40 @@ describe("GitHubWebhookRoute", () => {
     await background.runQueued();
 
     expect(log.reported).toEqual([{ path: RECONCILE_LABEL, error }]);
+  });
+
+  describe("when the queue refuses the push", () => {
+    const spec = { branch: BRANCH, commits: [{ added: [PLAN] }] };
+    const error = new Error("queue unavailable");
+    let failing: GitHubWebhookRoute;
+
+    beforeEach(() => {
+      failing = new GitHubWebhookRoute(
+        new WebhookSignature({ secret: SECRET }),
+        new FailingChangeQueue(error),
+        { reconciler, background, log },
+        BRANCH,
+      );
+    });
+
+    it("still accepts the push", async () => {
+      const response = await failing.fetch(github.push(spec));
+
+      expect(response.status).toBe(ACCEPTED);
+    });
+
+    it("logs the refused push", async () => {
+      await failing.fetch(github.push(spec));
+
+      expect(log.reported).toEqual([{ path: QUEUE_LABEL, error }]);
+    });
+
+    it("reconciles at a head that includes the push instead", async () => {
+      await failing.fetch(github.push(spec));
+
+      await background.runQueued();
+
+      expect(reconciler.afters).toEqual([buildPushPayload(spec).after]);
+    });
   });
 });

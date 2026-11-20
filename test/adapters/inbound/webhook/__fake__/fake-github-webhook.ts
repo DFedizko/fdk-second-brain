@@ -32,7 +32,7 @@ export class FakeGitHubWebhook {
     return this.deliver("ping", body, options);
   }
 
-  deliver(event: string, body: string, options: DeliveryOptions = {}): Request {
+  deliver(event: string, body: string | Uint8Array, options: DeliveryOptions = {}): Request {
     const signature = options.signature === undefined ? this.sign(body) : options.signature;
     const headers = new Headers({
       "Content-Type": options.contentType ?? JSON_TYPE,
@@ -47,7 +47,7 @@ export class FakeGitHubWebhook {
     return new Request(this.url, { method: POST, headers, body });
   }
 
-  sign(body: string): string {
+  sign(body: string | Uint8Array): string {
     const hasher = new Bun.CryptoHasher(HASH, this.secret);
     hasher.update(body);
     return SIGNATURE_PREFIX + hasher.digest(HEX);

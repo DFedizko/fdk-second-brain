@@ -1,3 +1,4 @@
+import type { Clock } from "../../../application/ports/clock";
 import type { IndexFailureLog } from "../../../application/ports/index-failure-log";
 import type {
   PushedNoteIndexer,
@@ -6,6 +7,7 @@ import type {
 import { BranchBehind } from "../../../domain/errors/branch-behind";
 import { InvalidPath } from "../../../domain/errors/invalid-path";
 import { NotesRateLimited } from "../../../domain/errors/notes-rate-limited";
+import { UnreadableNote } from "../../../domain/errors/unreadable-note";
 import { z } from "zod";
 
 export const RETRY_DELAY_SECONDS = 30;
@@ -13,6 +15,7 @@ export const MAX_RETRY_DELAY_SECONDS = 3600;
 const BACKOFF_FACTOR = 2;
 const FIRST_ATTEMPT = 1;
 const UNREADABLE_LABEL = "queue message ";
+const MILLIS_PER_SECOND = 1000;
 
 const MESSAGE_SCHEMA = z.object({ path: z.string(), commit: z.string().optional() });
 
@@ -24,6 +27,7 @@ export class IndexQueueConsumer {
   constructor(
     private readonly indexer: PushedNoteIndexer,
     private readonly log: IndexFailureLog,
+    private readonly clock: Clock,
   ) {}
 
   async handle(batch: MessageBatch<unknown>): Promise<void> {
@@ -51,7 +55,7 @@ export class IndexQueueConsumer {
 
   private handleFailure(message: Message<unknown>, path: string, error: unknown): void {
     if (!this.isFirstWait(message, error)) this.log.report({ path, error });
-    if (error instanceof InvalidPath) return message.ack();
+    if (error instanceof InvalidPath || error instanceof UnreadableNote) return message.ack();
     message.retry({ delaySeconds: this.retryDelay(message.attempts, error) });
   }
 
@@ -60,10 +64,15 @@ export class IndexQueueConsumer {
   }
 
   private retryDelay(attempts: number, error: unknown): number {
-    if (error instanceof NotesRateLimited && error.retryAfterSeconds !== undefined) {
-      return Math.min(error.retryAfterSeconds, MAX_RETRY_DELAY_SECONDS);
-    }
+    const limited = error instanceof NotesRateLimited ? this.rateLimitWait(error) : undefined;
     const backoff = RETRY_DELAY_SECONDS * BACKOFF_FACTOR ** (attempts - FIRST_ATTEMPT);
-    return Math.min(backoff, MAX_RETRY_DELAY_SECONDS);
+    return Math.min(limited ?? backoff, MAX_RETRY_DELAY_SECONDS);
+  }
+
+  private rateLimitWait(error: NotesRateLimited): number | undefined {
+    if (error.retryAfterSeconds !== undefined) return error.retryAfterSeconds;
+    if (error.resetsAt === undefined) return undefined;
+    const millis = error.resetsAt.getTime() - this.clock.now().getTime();
+    return Math.max(Math.ceil(millis / MILLIS_PER_SECOND), 0);
   }
 }

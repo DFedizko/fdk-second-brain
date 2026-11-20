@@ -15,6 +15,7 @@ import { InMemorySearchIndex } from "../../application/use-cases/__fake__/in-mem
 import { FixedBranchHead } from "../../application/use-cases/__stub__/fixed-branch-head";
 import { SpyPathQueue } from "../../application/use-cases/__spy__/spy-path-queue";
 import { FixedNoteCatalog } from "../../application/use-cases/__stub__/fixed-note-catalog";
+import { FixedNoteTree } from "../../application/use-cases/__stub__/fixed-note-tree";
 
 const PLAN = "projects/plan.md";
 const VERSION = "1111111111111111111111111111111111111111";
@@ -23,7 +24,7 @@ let queue: SpyPathQueue;
 
 function buildContainer(): Container {
   const container = new Container();
-  container.bind(GITHUB.noteCatalog).toConstantValue(new FixedNoteCatalog({ [PLAN]: VERSION }));
+  container.bind(GITHUB.noteCatalog).toConstantValue(new FixedNoteTree({ [PLAN]: VERSION }));
   container.bind(D1_SEARCH_SYMBOLS.IndexManifest).toConstantValue(new FixedNoteCatalog({}));
   container.bind(QUEUE.pathQueue).toConstantValue(queue);
   container.bind(GITHUB.branchHead).toConstantValue(new FixedBranchHead(new InMemoryNoteRepo()));

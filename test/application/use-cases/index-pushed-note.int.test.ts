@@ -1,10 +1,12 @@
 import { IndexQueueConsumer } from "../../../src/adapters/inbound/queue/index-queue-consumer";
 import { D1SearchIndex } from "../../../src/adapters/outbound/d1-search/d1-search-index";
-import { CommitCompare } from "../../../src/adapters/outbound/github/commit-compare";
+import {
+  BudgetedHeadNotes,
+  REQUESTS_PER_MESSAGE,
+} from "../../../src/adapters/outbound/github/budgeted-head-notes";
 import { GitHubBranchHead } from "../../../src/adapters/outbound/github/github-branch-head";
 import { GitHubErrorTranslator } from "../../../src/adapters/outbound/github/github-error-translator";
 import { GitHubGateway } from "../../../src/adapters/outbound/github/github-gateway";
-import { GitHubNoteReader } from "../../../src/adapters/outbound/github/github-note-reader";
 import { IndexNote } from "../../../src/application/use-cases/index-note";
 import { IndexNoteFactory } from "../../../src/application/use-cases/index-note-factory";
 import { IndexPushedNote } from "../../../src/application/use-cases/index-pushed-note";
@@ -30,6 +32,7 @@ const FILE_MODE = "100644";
 const SECOND_ATTEMPT = 2;
 const REQUESTS_PER_PATH = 4;
 const PLAN_CONTENT = "# Plan\n\nShip the nebula release.\n";
+const NOT_UTF8 = new Uint8Array([0x23, 0x20, 0xff, 0xfe]);
 
 describe("IndexPushedNote on D1 with a branch that lags behind the push", () => {
   let runtime: LocalRuntime | undefined;
@@ -49,9 +52,9 @@ describe("IndexPushedNote on D1 with a branch that lags behind the push", () => 
     const github = new GitHubGateway(api.octokit(GITHUB_CONFIG.token), GITHUB_CONFIG, errors);
     const chunker = new MarkdownChunker();
     const indexNote = new IndexNote(index, connectRepo(api), chunker);
-    const head = new GitHubBranchHead(new GitHubNoteReader(github), new CommitCompare(github));
-    const pushed = new IndexPushedNote(head, new IndexNoteFactory(index, chunker), indexNote);
-    consumer = new IndexQueueConsumer(pushed, log);
+    const head = new GitHubBranchHead(new BudgetedHeadNotes(github, REQUESTS_PER_MESSAGE));
+    const pushed = new IndexPushedNote(head, new IndexNoteFactory(index, chunker));
+    consumer = new IndexQueueConsumer(pushed, log, new FixedClock(FIXED_NOW));
     searchNotes = new SearchNotes(index);
     api.addEntry(NOTES_BRANCH, PLAN, FILE_MODE, PLAN_CONTENT);
     await indexNote.execute({ path: PLAN });
@@ -95,5 +98,19 @@ describe("IndexPushedNote on D1 with a branch that lags behind the push", () => 
     await consumer.handle(FakeMessageBatch.of([{ path: PLAN, commit: deleted }]));
 
     expect(api.served.length - before).toBe(REQUESTS_PER_PATH);
+  });
+
+  it("removes a pushed note that is no longer valid text from search", async () => {
+    api.store.setRef(NOTES_BRANCH, beforeDelete);
+    api.addEntry(NOTES_BRANCH, PLAN, FILE_MODE, NOT_UTF8);
+    const commit = api.store.headOf(NOTES_BRANCH) ?? "";
+    const batch = FakeMessageBatch.of([{ path: PLAN, commit }]);
+
+    await consumer.handle(batch);
+
+    expect({ outcomes: batch.outcomes(), found: await searchPaths() }).toEqual({
+      outcomes: [{ acked: true }],
+      found: [],
+    });
   });
 });

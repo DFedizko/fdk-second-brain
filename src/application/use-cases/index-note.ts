@@ -1,5 +1,6 @@
 import { IndexWriteConflict } from "../../domain/errors/index-write-conflict";
 import { NoteNotFound } from "../../domain/errors/note-not-found";
+import { UnreadableNote } from "../../domain/errors/unreadable-note";
 import type { MarkdownChunker } from "../../domain/markdown-chunker";
 import { Note } from "../../domain/note";
 import { NotePath } from "../../domain/note-path";
@@ -95,7 +96,9 @@ export class IndexNote implements NoteIndexer {
 
   private async syncOnce(path: NotePath, source: NoteSource): Promise<IndexStatus | undefined> {
     const indexed = await this.index.versionOf(path);
-    const note = await source();
+    const note = await source().catch((error: unknown) =>
+      this.dropUnreadable(path, indexed, error),
+    );
     if (note === null) return this.removeIndexed(path, indexed);
     if (indexed?.equals(note.version)) return "unchanged";
     const chunks = this.chunker.chunk(note.content);
@@ -109,6 +112,15 @@ export class IndexNote implements NoteIndexer {
   ): Promise<IndexStatus | undefined> {
     if (indexed === null) return "unchanged";
     return (await this.index.remove(path, indexed)) ? "removed" : undefined;
+  }
+
+  private async dropUnreadable(
+    path: NotePath,
+    indexed: NoteVersion | null,
+    error: unknown,
+  ): Promise<never> {
+    if (error instanceof UnreadableNote) await this.removeIndexed(path, indexed);
+    throw error;
   }
 
   private async readCurrent(path: NotePath): Promise<Note | null> {

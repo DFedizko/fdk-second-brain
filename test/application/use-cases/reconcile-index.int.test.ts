@@ -1,3 +1,4 @@
+import { FixedClock } from "../../__stub__/fixed-clock";
 import { IndexQueueConsumer } from "../../../src/adapters/inbound/queue/index-queue-consumer";
 import { ReconcileIndex } from "../../../src/application/use-cases/reconcile-index";
 import { NotePath } from "../../../src/domain/note-path";
@@ -7,6 +8,7 @@ import { InMemoryNoteCatalog } from "../__fake__/in-memory-note-catalog";
 import { SpyPathQueue } from "./__spy__/spy-path-queue";
 import { StaleIndexRace } from "./stale-index-race";
 
+const NOW = new Date("2026-11-20T12:00:00Z");
 const PLAN = "projects/plan.md";
 const IDEA = "ideas/idea.md";
 const PLAN_CONTENT = "# Plan\n\nShip the nebula release.\n";
@@ -33,7 +35,9 @@ describe("ReconcileIndex on D1", () => {
 
   async function consumeQueued(): Promise<void> {
     const bodies = queue.paths.map((path) => ({ path }));
-    await new IndexQueueConsumer(race.indexer, race.log).handle(FakeMessageBatch.of(bodies));
+    await new IndexQueueConsumer(race.indexer, race.log, new FixedClock(NOW)).handle(
+      FakeMessageBatch.of(bodies),
+    );
   }
 
   it("queues a note written then deleted within moments that stayed in search", async () => {

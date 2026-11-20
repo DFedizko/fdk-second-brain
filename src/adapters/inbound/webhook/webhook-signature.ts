@@ -9,7 +9,7 @@ const VERIFY: ["verify"] = ["verify"];
 const RAW = "raw";
 
 export interface SignatureCheck {
-  verify(payload: string, header: string | null): Promise<boolean>;
+  verify(payload: BufferSource, header: string | null): Promise<boolean>;
 }
 
 export class WebhookSignature implements SignatureCheck {
@@ -17,11 +17,10 @@ export class WebhookSignature implements SignatureCheck {
 
   constructor(private readonly settings: WebhookSettings) {}
 
-  async verify(payload: string, header: string | null): Promise<boolean> {
+  async verify(payload: BufferSource, header: string | null): Promise<boolean> {
     const digest = this.readDigest(header);
     if (digest === null) return false;
-    const data = new TextEncoder().encode(payload);
-    return crypto.subtle.verify(HMAC, await this.importKey(), digest, data);
+    return crypto.subtle.verify(HMAC, await this.importKey(), digest, payload);
   }
 
   private readDigest(header: string | null): Uint8Array<ArrayBuffer> | null {

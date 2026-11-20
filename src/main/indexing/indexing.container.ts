@@ -4,9 +4,9 @@ import { GITHUB } from "../../adapters/outbound/github/github.symbols";
 import { QUEUE } from "../../adapters/outbound/queue/queue.symbols";
 import type { BranchHead } from "../../application/ports/branch-head";
 import type { NoteCatalog } from "../../application/ports/note-catalog";
+import type { NoteTree } from "../../application/ports/note-tree";
 import type { PathQueue } from "../../application/ports/path-queue";
 import type { SearchIndex } from "../../application/ports/search-index";
-import type { NoteIndexer } from "../../application/use-cases/index-note";
 import { IndexNoteFactory } from "../../application/use-cases/index-note-factory";
 import {
   IndexPushedNote,
@@ -30,14 +30,13 @@ export const indexingModule = new ContainerModule(({ bind }) => {
     .inSingletonScope();
   bind(INDEXING.indexPushed)
     .toResolvedValue(
-      (head: BranchHead, indexers: IndexerFactory, indexer: NoteIndexer) =>
-        new IndexPushedNote(head, indexers, indexer),
-      [GITHUB.branchHead, INDEXING.indexerFactory, SEARCH.indexNote],
+      (head: BranchHead, indexers: IndexerFactory) => new IndexPushedNote(head, indexers),
+      [GITHUB.branchHead, INDEXING.indexerFactory],
     )
     .inSingletonScope();
   bind(INDEXING.reconcile)
     .toResolvedValue(
-      (notes: NoteCatalog, index: NoteCatalog, queue: PathQueue) =>
+      (notes: NoteTree, index: NoteCatalog, queue: PathQueue) =>
         new ReconcileIndex(notes, index, queue),
       [GITHUB.noteCatalog, D1_SEARCH_SYMBOLS.IndexManifest, QUEUE.pathQueue],
     )

@@ -1,14 +1,16 @@
-import { CommitCompare } from "../../../../src/adapters/outbound/github/commit-compare";
+import {
+  BudgetedHeadNotes,
+  REQUESTS_PER_MESSAGE,
+} from "../../../../src/adapters/outbound/github/budgeted-head-notes";
 import { GitHubBranchHead } from "../../../../src/adapters/outbound/github/github-branch-head";
 import { GitHubErrorTranslator } from "../../../../src/adapters/outbound/github/github-error-translator";
 import { GitHubGateway } from "../../../../src/adapters/outbound/github/github-gateway";
-import { GitHubNoteReader } from "../../../../src/adapters/outbound/github/github-note-reader";
 import { NoteNotFound } from "../../../../src/domain/errors/note-not-found";
 import { NotesAccessDenied } from "../../../../src/domain/errors/notes-access-denied";
 import { NotePath } from "../../../../src/domain/note-path";
 import { FixedClock } from "../../../__stub__/fixed-clock";
 import type { FakeGitHubApi } from "./__fake__/fake-github-api";
-import { buildFakeNotesRepo, NOTES_BRANCH } from "./__fake__/fake-notes-repo";
+import { buildEmptyNotesRepo, buildFakeNotesRepo, NOTES_BRANCH } from "./__fake__/fake-notes-repo";
 import { FIXED_NOW } from "./__fake__/github-note-repo-on-fake";
 import { GITHUB_CONFIG } from "./__stub__/github-config";
 
@@ -23,7 +25,7 @@ const UNKNOWN_COMMIT = "abcdefabcdefabcdefabcdefabcdefabcdefabcd";
 function connectHead(api: FakeGitHubApi): GitHubBranchHead {
   const errors = new GitHubErrorTranslator(new FixedClock(FIXED_NOW));
   const github = new GitHubGateway(api.octokit(GITHUB_CONFIG.token), GITHUB_CONFIG, errors);
-  return new GitHubBranchHead(new GitHubNoteReader(github), new CommitCompare(github));
+  return new GitHubBranchHead(new BudgetedHeadNotes(github, REQUESTS_PER_MESSAGE));
 }
 
 describe("GitHubBranchHead", () => {
@@ -149,6 +151,37 @@ describe("GitHubBranchHead", () => {
     await head.readerAt(headOf());
 
     expect(api.served.length - before).toBe(1);
+  });
+
+  it("reads the notes at the current head when given no commit", async () => {
+    write(PLAN.value, FIRST);
+    const reader = await head.readerAtHead();
+
+    const note = await reader.read(PLAN);
+
+    expect(note.content).toBe(FIRST);
+  });
+
+  it("keeps reading the head it pinned when given no commit", async () => {
+    write(PLAN.value, FIRST);
+    const withPlan = headOf();
+    const files = new Map(api.store.filesAt(NOTES_BRANCH));
+    files.delete(PLAN.value);
+    api.store.advance(NOTES_BRANCH, files, "Delete plan");
+    const reader = await head.readerAtHead();
+    api.store.setRef(NOTES_BRANCH, withPlan);
+
+    const read = reader.read(PLAN);
+
+    await expect(read).rejects.toThrow(NoteNotFound);
+  });
+
+  it("finds no notes in an empty repository when given no commit", async () => {
+    const reader = await connectHead(buildEmptyNotesRepo()).readerAtHead();
+
+    const read = reader.read(PLAN);
+
+    await expect(read).rejects.toThrow(NoteNotFound);
   });
 
   it("reports other GitHub failures", async () => {

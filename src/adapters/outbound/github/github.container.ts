@@ -9,6 +9,8 @@ import { GitHubGateway, type GitHubAccess } from "./github-gateway";
 import { GitHubNoteMover, type NoteMover } from "./github-note-mover";
 import { GitHubNoteReader, type NoteReader } from "./github-note-reader";
 import { CommitCompare } from "./commit-compare";
+import { BudgetedHeadNotes, REQUESTS_PER_MESSAGE } from "./budgeted-head-notes";
+import type { HeadNotesFactory } from "./head-notes-factory";
 import { GitHubBranchHead } from "./github-branch-head";
 import { GitHubNoteCatalog } from "./github-note-catalog";
 import { GitHubNoteRepo } from "./github-note-repo";
@@ -64,14 +66,18 @@ export function githubContainer(config: GitHubConfig): ContainerModule {
       ) => new GitHubNoteRepo(github, reader, mover, first, pause, restorer),
       [GITHUB.access, GITHUB.reader, GITHUB.mover, GITHUB.firstNote, GITHUB.pause, GITHUB.restorer],
     );
+    bind(GITHUB.headNotes).toResolvedValue(
+      (github: GitHubAccess) => new BudgetedHeadNotes(github, REQUESTS_PER_MESSAGE),
+      [GITHUB.access],
+    );
     bind(GITHUB.branchHead).toResolvedValue(
-      (github: GitHubAccess, reader: NoteReader) =>
-        new GitHubBranchHead(reader, new CommitCompare(github)),
-      [GITHUB.access, GITHUB.reader],
+      (notes: HeadNotesFactory) => new GitHubBranchHead(notes),
+      [GITHUB.headNotes],
     );
     bind(GITHUB.noteCatalog).toResolvedValue(
-      (github: GitHubAccess) => new GitHubNoteCatalog(github),
-      [GITHUB.access],
+      (github: GitHubAccess, reader: NoteReader, pause: RetryPause) =>
+        new GitHubNoteCatalog(github, reader, new CommitCompare(github), pause),
+      [GITHUB.access, GITHUB.reader, GITHUB.pause],
     );
   });
 }
