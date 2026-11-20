@@ -6,6 +6,7 @@ import { GitHubErrorTranslator, type GitHubErrorMapper } from "./github-error-tr
 import { GitHubGateway, type GitHubAccess } from "./github-gateway";
 import { GitHubNoteMover, type NoteMover } from "./github-note-mover";
 import { GitHubNoteReader, type NoteReader } from "./github-note-reader";
+import { GitHubNoteCatalog } from "./github-note-catalog";
 import { GitHubNoteRepo } from "./github-note-repo";
 import { GITHUB } from "./github.symbols";
 import { SILENT_LOG } from "./silent-log";
@@ -42,6 +43,10 @@ export function githubContainer(config: GitHubConfig): ContainerModule {
       (github: GitHubAccess, reader: NoteReader, mover: NoteMover) =>
         new GitHubNoteRepo(github, reader, mover),
       [GITHUB.access, GITHUB.reader, GITHUB.mover],
+    );
+    bind(GITHUB.noteCatalog).toResolvedValue(
+      (github: GitHubAccess) => new GitHubNoteCatalog(github),
+      [GITHUB.access],
     );
   });
 }

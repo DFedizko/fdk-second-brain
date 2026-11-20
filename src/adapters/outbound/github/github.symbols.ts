@@ -1,4 +1,5 @@
 import type { ServiceIdentifier } from "inversify";
+import type { NoteCatalog } from "../../../application/ports/note-catalog";
 import type { NoteRepository } from "../../../application/ports/note-repository";
 import type { Octokit } from "@octokit/rest";
 import type { GitHubConfig } from "./github-config";
@@ -15,4 +16,5 @@ export const GITHUB = {
   reader: Symbol.for("GitHubNoteReader") as ServiceIdentifier<NoteReader>,
   mover: Symbol.for("GitHubNoteMover") as ServiceIdentifier<NoteMover>,
   noteRepository: Symbol.for("NoteRepository") as ServiceIdentifier<NoteRepository>,
+  noteCatalog: Symbol.for("GitHubNoteCatalog") as ServiceIdentifier<NoteCatalog>,
 } as const;
