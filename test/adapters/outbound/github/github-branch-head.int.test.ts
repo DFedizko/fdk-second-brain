@@ -17,6 +17,7 @@ const IDEA = "ideas/idea.md";
 const FILE_MODE = "100644";
 const FIRST = "# Plan\n\nfirst\n";
 const SECOND = "# Plan\n\nsecond\n";
+const HEAD_AND_NOTE_REQUESTS = 2;
 const UNKNOWN_COMMIT = "abcdefabcdefabcdefabcdefabcdefabcdefabcd";
 
 function connectHead(api: FakeGitHubApi): GitHubBranchHead {
@@ -32,6 +33,13 @@ describe("GitHubBranchHead", () => {
   const headOf = () => api.store.headOf(NOTES_BRANCH) ?? "";
   const write = (path: string, content: string) =>
     api.addEntry(NOTES_BRANCH, path, FILE_MODE, content);
+
+  const rewriteHistory = (content: string) =>
+    api.store.addCommit(
+      api.store.addTree(new Map([[PLAN.value, api.store.addBlob(content)]])),
+      [],
+      "Rewrite history",
+    ).sha;
 
   beforeEach(() => {
     api = buildFakeNotesRepo();
@@ -89,9 +97,10 @@ describe("GitHubBranchHead", () => {
     await expect(read).rejects.toThrow(NoteNotFound);
   });
 
-  it("moves on to a newer head the branch reaches before a later read", async () => {
+  it("moves on to a newer head the branch reaches between reads", async () => {
     write(PLAN.value, FIRST);
     const reader = await head.readerAt(headOf());
+    await reader?.read(PLAN);
     const files = new Map(api.store.filesAt(NOTES_BRANCH));
     files.delete(PLAN.value);
     api.store.advance(NOTES_BRANCH, files, "Delete plan");
@@ -101,19 +110,36 @@ describe("GitHubBranchHead", () => {
     await expect(read).rejects.toThrow(NoteNotFound);
   });
 
-  it("follows a force push that moved the branch away from the head it checked", async () => {
+  it("follows a force push that rewrote the pushed commit away", async () => {
     write(PLAN.value, FIRST);
-    const reader = await head.readerAt(headOf());
-    const rewritten = api.store.addCommit(
-      api.store.addTree(new Map([[PLAN.value, api.store.addBlob(SECOND)]])),
-      [],
-      "Rewrite history",
-    );
-    api.store.setRef(NOTES_BRANCH, rewritten.sha);
+    const pushed = headOf();
+    api.store.setRef(NOTES_BRANCH, rewriteHistory(SECOND));
+    const reader = await head.readerAt(pushed);
 
     const note = await reader?.read(PLAN);
 
     expect(note?.content).toBe(SECOND);
+  });
+
+  it("stays on the history it checked when a later branch view diverges", async () => {
+    write(PLAN.value, FIRST);
+    const reader = await head.readerAt(headOf());
+    await reader?.read(PLAN);
+    api.store.setRef(NOTES_BRANCH, rewriteHistory(SECOND));
+
+    const note = await reader?.read(PLAN);
+
+    expect(note?.content).toBe(FIRST);
+  });
+
+  it("reads right after the check without looking up the head again", async () => {
+    write(PLAN.value, FIRST);
+    const before = api.served.length;
+    const reader = await head.readerAt(headOf());
+
+    await reader?.read(PLAN);
+
+    expect(api.served.length - before).toBe(HEAD_AND_NOTE_REQUESTS);
   });
 
   it("checks the head once even when it already is the pushed commit", async () => {
