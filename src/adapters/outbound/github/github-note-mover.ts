@@ -14,7 +14,7 @@ import type { NoteReader, TextDecoding } from "./github-note-reader";
 const BLOB = "blob";
 const FILE_MODE = "100644";
 const EXECUTABLE_MODE = "100755";
-const RECURSIVE = "1";
+const SEPARATOR = "/";
 const MOVE = "Move";
 const MOVE_TO = "to";
 const MOVE_ATTEMPTS = 2;
@@ -87,13 +87,24 @@ export class GitHubNoteMover implements NoteMover {
     return data.sha;
   }
 
-  private async modeOf(path: NotePath, tree: string): Promise<GitFileMode> {
-    const { data } = await this.github.send(BRANCH_LEVEL, (client, repo) =>
-      client.rest.git.getTree({ ...repo, tree_sha: tree, recursive: RECURSIVE }),
+  private async modeOf(path: NotePath, rootTree: string): Promise<GitFileMode> {
+    const segments = path.value.split(SEPARATOR);
+    const folders = segments.slice(0, -1);
+    const folderTree = await folders.reduce(
+      async (tree, folder) => (await this.entryOf(await tree, folder)).sha,
+      Promise.resolve(rootTree),
     );
-    if (data.truncated) throw new NotesUnavailable();
-    const entry = data.tree.find((candidate) => candidate.path === path.value);
-    return entry?.mode === EXECUTABLE_MODE ? EXECUTABLE_MODE : FILE_MODE;
+    const entry = await this.entryOf(folderTree, segments.at(-1) ?? path.value);
+    return entry.mode === EXECUTABLE_MODE ? EXECUTABLE_MODE : FILE_MODE;
+  }
+
+  private async entryOf(tree: string, name: string) {
+    const { data } = await this.github.send(BRANCH_LEVEL, (client, repo) =>
+      client.rest.git.getTree({ ...repo, tree_sha: tree }),
+    );
+    const entry = data.tree.find((candidate) => candidate.path === name);
+    if (!entry?.sha) throw new NotesUnavailable();
+    return { sha: entry.sha, mode: entry.mode };
   }
 
   private async commitTree(tree: string, parent: string, message: string): Promise<string> {
