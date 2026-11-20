@@ -3,6 +3,7 @@ import { ContainerModule } from "inversify";
 import type { Clock } from "../../../application/ports/clock";
 import type { GitHubConfig } from "./github-config";
 import { GitHubErrorTranslator, type GitHubErrorMapper } from "./github-error-translator";
+import { GitHubFirstNote, type FirstNoteWriter } from "./github-first-note";
 import { GitHubGateway, type GitHubAccess } from "./github-gateway";
 import { GitHubNoteMover, type NoteMover } from "./github-note-mover";
 import { GitHubNoteReader, type NoteReader } from "./github-note-reader";
@@ -38,10 +39,14 @@ export function githubContainer(config: GitHubConfig): ContainerModule {
       (github: GitHubAccess, reader: NoteReader) => new GitHubNoteMover(github, reader),
       [GITHUB.access, GITHUB.reader],
     );
+    bind(GITHUB.firstNote).toResolvedValue(
+      (github: GitHubAccess, reader: NoteReader) => new GitHubFirstNote(github, reader),
+      [GITHUB.access, GITHUB.reader],
+    );
     bind(GITHUB.noteRepository).toResolvedValue(
-      (github: GitHubAccess, reader: NoteReader, mover: NoteMover) =>
-        new GitHubNoteRepo(github, reader, mover),
-      [GITHUB.access, GITHUB.reader, GITHUB.mover],
+      (github: GitHubAccess, reader: NoteReader, mover: NoteMover, first: FirstNoteWriter) =>
+        new GitHubNoteRepo(github, reader, mover, first),
+      [GITHUB.access, GITHUB.reader, GITHUB.mover, GITHUB.firstNote],
     );
   });
 }

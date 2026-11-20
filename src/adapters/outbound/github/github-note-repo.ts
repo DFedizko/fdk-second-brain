@@ -12,6 +12,7 @@ import { NoteVersion } from "../../../domain/note-version";
 import { encodeBase64 } from "./base64-text";
 import { EmptyRepository } from "./empty-repository";
 import type { FailureContext } from "./github-error-translator";
+import type { FirstNoteWriter } from "./github-first-note";
 import type { GitHubAccess } from "./github-gateway";
 import type { NoteMover } from "./github-note-mover";
 import type { NoteReader } from "./github-note-reader";
@@ -24,8 +25,8 @@ const UPDATE = "Update";
 const DELETE = "Delete";
 const CONFLICT = 409;
 const NOT_FOUND = 404;
-const REFS_PREFIX = "refs/";
 const FILE_WRITE_ATTEMPTS = 3;
+const FIRST_NOTE_ATTEMPTS = 3;
 const BRANCH_LEVEL: FailureContext = {};
 
 type BranchMoveCheck = (error: unknown) => Promise<boolean>;
@@ -35,6 +36,7 @@ export class GitHubNoteRepo implements NoteRepository {
     private readonly github: GitHubAccess,
     private readonly reader: NoteReader,
     private readonly mover: NoteMover,
+    private readonly firstNote: FirstNoteWriter,
   ) {}
 
   async list(folder: NoteFolder): Promise<NotePath[]> {
@@ -65,19 +67,33 @@ export class GitHubNoteRepo implements NoteRepository {
   }
 
   async create(path: NotePath, content: string): Promise<Note> {
+    return this.createOnBranch(path, content).catch((error: unknown) =>
+      this.createFirstNote(error, path, content, FIRST_NOTE_ATTEMPTS),
+    );
+  }
+
+  private async createOnBranch(path: NotePath, content: string): Promise<Note> {
     return this.retryFileWrite(
       path,
       () => this.putFile(path, content, `${CREATE} ${path.value}`),
       async (error) => this.isBranchConflict(error),
-    ).catch((error: unknown) => this.createFirstNote(error, path, content));
+    );
   }
 
-  private async createFirstNote(error: unknown, path: NotePath, content: string): Promise<Note> {
+  private async createFirstNote(
+    error: unknown,
+    path: NotePath,
+    content: string,
+    attemptsLeft: number,
+  ): Promise<Note> {
     const missing = error instanceof NotesUnavailable && error.status === NOT_FOUND;
-    if (!missing || !(await this.isEmptyRepository())) throw error;
-    const { data } = await this.sendPut(path, content, `${CREATE} ${path.value}`);
-    await this.pointBranchAt(data.commit.sha ?? "");
-    return new Note(path, content, NoteVersion.of(data.content?.sha ?? ""));
+    if (!missing || attemptsLeft <= 1) throw error;
+    if (!(await this.isEmptyRepository())) {
+      return this.createOnBranch(path, content).catch((failure: unknown) =>
+        this.createFirstNote(failure, path, content, attemptsLeft - 1),
+      );
+    }
+    return (await this.firstNote.create(path, content)) ?? this.createOnBranch(path, content);
   }
 
   private async isEmptyRepository(): Promise<boolean> {
@@ -85,22 +101,6 @@ export class GitHubNoteRepo implements NoteRepository {
       () => false,
       (error: unknown) => error instanceof EmptyRepository,
     );
-  }
-
-  private async pointBranchAt(commit: string): Promise<void> {
-    const exists = await this.reader.headCommit().then(
-      () => true,
-      (error: unknown) => this.treatMissingBranchAsAbsent(error),
-    );
-    if (exists) return;
-    await this.github.send(BRANCH_LEVEL, (client, repo) =>
-      client.rest.git.createRef({ ...repo, ref: REFS_PREFIX + this.github.branchRef, sha: commit }),
-    );
-  }
-
-  private treatMissingBranchAsAbsent(error: unknown): boolean {
-    if (error instanceof NotesUnavailable && error.status === NOT_FOUND) return false;
-    throw error;
   }
 
   async write(path: NotePath, content: string, expected: NoteVersion): Promise<Note> {
@@ -169,28 +169,18 @@ export class GitHubNoteRepo implements NoteRepository {
   }
 
   private async putFile(path: NotePath, content: string, message: string, expected?: NoteVersion) {
-    const { data } = await this.sendPut(path, content, message, expected, this.github.branch);
-    return new Note(path, content, NoteVersion.of(data.content?.sha ?? ""));
-  }
-
-  private async sendPut(
-    path: NotePath,
-    content: string,
-    message: string,
-    expected?: NoteVersion,
-    branch?: string,
-  ) {
     const context = { path: path.value, expected: expected?.value };
-    return this.github.send(context, (client, repo) =>
+    const { data } = await this.github.send(context, (client, repo) =>
       client.rest.repos.createOrUpdateFileContents({
         ...repo,
         path: path.value,
         message,
         content: encodeBase64(content),
         sha: expected?.value,
-        branch,
+        branch: this.github.branch,
       }),
     );
+    return new Note(path, content, NoteVersion.of(data.content?.sha ?? ""));
   }
 
   private async deleteFile(path: NotePath, version: NoteVersion): Promise<void> {

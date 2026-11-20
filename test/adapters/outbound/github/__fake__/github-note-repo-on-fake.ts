@@ -1,5 +1,6 @@
 import type { GitHubConfig } from "../../../../../src/adapters/outbound/github/github-config";
 import { GitHubErrorTranslator } from "../../../../../src/adapters/outbound/github/github-error-translator";
+import { GitHubFirstNote } from "../../../../../src/adapters/outbound/github/github-first-note";
 import { GitHubGateway } from "../../../../../src/adapters/outbound/github/github-gateway";
 import { GitHubNoteMover } from "../../../../../src/adapters/outbound/github/github-note-mover";
 import { GitHubNoteReader } from "../../../../../src/adapters/outbound/github/github-note-reader";
@@ -18,5 +19,6 @@ export function connectRepo(
   const errors = new GitHubErrorTranslator(new FixedClock(FIXED_NOW));
   const github = new GitHubGateway(api.octokit(config.token), config, errors);
   const reader = new GitHubNoteReader(github);
-  return new GitHubNoteRepo(github, reader, new GitHubNoteMover(github, reader));
+  const mover = new GitHubNoteMover(github, reader);
+  return new GitHubNoteRepo(github, reader, mover, new GitHubFirstNote(github, reader));
 }
