@@ -15,16 +15,16 @@ import type { FakeGitHubApi } from "./fake-github-api";
 export const FIXED_NOW = new Date("2026-11-19T12:00:00Z");
 
 export function connectRepo(
-  api: FakeGitHubApi,
-  overrides: Partial<GitHubConfig> = {},
-  pause: RetryPause = NO_PAUSE,
+    api: FakeGitHubApi,
+    overrides: Partial<GitHubConfig> = {},
+    pause: RetryPause = NO_PAUSE,
 ): GitHubNoteRepo {
-  const config = { ...GITHUB_CONFIG, ...overrides };
-  const errors = new GitHubErrorTranslator(new FixedClock(FIXED_NOW));
-  const github = new GitHubGateway(api.octokit(config.token), config, errors);
-  const reader = new GitHubNoteReader(github);
-  const mover = new GitHubNoteMover(github, reader);
-  const firstNote = new GitHubFirstNote(github, reader);
-  const restorer = new GitHubBranchRestorer(github);
-  return new GitHubNoteRepo(github, reader, mover, firstNote, pause, restorer);
+    const config = { ...GITHUB_CONFIG, ...overrides };
+    const errors = new GitHubErrorTranslator(new FixedClock(FIXED_NOW));
+    const github = new GitHubGateway(api.octokit(config.token), config, errors);
+    const reader = new GitHubNoteReader(github);
+    const mover = new GitHubNoteMover(github, reader);
+    const firstNote = new GitHubFirstNote(github, reader);
+    const restorer = new GitHubBranchRestorer(github);
+    return new GitHubNoteRepo(github, reader, mover, firstNote, pause, restorer);
 }

@@ -13,31 +13,28 @@ const NO_HINT = "";
 type ErrorClass = abstract new (...args: never[]) => DomainError;
 
 const HINTS: ReadonlyArray<readonly [ErrorClass, string]> = [
-  [NoteNotFound, "Call list_notes to see the paths."],
-  [VersionConflict, "Read the note again and retry with its current version."],
-  [
-    NoteAlreadyExists,
-    "Use a free path, or replace it with write_note and the expectedVersion from read_note.",
-  ],
+    [NoteNotFound, "Call list_notes to see the paths."],
+    [VersionConflict, "Read the note again and retry with its current version."],
+    [NoteAlreadyExists, "Use a free path, or replace it with write_note and the expectedVersion from read_note."],
 ];
 
 export interface ErrorResultMapper {
-  toResult(error: unknown): CallToolResult;
+    toResult(error: unknown): CallToolResult;
 }
 
 export class ToolErrorMapper implements ErrorResultMapper {
-  toResult(error: unknown): CallToolResult {
-    return { isError: true, content: [{ type: "text", text: this.describe(error) }] };
-  }
+    toResult(error: unknown): CallToolResult {
+        return { isError: true, content: [{ type: "text", text: this.describe(error) }] };
+    }
 
-  private describe(error: unknown): string {
-    if (!(error instanceof DomainError)) return UNEXPECTED_MESSAGE;
-    if (error instanceof NotesStoreFailure) return STORE_DOWN_MESSAGE;
-    const hint = this.findHint(error);
-    return hint === NO_HINT ? error.message : `${error.message}${HINT_SEPARATOR}${hint}`;
-  }
+    private describe(error: unknown): string {
+        if (!(error instanceof DomainError)) return UNEXPECTED_MESSAGE;
+        if (error instanceof NotesStoreFailure) return STORE_DOWN_MESSAGE;
+        const hint = this.findHint(error);
+        return hint === NO_HINT ? error.message : `${error.message}${HINT_SEPARATOR}${hint}`;
+    }
 
-  private findHint(error: DomainError): string {
-    return HINTS.find(([kind]) => error instanceof kind)?.[1] ?? NO_HINT;
-  }
+    private findHint(error: DomainError): string {
+        return HINTS.find(([kind]) => error instanceof kind)?.[1] ?? NO_HINT;
+    }
 }

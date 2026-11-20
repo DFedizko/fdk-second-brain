@@ -23,120 +23,115 @@ let edits: OutsideEdits;
 const github = new FakeGitHubWebhook(VALID_ENV.GITHUB_WEBHOOK_SECRET);
 
 beforeAll(async () => {
-  stack = await McpE2eStack.start();
-  search = new SettledSearch(stack.client);
+    stack = await McpE2eStack.start();
+    search = new SettledSearch(stack.client);
 }, STARTUP_TIMEOUT_MS);
 
 beforeEach(() => {
-  edits = new OutsideEdits(stack.seed({}), BRANCH);
+    edits = new OutsideEdits(stack.seed({}), BRANCH);
 });
 
 afterAll(async () => {
-  await stack.stop();
+    await stack.stop();
 });
 
 function noteAbout(word: string): string {
-  return `# Note\n\nAll about ${word}.\n`;
+    return `# Note\n\nAll about ${word}.\n`;
 }
 
 function hitAt(path: string, word: string): string {
-  return `${path} > Note\nAll about ${word}.`;
+    return `${path} > Note\nAll about ${word}.`;
 }
 
-const showsOnly = (hit: string) => (hits: readonly string[]) =>
-  hits.length === 1 && hits[0] === hit;
+const showsOnly = (hit: string) => (hits: readonly string[]) => hits.length === 1 && hits[0] === hit;
 
 function settle(word: string, settled: HitsCheck): Promise<string[]> {
-  return search.until(word, settled, QUEUE_SETTLE_TRIES);
+    return search.until(word, settled, QUEUE_SETTLE_TRIES);
 }
 
 function push(...commits: FileChanges[]): Promise<Response> {
-  return stack.fetch(github.push({ branch: BRANCH, commits, after: edits.head() }));
+    return stack.fetch(github.push({ branch: BRANCH, commits, after: edits.head() }));
 }
 
 describe("POST /webhooks/github", () => {
-  it(
-    "makes a note added on GitHub searchable",
-    async () => {
-      edits.write(PLAN, noteAbout("andromeda"));
+    it(
+        "makes a note added on GitHub searchable",
+        async () => {
+            edits.write(PLAN, noteAbout("andromeda"));
 
-      await push({ added: [PLAN] });
+            await push({ added: [PLAN] });
 
-      expect(await settle("andromeda", showsOnly(hitAt(PLAN, "andromeda")))).toEqual([
-        hitAt(PLAN, "andromeda"),
-      ]);
-    },
-    TEST_TIMEOUT_MS,
-  );
+            expect(await settle("andromeda", showsOnly(hitAt(PLAN, "andromeda")))).toEqual([hitAt(PLAN, "andromeda")]);
+        },
+        TEST_TIMEOUT_MS,
+    );
 
-  it(
-    "drops a note deleted on GitHub from search",
-    async () => {
-      edits.write(PLAN, noteAbout("betelgeuse"));
-      await push({ added: [PLAN] });
-      await settle("betelgeuse", showsOnly(hitAt(PLAN, "betelgeuse")));
-      edits.delete(PLAN);
+    it(
+        "drops a note deleted on GitHub from search",
+        async () => {
+            edits.write(PLAN, noteAbout("betelgeuse"));
+            await push({ added: [PLAN] });
+            await settle("betelgeuse", showsOnly(hitAt(PLAN, "betelgeuse")));
+            edits.delete(PLAN);
 
-      await push({ removed: [PLAN] });
+            await push({ removed: [PLAN] });
 
-      expect(await settle("betelgeuse", showsOnly(NO_MATCHES))).toEqual([NO_MATCHES]);
-    },
-    TEST_TIMEOUT_MS,
-  );
+            expect(await settle("betelgeuse", showsOnly(NO_MATCHES))).toEqual([NO_MATCHES]);
+        },
+        TEST_TIMEOUT_MS,
+    );
 
-  it(
-    "keeps a note written then deleted within moments out of search",
-    async () => {
-      await stack.client.callTool("write_note", { path: IDEA, content: noteAbout("cassiopeia") });
-      await stack.client.callTool("delete_note", { path: IDEA });
-      await new StaleIndexRows(await stack.database()).plant(IDEA, "Note", "All about cassiopeia.");
+    it(
+        "keeps a note written then deleted within moments out of search",
+        async () => {
+            await stack.client.callTool("write_note", { path: IDEA, content: noteAbout("cassiopeia") });
+            await stack.client.callTool("delete_note", { path: IDEA });
+            await new StaleIndexRows(await stack.database()).plant(IDEA, "Note", "All about cassiopeia.");
 
-      await push({ added: [IDEA] }, { removed: [IDEA] });
+            await push({ added: [IDEA] }, { removed: [IDEA] });
 
-      expect(await settle("cassiopeia", showsOnly(NO_MATCHES))).toEqual([NO_MATCHES]);
-    },
-    TEST_TIMEOUT_MS,
-  );
+            expect(await settle("cassiopeia", showsOnly(NO_MATCHES))).toEqual([NO_MATCHES]);
+        },
+        TEST_TIMEOUT_MS,
+    );
 
-  it("accepts a signed push to the notes branch", async () => {
-    const response = await push({ modified: [PLAN] });
+    it("accepts a signed push to the notes branch", async () => {
+        const response = await push({ modified: [PLAN] });
 
-    expect(response.status).toBe(ACCEPTED);
-  });
+        expect(response.status).toBe(ACCEPTED);
+    });
 
-  it("refuses a push signed with another secret", async () => {
-    const forged = new FakeGitHubWebhook(FORGED_SECRET);
+    it("refuses a push signed with another secret", async () => {
+        const forged = new FakeGitHubWebhook(FORGED_SECRET);
 
-    const response = await stack.fetch(forged.push({ branch: BRANCH, commits: [] }));
+        const response = await stack.fetch(forged.push({ branch: BRANCH, commits: [] }));
 
-    expect(response.status).toBe(UNAUTHORIZED);
-  });
+        expect(response.status).toBe(UNAUTHORIZED);
+    });
 });
 
 describe("daily reconciliation", () => {
-  it(
-    "indexes a note the webhook never told about",
-    async () => {
-      edits.write(PLAN, noteAbout("draco"));
+    it(
+        "indexes a note the webhook never told about",
+        async () => {
+            edits.write(PLAN, noteAbout("draco"));
 
-      await stack.runDailyCron();
+            await stack.runDailyCron();
 
-      expect(await settle("draco", showsOnly(hitAt(PLAN, "draco")))).toEqual([
-        hitAt(PLAN, "draco"),
-      ]);
-    },
-    TEST_TIMEOUT_MS,
-  );
+            expect(await settle("draco", showsOnly(hitAt(PLAN, "draco")))).toEqual([hitAt(PLAN, "draco")]);
+        },
+        TEST_TIMEOUT_MS,
+    );
 
-  it(
-    "removes a deleted note that stayed in search",
-    async () => {
-      await new StaleIndexRows(await stack.database()).plant(IDEA, "Note", "All about eridani.");
+    it(
+        "removes a deleted note that stayed in search",
+        async () => {
+            await new StaleIndexRows(await stack.database()).plant(IDEA, "Note", "All about eridani.");
 
-      await stack.runDailyCron();
+            await stack.runDailyCron();
 
-      expect(await settle("eridani", showsOnly(NO_MATCHES))).toEqual([NO_MATCHES]);
-    },
-    TEST_TIMEOUT_MS,
-  );
+            expect(await settle("eridani", showsOnly(NO_MATCHES))).toEqual([NO_MATCHES]);
+        },
+        TEST_TIMEOUT_MS,
+    );
 });

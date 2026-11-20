@@ -16,45 +16,45 @@ type UseCaseClass = new (...args: never[]) => object;
 
 const PATH = "projects/plan.md";
 const BINDINGS: ReadonlyArray<[keyof typeof SEARCH, UseCaseClass]> = [
-  ["indexNote", IndexNote],
-  ["removeNoteIndex", RemoveNoteIndex],
-  ["searchNotes", SearchNotes],
-  ["indexSync", NoteIndexSync],
+    ["indexNote", IndexNote],
+    ["removeNoteIndex", RemoveNoteIndex],
+    ["searchNotes", SearchNotes],
+    ["indexSync", NoteIndexSync],
 ];
 
 let notes: InMemoryNoteRepo;
 let index: InMemorySearchIndex;
 
 function buildContainer(): Container {
-  const container = new Container();
-  container.bind(GITHUB.noteRepository).toConstantValue(notes);
-  container.bind(D1_SEARCH_SYMBOLS.SearchIndex).toConstantValue(index);
-  container.bind(LOGGING.indexFailureLog).toConstantValue(new SpyIndexFailureLog());
-  container.load(searchModule);
-  return container;
+    const container = new Container();
+    container.bind(GITHUB.noteRepository).toConstantValue(notes);
+    container.bind(D1_SEARCH_SYMBOLS.SearchIndex).toConstantValue(index);
+    container.bind(LOGGING.indexFailureLog).toConstantValue(new SpyIndexFailureLog());
+    container.load(searchModule);
+    return container;
 }
 
 beforeEach(() => {
-  notes = new InMemoryNoteRepo();
-  index = new InMemorySearchIndex();
+    notes = new InMemoryNoteRepo();
+    index = new InMemorySearchIndex();
 });
 
 describe("searchModule", () => {
-  it.each(BINDINGS)("binds %s to its use case", (key, useCase) => {
-    const id: ServiceIdentifier<object> = SEARCH[key];
+    it.each(BINDINGS)("binds %s to its use case", (key, useCase) => {
+        const id: ServiceIdentifier<object> = SEARCH[key];
 
-    const resolved = buildContainer().get(id);
+        const resolved = buildContainer().get(id);
 
-    expect(resolved).toBeInstanceOf(useCase);
-  });
+        expect(resolved).toBeInstanceOf(useCase);
+    });
 
-  it("syncs a saved note into the bound index", async () => {
-    const view = { path: PATH, content: "# Plan\nship it", version: "abc123" };
+    it("syncs a saved note into the bound index", async () => {
+        const view = { path: PATH, content: "# Plan\nship it", version: "abc123" };
 
-    await buildContainer()
-      .get(SEARCH.indexSync)
-      .apply({ indexed: [view], removed: [] });
+        await buildContainer()
+            .get(SEARCH.indexSync)
+            .apply({ indexed: [view], removed: [] });
 
-    expect(index.chunksOf(PATH)).toEqual([{ heading: "Plan", seq: 0, text: "ship it" }]);
-  });
+        expect(index.chunksOf(PATH)).toEqual([{ heading: "Plan", seq: 0, text: "ship it" }]);
+    });
 });

@@ -23,48 +23,46 @@ const VERSION = "1111111111111111111111111111111111111111";
 let queue: SpyPathQueue;
 
 function buildContainer(): Container {
-  const container = new Container();
-  container.bind(GITHUB.noteCatalog).toConstantValue(new FixedNoteTree({ [PLAN]: VERSION }));
-  container.bind(D1_SEARCH_SYMBOLS.IndexManifest).toConstantValue(new FixedNoteCatalog({}));
-  container.bind(QUEUE.pathQueue).toConstantValue(queue);
-  container.bind(GITHUB.branchHead).toConstantValue(new FixedBranchHead(new InMemoryNoteRepo()));
-  container.bind(D1_SEARCH_SYMBOLS.SearchIndex).toConstantValue(new InMemorySearchIndex());
-  container.bind(SEARCH.chunker).toConstantValue(new MarkdownChunker());
-  container
-    .bind(SEARCH.indexNote)
-    .toConstantValue(
-      new IndexNote(new InMemorySearchIndex(), new InMemoryNoteRepo(), new MarkdownChunker()),
-    );
-  container.load(indexingModule);
-  return container;
+    const container = new Container();
+    container.bind(GITHUB.noteCatalog).toConstantValue(new FixedNoteTree({ [PLAN]: VERSION }));
+    container.bind(D1_SEARCH_SYMBOLS.IndexManifest).toConstantValue(new FixedNoteCatalog({}));
+    container.bind(QUEUE.pathQueue).toConstantValue(queue);
+    container.bind(GITHUB.branchHead).toConstantValue(new FixedBranchHead(new InMemoryNoteRepo()));
+    container.bind(D1_SEARCH_SYMBOLS.SearchIndex).toConstantValue(new InMemorySearchIndex());
+    container.bind(SEARCH.chunker).toConstantValue(new MarkdownChunker());
+    container
+        .bind(SEARCH.indexNote)
+        .toConstantValue(new IndexNote(new InMemorySearchIndex(), new InMemoryNoteRepo(), new MarkdownChunker()));
+    container.load(indexingModule);
+    return container;
 }
 
 beforeEach(() => {
-  queue = new SpyPathQueue();
+    queue = new SpyPathQueue();
 });
 
 describe("indexingModule", () => {
-  it("binds the queueing of changed notes", () => {
-    const resolved = buildContainer().get(INDEXING.queueChanges);
+    it("binds the queueing of changed notes", () => {
+        const resolved = buildContainer().get(INDEXING.queueChanges);
 
-    expect(resolved).toBeInstanceOf(QueueNoteChanges);
-  });
+        expect(resolved).toBeInstanceOf(QueueNoteChanges);
+    });
 
-  it("binds the indexing of pushed notes", () => {
-    const resolved = buildContainer().get(INDEXING.indexPushed);
+    it("binds the indexing of pushed notes", () => {
+        const resolved = buildContainer().get(INDEXING.indexPushed);
 
-    expect(resolved).toBeInstanceOf(IndexPushedNote);
-  });
+        expect(resolved).toBeInstanceOf(IndexPushedNote);
+    });
 
-  it("binds the reconciliation", () => {
-    const resolved = buildContainer().get(INDEXING.reconcile);
+    it("binds the reconciliation", () => {
+        const resolved = buildContainer().get(INDEXING.reconcile);
 
-    expect(resolved).toBeInstanceOf(ReconcileIndex);
-  });
+        expect(resolved).toBeInstanceOf(ReconcileIndex);
+    });
 
-  it("reconciles the repository against the index manifest into the path queue", async () => {
-    await buildContainer().get(INDEXING.reconcile).execute();
+    it("reconciles the repository against the index manifest into the path queue", async () => {
+        await buildContainer().get(INDEXING.reconcile).execute();
 
-    expect(queue.paths).toEqual([PLAN]);
-  });
+        expect(queue.paths).toEqual([PLAN]);
+    });
 });

@@ -9,24 +9,24 @@ import type { UseCase } from "./use-case";
 import { NOTE_PATH } from "./tool-fields";
 
 const SCHEMA = z.object({
-  from: NOTE_PATH,
-  to: NOTE_PATH,
+    from: NOTE_PATH,
+    to: NOTE_PATH,
 });
 
 export class MoveNoteTool extends NoteTool<typeof SCHEMA> {
-  protected readonly name = "move_note";
-  protected readonly description = "Move or rename a note.";
-  protected readonly schema = SCHEMA;
+    protected readonly name = "move_note";
+    protected readonly description = "Move or rename a note.";
+    protected readonly schema = SCHEMA;
 
-  constructor(
-    runner: ToolCallRunner,
-    private readonly results: ToolReplies,
-    private readonly useCase: UseCase<MoveNoteInput, MovedNoteView>,
-  ) {
-    super(runner);
-  }
+    constructor(
+        runner: ToolCallRunner,
+        private readonly results: ToolReplies,
+        private readonly useCase: UseCase<MoveNoteInput, MovedNoteView>,
+    ) {
+        super(runner);
+    }
 
-  protected async handle(input: z.infer<typeof SCHEMA>): Promise<CallToolResult> {
-    return this.results.saved(await this.useCase.execute(input));
-  }
+    protected async handle(input: z.infer<typeof SCHEMA>): Promise<CallToolResult> {
+        return this.results.saved(await this.useCase.execute(input));
+    }
 }

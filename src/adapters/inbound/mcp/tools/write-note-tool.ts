@@ -9,26 +9,25 @@ import type { UseCase } from "./use-case";
 import { EXPECTED_VERSION, NOTE_PATH, TEXT } from "./tool-fields";
 
 const SCHEMA = z.object({
-  path: NOTE_PATH,
-  content: TEXT.describe("Full Markdown content"),
-  expectedVersion: EXPECTED_VERSION,
+    path: NOTE_PATH,
+    content: TEXT.describe("Full Markdown content"),
+    expectedVersion: EXPECTED_VERSION,
 });
 
 export class WriteNoteTool extends NoteTool<typeof SCHEMA> {
-  protected readonly name = "write_note";
-  protected readonly description =
-    "Create a note, or replace a whole note when expectedVersion is given.";
-  protected readonly schema = SCHEMA;
+    protected readonly name = "write_note";
+    protected readonly description = "Create a note, or replace a whole note when expectedVersion is given.";
+    protected readonly schema = SCHEMA;
 
-  constructor(
-    runner: ToolCallRunner,
-    private readonly results: ToolReplies,
-    private readonly useCase: UseCase<WriteNoteInput, NoteView>,
-  ) {
-    super(runner);
-  }
+    constructor(
+        runner: ToolCallRunner,
+        private readonly results: ToolReplies,
+        private readonly useCase: UseCase<WriteNoteInput, NoteView>,
+    ) {
+        super(runner);
+    }
 
-  protected async handle(input: z.infer<typeof SCHEMA>): Promise<CallToolResult> {
-    return this.results.saved(await this.useCase.execute(input));
-  }
+    protected async handle(input: z.infer<typeof SCHEMA>): Promise<CallToolResult> {
+        return this.results.saved(await this.useCase.execute(input));
+    }
 }

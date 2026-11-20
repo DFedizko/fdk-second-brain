@@ -10,41 +10,41 @@ const TO = "archive/inbox.md";
 const CONTENT = "# Inbox\n";
 
 describe("MoveNote", () => {
-  let repository: InMemoryNoteRepo;
-  let moveNote: MoveNote;
+    let repository: InMemoryNoteRepo;
+    let moveNote: MoveNote;
 
-  beforeEach(() => {
-    repository = new InMemoryNoteRepo();
-    moveNote = new MoveNote(repository);
-  });
+    beforeEach(() => {
+        repository = new InMemoryNoteRepo();
+        moveNote = new MoveNote(repository);
+    });
 
-  it("returns the note at its new path", async () => {
-    const created = await repository.create(NotePath.of(FROM), CONTENT);
+    it("returns the note at its new path", async () => {
+        const created = await repository.create(NotePath.of(FROM), CONTENT);
 
-    const moved = await moveNote.execute({ from: FROM, to: TO });
+        const moved = await moveNote.execute({ from: FROM, to: TO });
 
-    expect(moved).toEqual({ path: TO, content: CONTENT, version: created.version.value });
-  });
+        expect(moved).toEqual({ path: TO, content: CONTENT, version: created.version.value });
+    });
 
-  it("rejects a missing note", async () => {
-    const move = moveNote.execute({ from: FROM, to: TO });
+    it("rejects a missing note", async () => {
+        const move = moveNote.execute({ from: FROM, to: TO });
 
-    await expect(move).rejects.toThrow(NoteNotFound);
-  });
+        await expect(move).rejects.toThrow(NoteNotFound);
+    });
 
-  it("refuses to move onto an existing note", async () => {
-    await Promise.all([FROM, TO].map((raw) => repository.create(NotePath.of(raw), CONTENT)));
+    it("refuses to move onto an existing note", async () => {
+        await Promise.all([FROM, TO].map((raw) => repository.create(NotePath.of(raw), CONTENT)));
 
-    const move = moveNote.execute({ from: FROM, to: TO });
+        const move = moveNote.execute({ from: FROM, to: TO });
 
-    await expect(move).rejects.toThrow(NoteAlreadyExists);
-  });
+        await expect(move).rejects.toThrow(NoteAlreadyExists);
+    });
 
-  it("rejects an invalid target path", async () => {
-    await repository.create(NotePath.of(FROM), CONTENT);
+    it("rejects an invalid target path", async () => {
+        await repository.create(NotePath.of(FROM), CONTENT);
 
-    const move = moveNote.execute({ from: FROM, to: "archive/inbox.txt" });
+        const move = moveNote.execute({ from: FROM, to: "archive/inbox.txt" });
 
-    await expect(move).rejects.toThrow(InvalidPath);
-  });
+        await expect(move).rejects.toThrow(InvalidPath);
+    });
 });

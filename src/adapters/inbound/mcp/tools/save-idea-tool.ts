@@ -9,24 +9,24 @@ import { LABEL, TEXT } from "./tool-fields";
 import type { UseCase } from "./use-case";
 
 const SCHEMA = z.object({
-  title: LABEL.describe("Short title"),
-  content: TEXT.describe("Markdown body"),
+    title: LABEL.describe("Short title"),
+    content: TEXT.describe("Markdown body"),
 });
 
 export class SaveIdeaTool extends NoteTool<typeof SCHEMA> {
-  protected readonly name = "save_idea";
-  protected readonly description = "Save a quick idea as a new dated note in the ideas folder.";
-  protected readonly schema = SCHEMA;
+    protected readonly name = "save_idea";
+    protected readonly description = "Save a quick idea as a new dated note in the ideas folder.";
+    protected readonly schema = SCHEMA;
 
-  constructor(
-    runner: ToolCallRunner,
-    private readonly results: ToolReplies,
-    private readonly useCase: UseCase<SaveIdeaInput, NoteView>,
-  ) {
-    super(runner);
-  }
+    constructor(
+        runner: ToolCallRunner,
+        private readonly results: ToolReplies,
+        private readonly useCase: UseCase<SaveIdeaInput, NoteView>,
+    ) {
+        super(runner);
+    }
 
-  protected async handle(input: z.infer<typeof SCHEMA>): Promise<CallToolResult> {
-    return this.results.saved(await this.useCase.execute(input));
-  }
+    protected async handle(input: z.infer<typeof SCHEMA>): Promise<CallToolResult> {
+        return this.results.saved(await this.useCase.execute(input));
+    }
 }

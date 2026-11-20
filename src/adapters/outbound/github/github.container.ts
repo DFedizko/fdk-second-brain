@@ -20,64 +20,58 @@ import { SILENT_LOG } from "./silent-log";
 import { CLOCK } from "../clock/clock.symbols";
 
 export function githubContainer(config: GitHubConfig): ContainerModule {
-  return new ContainerModule(({ bind }) => {
-    bind(GITHUB.config).toConstantValue(config);
-    bind(GITHUB.client)
-      .toResolvedValue(
-        (settings: GitHubConfig) =>
-          new Octokit({ auth: settings.token, baseUrl: settings.apiUrl, log: SILENT_LOG }),
-        [GITHUB.config],
-      )
-      .inSingletonScope();
-    bind(GITHUB.errorMapper).toResolvedValue(
-      (clock: Clock) => new GitHubErrorTranslator(clock),
-      [CLOCK.clock],
-    );
-    bind(GITHUB.access).toResolvedValue(
-      (client: Octokit, settings: GitHubConfig, errors: GitHubErrorMapper) =>
-        new GitHubGateway(client, settings, errors),
-      [GITHUB.client, GITHUB.config, GITHUB.errorMapper],
-    );
-    bind(GITHUB.reader).toResolvedValue(
-      (github: GitHubAccess) => new GitHubNoteReader(github),
-      [GITHUB.access],
-    );
-    bind(GITHUB.mover).toResolvedValue(
-      (github: GitHubAccess, reader: NoteReader) => new GitHubNoteMover(github, reader),
-      [GITHUB.access, GITHUB.reader],
-    );
-    bind(GITHUB.firstNote).toResolvedValue(
-      (github: GitHubAccess, reader: NoteReader) => new GitHubFirstNote(github, reader),
-      [GITHUB.access, GITHUB.reader],
-    );
-    bind(GITHUB.pause).toConstantValue(new TimerPause());
-    bind(GITHUB.restorer).toResolvedValue(
-      (github: GitHubAccess) => new GitHubBranchRestorer(github),
-      [GITHUB.access],
-    );
-    bind(GITHUB.noteRepository).toResolvedValue(
-      (
-        github: GitHubAccess,
-        reader: NoteReader,
-        mover: NoteMover,
-        first: FirstNoteWriter,
-        pause: RetryPause,
-        restorer: BranchRestorer,
-      ) => new GitHubNoteRepo(github, reader, mover, first, pause, restorer),
-      [GITHUB.access, GITHUB.reader, GITHUB.mover, GITHUB.firstNote, GITHUB.pause, GITHUB.restorer],
-    );
-    bind(GITHUB.headNotes).toResolvedValue(
-      (github: GitHubAccess) => new BudgetedHeadNotes(github, REQUESTS_PER_MESSAGE),
-      [GITHUB.access],
-    );
-    bind(GITHUB.branchHead).toResolvedValue(
-      (notes: HeadNotesFactory) => new GitHubBranchHead(notes),
-      [GITHUB.headNotes],
-    );
-    bind(GITHUB.noteCatalog).toResolvedValue(
-      (github: GitHubAccess, reader: NoteReader, pause: RetryPause) =>
-        new GitHubNoteCatalog(github, reader, new CommitCompare(github), pause),
-      [GITHUB.access, GITHUB.reader, GITHUB.pause],
-    );
-  });
+    return new ContainerModule(({ bind }) => {
+        bind(GITHUB.config).toConstantValue(config);
+        bind(GITHUB.client)
+            .toResolvedValue(
+                (settings: GitHubConfig) =>
+                    new Octokit({ auth: settings.token, baseUrl: settings.apiUrl, log: SILENT_LOG }),
+                [GITHUB.config],
+            )
+            .inSingletonScope();
+        bind(GITHUB.errorMapper).toResolvedValue((clock: Clock) => new GitHubErrorTranslator(clock), [CLOCK.clock]);
+        bind(GITHUB.access).toResolvedValue(
+            (client: Octokit, settings: GitHubConfig, errors: GitHubErrorMapper) =>
+                new GitHubGateway(client, settings, errors),
+            [GITHUB.client, GITHUB.config, GITHUB.errorMapper],
+        );
+        bind(GITHUB.reader).toResolvedValue((github: GitHubAccess) => new GitHubNoteReader(github), [GITHUB.access]);
+        bind(GITHUB.mover).toResolvedValue(
+            (github: GitHubAccess, reader: NoteReader) => new GitHubNoteMover(github, reader),
+            [GITHUB.access, GITHUB.reader],
+        );
+        bind(GITHUB.firstNote).toResolvedValue(
+            (github: GitHubAccess, reader: NoteReader) => new GitHubFirstNote(github, reader),
+            [GITHUB.access, GITHUB.reader],
+        );
+        bind(GITHUB.pause).toConstantValue(new TimerPause());
+        bind(GITHUB.restorer).toResolvedValue(
+            (github: GitHubAccess) => new GitHubBranchRestorer(github),
+            [GITHUB.access],
+        );
+        bind(GITHUB.noteRepository).toResolvedValue(
+            (
+                github: GitHubAccess,
+                reader: NoteReader,
+                mover: NoteMover,
+                first: FirstNoteWriter,
+                pause: RetryPause,
+                restorer: BranchRestorer,
+            ) => new GitHubNoteRepo(github, reader, mover, first, pause, restorer),
+            [GITHUB.access, GITHUB.reader, GITHUB.mover, GITHUB.firstNote, GITHUB.pause, GITHUB.restorer],
+        );
+        bind(GITHUB.headNotes).toResolvedValue(
+            (github: GitHubAccess) => new BudgetedHeadNotes(github, REQUESTS_PER_MESSAGE),
+            [GITHUB.access],
+        );
+        bind(GITHUB.branchHead).toResolvedValue(
+            (notes: HeadNotesFactory) => new GitHubBranchHead(notes),
+            [GITHUB.headNotes],
+        );
+        bind(GITHUB.noteCatalog).toResolvedValue(
+            (github: GitHubAccess, reader: NoteReader, pause: RetryPause) =>
+                new GitHubNoteCatalog(github, reader, new CommitCompare(github), pause),
+            [GITHUB.access, GITHUB.reader, GITHUB.pause],
+        );
+    });
 }

@@ -16,75 +16,75 @@ const UNAVAILABLE = 503;
 const OUTAGE_PAGE = "Service Unavailable";
 
 async function failureOf(action: Promise<unknown>): Promise<unknown> {
-  return action.then(
-    () => undefined,
-    (error: unknown) => error,
-  );
+    return action.then(
+        () => undefined,
+        (error: unknown) => error,
+    );
 }
 
 const BAD_TOKEN_REPLIES: ReadonlyArray<[string, unknown]> = [
-  ["null", null],
-  ["an empty object", {}],
-  ["a numeric token", { access_token: 42 }],
-  ["an empty token", { access_token: "" }],
+    ["null", null],
+    ["an empty object", {}],
+    ["a numeric token", { access_token: 42 }],
+    ["an empty token", { access_token: "" }],
 ];
 
 const BAD_USER_REPLIES: ReadonlyArray<[string, unknown]> = [
-  ["null", null],
-  ["an empty object", {}],
-  ["a numeric login", { login: 7, id: 583231 }],
-  ["a string ID", { login: "octo-cat", id: "583231" }],
-  ["a fractional ID", { login: "octo-cat", id: 5.5 }],
+    ["null", null],
+    ["an empty object", {}],
+    ["a numeric login", { login: 7, id: 583231 }],
+    ["a string ID", { login: "octo-cat", id: "583231" }],
+    ["a fractional ID", { login: "octo-cat", id: 5.5 }],
 ];
 
 describe("GitHubIdentity with unexpected GitHub replies", () => {
-  it.each(BAD_TOKEN_REPLIES)("fails the sign-in on a token reply of %s", async (_name, reply) => {
-    const identity = new GitHubIdentity(SETTINGS, scriptedGitHub(reply, GOOD_USER));
+    it.each(BAD_TOKEN_REPLIES)("fails the sign-in on a token reply of %s", async (_name, reply) => {
+        const identity = new GitHubIdentity(SETTINGS, scriptedGitHub(reply, GOOD_USER));
 
-    const identify = identity.identify("code", VERIFIER);
+        const identify = identity.identify("code", VERIFIER);
 
-    await expect(identify).rejects.toThrow(SignInFailedError);
-  });
+        await expect(identify).rejects.toThrow(SignInFailedError);
+    });
 
-  it.each(BAD_USER_REPLIES)("fails the sign-in on a user reply of %s", async (_name, reply) => {
-    const identity = new GitHubIdentity(SETTINGS, scriptedGitHub(GOOD_TOKEN, reply));
+    it.each(BAD_USER_REPLIES)("fails the sign-in on a user reply of %s", async (_name, reply) => {
+        const identity = new GitHubIdentity(SETTINGS, scriptedGitHub(GOOD_TOKEN, reply));
 
-    const identify = identity.identify("code", VERIFIER);
+        const identify = identity.identify("code", VERIFIER);
 
-    await expect(identify).rejects.toThrow(SignInFailedError);
-  });
+        await expect(identify).rejects.toThrow(SignInFailedError);
+    });
 
-  it("keeps why a reply was rejected as the cause of the failure", async () => {
-    const identity = new GitHubIdentity(SETTINGS, scriptedGitHub({}, GOOD_USER));
+    it("keeps why a reply was rejected as the cause of the failure", async () => {
+        const identity = new GitHubIdentity(SETTINGS, scriptedGitHub({}, GOOD_USER));
 
-    const error = await failureOf(identity.identify("code", VERIFIER));
+        const error = await failureOf(identity.identify("code", VERIFIER));
 
-    expect(error).toMatchObject({ cause: { name: SCHEMA_ERROR } });
-  });
+        expect(error).toMatchObject({ cause: { name: SCHEMA_ERROR } });
+    });
 
-  it("keeps the parse error as the cause when a reply is not JSON", async () => {
-    const page = () => Promise.resolve(new Response(HTML_PAGE, { status: OK }));
-    const identity = new GitHubIdentity(SETTINGS, page);
+    it("keeps the parse error as the cause when a reply is not JSON", async () => {
+        const page = () => Promise.resolve(new Response(HTML_PAGE, { status: OK }));
+        const identity = new GitHubIdentity(SETTINGS, page);
 
-    const error = await failureOf(identity.identify("code", VERIFIER));
+        const error = await failureOf(identity.identify("code", VERIFIER));
 
-    expect(error).toMatchObject({ cause: { name: PARSE_ERROR } });
-  });
+        expect(error).toMatchObject({ cause: { name: PARSE_ERROR } });
+    });
 
-  it("keeps GitHub's status and reply as the cause of a refused request", async () => {
-    const outage = () => Promise.resolve(new Response(OUTAGE_PAGE, { status: UNAVAILABLE }));
-    const identity = new GitHubIdentity(SETTINGS, outage);
+    it("keeps GitHub's status and reply as the cause of a refused request", async () => {
+        const outage = () => Promise.resolve(new Response(OUTAGE_PAGE, { status: UNAVAILABLE }));
+        const identity = new GitHubIdentity(SETTINGS, outage);
 
-    const error = await failureOf(identity.identify("code", VERIFIER));
+        const error = await failureOf(identity.identify("code", VERIFIER));
 
-    expect(error).toMatchObject({ cause: { status: UNAVAILABLE, body: OUTAGE_PAGE } });
-  });
+        expect(error).toMatchObject({ cause: { status: UNAVAILABLE, body: OUTAGE_PAGE } });
+    });
 
-  it("identifies the user from well-formed replies", async () => {
-    const identity = new GitHubIdentity(SETTINGS, scriptedGitHub(GOOD_TOKEN, GOOD_USER));
+    it("identifies the user from well-formed replies", async () => {
+        const identity = new GitHubIdentity(SETTINGS, scriptedGitHub(GOOD_TOKEN, GOOD_USER));
 
-    const user = await identity.identify("code", VERIFIER);
+        const user = await identity.identify("code", VERIFIER);
 
-    expect(user).toEqual({ login: GOOD_USER.login, id: String(GOOD_USER.id) });
-  });
+        expect(user).toEqual({ login: GOOD_USER.login, id: String(GOOD_USER.id) });
+    });
 });

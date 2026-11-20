@@ -9,21 +9,21 @@ const CURRENT = NoteVersion.of("current-hash");
 const STALE = NoteVersion.of("stale-hash");
 
 describe("Note", () => {
-  it("accepts the version it holds", () => {
-    const note = new Note(PATH, CONTENT, CURRENT);
+    it("accepts the version it holds", () => {
+        const note = new Note(PATH, CONTENT, CURRENT);
 
-    expect(() => note.ensureVersion(CURRENT)).not.toThrow();
-  });
+        expect(() => note.ensureVersion(CURRENT)).not.toThrow();
+    });
 
-  it("rejects a stale expected version", () => {
-    const note = new Note(PATH, CONTENT, CURRENT);
+    it("rejects a stale expected version", () => {
+        const note = new Note(PATH, CONTENT, CURRENT);
 
-    expect(() => note.ensureVersion(STALE)).toThrow(VersionConflict);
-  });
+        expect(() => note.ensureVersion(STALE)).toThrow(VersionConflict);
+    });
 
-  it("names both versions in the conflict", () => {
-    const note = new Note(PATH, CONTENT, CURRENT);
+    it("names both versions in the conflict", () => {
+        const note = new Note(PATH, CONTENT, CURRENT);
 
-    expect(() => note.ensureVersion(STALE)).toThrow(/stale-hash.*current-hash/);
-  });
+        expect(() => note.ensureVersion(STALE)).toThrow(/stale-hash.*current-hash/);
+    });
 });

@@ -6,9 +6,9 @@ import type { RemoveNoteIndex } from "../../application/use-cases/remove-note-in
 import type { SearchNotes } from "../../application/use-cases/search-notes";
 
 export const SEARCH = {
-  chunker: Symbol.for("MarkdownChunker") as ServiceIdentifier<MarkdownChunker>,
-  indexNote: Symbol.for("IndexNote") as ServiceIdentifier<IndexNote>,
-  removeNoteIndex: Symbol.for("RemoveNoteIndex") as ServiceIdentifier<RemoveNoteIndex>,
-  searchNotes: Symbol.for("SearchNotes") as ServiceIdentifier<SearchNotes>,
-  indexSync: Symbol.for("IndexSync") as ServiceIdentifier<IndexSync>,
+    chunker: Symbol.for("MarkdownChunker") as ServiceIdentifier<MarkdownChunker>,
+    indexNote: Symbol.for("IndexNote") as ServiceIdentifier<IndexNote>,
+    removeNoteIndex: Symbol.for("RemoveNoteIndex") as ServiceIdentifier<RemoveNoteIndex>,
+    searchNotes: Symbol.for("SearchNotes") as ServiceIdentifier<SearchNotes>,
+    indexSync: Symbol.for("IndexSync") as ServiceIdentifier<IndexSync>,
 } as const;

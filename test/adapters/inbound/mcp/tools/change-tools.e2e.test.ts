@@ -14,92 +14,92 @@ let stack: McpE2eStack;
 let repo: FakeGitHubApi;
 
 beforeAll(async () => {
-  stack = await McpE2eStack.start();
+    stack = await McpE2eStack.start();
 }, STARTUP_TIMEOUT_MS);
 
 beforeEach(() => {
-  repo = stack.seed({ [PLAN]: PLAN_TEXT });
+    repo = stack.seed({ [PLAN]: PLAN_TEXT });
 });
 
 afterAll(async () => {
-  await stack.stop();
+    await stack.stop();
 });
 
 function files(): Record<string, string> {
-  return repo.filesOn(VALID_ENV.NOTES_BRANCH);
+    return repo.filesOn(VALID_ENV.NOTES_BRANCH);
 }
 
 describe("delete_note", () => {
-  it("deletes the note", async () => {
-    await stack.client.callTool("delete_note", { path: PLAN });
+    it("deletes the note", async () => {
+        await stack.client.callTool("delete_note", { path: PLAN });
 
-    expect(files()).not.toHaveProperty(PLAN);
-  });
+        expect(files()).not.toHaveProperty(PLAN);
+    });
 
-  it("confirms the deleted path", async () => {
-    const text = await stack.client.callText("delete_note", { path: PLAN });
+    it("confirms the deleted path", async () => {
+        const text = await stack.client.callText("delete_note", { path: PLAN });
 
-    expect(text).toEqual([`Deleted ${PLAN}`]);
-  });
+        expect(text).toEqual([`Deleted ${PLAN}`]);
+    });
 
-  it("reports a missing note as a tool error", async () => {
-    const result = await stack.client.callTool("delete_note", { path: MISSING });
+    it("reports a missing note as a tool error", async () => {
+        const result = await stack.client.callTool("delete_note", { path: MISSING });
 
-    expect(result.isError).toBe(true);
-  });
+        expect(result.isError).toBe(true);
+    });
 });
 
 describe("move_note", () => {
-  it("moves the note to its new path", async () => {
-    await stack.client.callTool("move_note", { from: PLAN, to: ARCHIVED });
+    it("moves the note to its new path", async () => {
+        await stack.client.callTool("move_note", { from: PLAN, to: ARCHIVED });
 
-    expect(files()).toEqual({ [ARCHIVED]: PLAN_TEXT });
-  });
+        expect(files()).toEqual({ [ARCHIVED]: PLAN_TEXT });
+    });
 
-  it("refuses to move onto an existing note", async () => {
-    repo = stack.seed({ [PLAN]: PLAN_TEXT, [ARCHIVED]: "# Old\n" });
+    it("refuses to move onto an existing note", async () => {
+        repo = stack.seed({ [PLAN]: PLAN_TEXT, [ARCHIVED]: "# Old\n" });
 
-    const [text] = await stack.client.callText("move_note", { from: PLAN, to: ARCHIVED });
+        const [text] = await stack.client.callText("move_note", { from: PLAN, to: ARCHIVED });
 
-    expect(text).toBe(
-      `Note already exists: "${ARCHIVED}". Use a free path, or replace it with write_note and the expectedVersion from read_note.`,
-    );
-  });
+        expect(text).toBe(
+            `Note already exists: "${ARCHIVED}". Use a free path, or replace it with write_note and the expectedVersion from read_note.`,
+        );
+    });
 
-  it("reports a missing note as a tool error", async () => {
-    const [text] = await stack.client.callText("move_note", { from: MISSING, to: ARCHIVED });
+    it("reports a missing note as a tool error", async () => {
+        const [text] = await stack.client.callText("move_note", { from: MISSING, to: ARCHIVED });
 
-    expect(text).toStartWith(`Note not found: "${MISSING}"`);
-  });
+        expect(text).toStartWith(`Note not found: "${MISSING}"`);
+    });
 });
 
 describe("save_idea", () => {
-  it("saves the idea as a dated note in the ideas folder", async () => {
-    const text = await stack.client.callText("save_idea", {
-      title: "Offline mode",
-      content: "Cache notes on the phone.",
+    it("saves the idea as a dated note in the ideas folder", async () => {
+        const text = await stack.client.callText("save_idea", {
+            title: "Offline mode",
+            content: "Cache notes on the phone.",
+        });
+
+        expect(text).toEqual([expect.stringMatching(IDEA_SAVED)]);
     });
 
-    expect(text).toEqual([expect.stringMatching(IDEA_SAVED)]);
-  });
+    it("starts the idea note with its title as a heading", async () => {
+        await stack.client.callTool("save_idea", {
+            title: "Offline mode",
+            content: "Cache notes on the phone.",
+        });
 
-  it("starts the idea note with its title as a heading", async () => {
-    await stack.client.callTool("save_idea", {
-      title: "Offline mode",
-      content: "Cache notes on the phone.",
+        const idea = Object.entries(files()).find(([path]) => IDEA_PATH.test(path));
+        expect(idea?.[1]).toBe("# Offline mode\n\nCache notes on the phone.");
     });
 
-    const idea = Object.entries(files()).find(([path]) => IDEA_PATH.test(path));
-    expect(idea?.[1]).toBe("# Offline mode\n\nCache notes on the phone.");
-  });
+    it("keeps both ideas when the same title is saved twice", async () => {
+        const idea = { title: "Offline mode", content: "Cache notes on the phone." };
+        await stack.client.callTool("save_idea", idea);
 
-  it("keeps both ideas when the same title is saved twice", async () => {
-    const idea = { title: "Offline mode", content: "Cache notes on the phone." };
-    await stack.client.callTool("save_idea", idea);
+        await stack.client.callTool("save_idea", idea);
 
-    await stack.client.callTool("save_idea", idea);
-
-    const ideas = Object.keys(files()).filter((path) => path.startsWith("ideas/"));
-    expect(ideas).toHaveLength(2);
-  });
+        const ideas = Object.keys(files()).filter((path) => path.startsWith("ideas/"));
+        expect(ideas).toHaveLength(2);
+    });
 });

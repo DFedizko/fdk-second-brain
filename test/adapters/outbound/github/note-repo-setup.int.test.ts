@@ -20,50 +20,47 @@ const CREATING = "creating";
 type RepoAction = (repository: NoteRepository) => Promise<unknown>;
 
 const ACTIONS: [string, RepoAction][] = [
-  ["listing", (repository) => repository.list(ROOT)],
-  ["reading", (repository) => repository.read(INBOX)],
-  [CREATING, (repository) => repository.create(INBOX, CONTENT)],
-  ["writing", (repository) => repository.write(INBOX, CONTENT, ANY_VERSION)],
-  ["deleting", (repository) => repository.delete(INBOX)],
-  ["moving", (repository) => repository.move(INBOX, PLAN)],
+    ["listing", (repository) => repository.list(ROOT)],
+    ["reading", (repository) => repository.read(INBOX)],
+    [CREATING, (repository) => repository.create(INBOX, CONTENT)],
+    ["writing", (repository) => repository.write(INBOX, CONTENT, ANY_VERSION)],
+    ["deleting", (repository) => repository.delete(INBOX)],
+    ["moving", (repository) => repository.move(INBOX, PLAN)],
 ];
 
 const BRANCH_USES = ACTIONS.filter(([name]) => name !== CREATING);
 
 async function failureOf(action: Promise<unknown>): Promise<unknown> {
-  return action.then(
-    () => undefined,
-    (error: unknown) => error,
-  );
+    return action.then(
+        () => undefined,
+        (error: unknown) => error,
+    );
 }
 
 describe("GitHubNoteRepo with a broken setup or limits", () => {
-  let api: FakeGitHubApi;
+    let api: FakeGitHubApi;
 
-  beforeEach(() => {
-    api = buildFakeNotesRepo();
-  });
+    beforeEach(() => {
+        api = buildFakeNotesRepo();
+    });
 
-  it.each(BRANCH_USES)(
-    "reports a missing branch as NotesUnavailable when %s",
-    async (_name, act) => {
-      const error = await failureOf(act(connectRepo(api, { branch: MISSING_BRANCH })));
+    it.each(BRANCH_USES)("reports a missing branch as NotesUnavailable when %s", async (_name, act) => {
+        const error = await failureOf(act(connectRepo(api, { branch: MISSING_BRANCH })));
 
-      expect(error).toMatchObject({ name: NotesUnavailable.name, status: NOT_FOUND });
-    },
-  );
+        expect(error).toMatchObject({ name: NotesUnavailable.name, status: NOT_FOUND });
+    });
 
-  it.each(ACTIONS)("reports a missing repo as NotesUnavailable when %s", async (_name, act) => {
-    const error = await failureOf(act(connectRepo(api, { repo: MISSING_REPO })));
+    it.each(ACTIONS)("reports a missing repo as NotesUnavailable when %s", async (_name, act) => {
+        const error = await failureOf(act(connectRepo(api, { repo: MISSING_REPO })));
 
-    expect(error).toMatchObject({ name: NotesUnavailable.name, status: NOT_FOUND });
-  });
+        expect(error).toMatchObject({ name: NotesUnavailable.name, status: NOT_FOUND });
+    });
 
-  it("refuses a truncated tree instead of listing part of the notes", async () => {
-    api.truncateTrees();
+    it("refuses a truncated tree instead of listing part of the notes", async () => {
+        api.truncateTrees();
 
-    const list = connectRepo(api).list(ROOT);
+        const list = connectRepo(api).list(ROOT);
 
-    await expect(list).rejects.toThrow(NotesUnavailable);
-  });
+        await expect(list).rejects.toThrow(NotesUnavailable);
+    });
 });

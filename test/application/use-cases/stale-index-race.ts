@@ -15,52 +15,42 @@ import { InMemoryNoteRepo } from "../__fake__/in-memory-note-repo";
 import { ManualBackgroundTasks } from "./__fake__/manual-background-tasks";
 
 export class StaleIndexRace {
-  private constructor(
-    readonly notes: InMemoryNoteRepo,
-    readonly log: SpyIndexFailureLog,
-    readonly index: D1SearchIndex,
-    readonly manifest: D1IndexManifest,
-    readonly indexer: IndexNote,
-  ) {}
+    private constructor(
+        readonly notes: InMemoryNoteRepo,
+        readonly log: SpyIndexFailureLog,
+        readonly index: D1SearchIndex,
+        readonly manifest: D1IndexManifest,
+        readonly indexer: IndexNote,
+    ) {}
 
-  static async on(runtime: LocalRuntime): Promise<StaleIndexRace> {
-    const database = await runtime.database();
-    const log = new SpyIndexFailureLog();
-    const index = new D1SearchIndex(database, log);
-    const repo = new InMemoryNoteRepo();
-    return new StaleIndexRace(
-      repo,
-      log,
-      index,
-      new D1IndexManifest(database, log),
-      new IndexNote(index, repo, new MarkdownChunker()),
-    );
-  }
+    static async on(runtime: LocalRuntime): Promise<StaleIndexRace> {
+        const database = await runtime.database();
+        const log = new SpyIndexFailureLog();
+        const index = new D1SearchIndex(database, log);
+        const repo = new InMemoryNoteRepo();
+        return new StaleIndexRace(
+            repo,
+            log,
+            index,
+            new D1IndexManifest(database, log),
+            new IndexNote(index, repo, new MarkdownChunker()),
+        );
+    }
 
-  async writeThenDelete(path: string, content: string): Promise<void> {
-    const sync = new NoteIndexSync(this.indexer, new RemoveNoteIndex(this.indexer), this.log);
-    const afterWrite = new ManualBackgroundTasks();
-    const afterDelete = new ManualBackgroundTasks();
-    const write = new IndexedChange(
-      new WriteNote(this.notes),
-      new SavedNotePaths(),
-      sync,
-      afterWrite,
-    );
-    const remove = new IndexedChange(
-      new DeleteNote(this.notes),
-      new DeletedNotePaths(),
-      sync,
-      afterDelete,
-    );
-    await write.execute({ path, content });
-    await remove.execute({ path });
-    await afterDelete.runQueued();
-    await afterWrite.runQueued();
-  }
+    async writeThenDelete(path: string, content: string): Promise<void> {
+        const sync = new NoteIndexSync(this.indexer, new RemoveNoteIndex(this.indexer), this.log);
+        const afterWrite = new ManualBackgroundTasks();
+        const afterDelete = new ManualBackgroundTasks();
+        const write = new IndexedChange(new WriteNote(this.notes), new SavedNotePaths(), sync, afterWrite);
+        const remove = new IndexedChange(new DeleteNote(this.notes), new DeletedNotePaths(), sync, afterDelete);
+        await write.execute({ path, content });
+        await remove.execute({ path });
+        await afterDelete.runQueued();
+        await afterWrite.runQueued();
+    }
 
-  async searchPaths(query: string): Promise<string[]> {
-    const results = await new SearchNotes(this.index).execute({ query });
-    return results.map((result) => result.path);
-  }
+    async searchPaths(query: string): Promise<string[]> {
+        const results = await new SearchNotes(this.index).execute({ query });
+        return results.map((result) => result.path);
+    }
 }

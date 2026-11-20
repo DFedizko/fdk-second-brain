@@ -15,64 +15,62 @@ const PLAN_CONTENT = "# Plan\n\nShip the nebula release.\n";
 const IDEA_CONTENT = "# Idea\n\nGrow the quasar garden.\n";
 
 describe("ReconcileIndex on D1", () => {
-  let runtime: LocalRuntime | undefined;
-  let race: StaleIndexRace;
-  let queue: SpyPathQueue;
-  let reconcile: ReconcileIndex;
+    let runtime: LocalRuntime | undefined;
+    let race: StaleIndexRace;
+    let queue: SpyPathQueue;
+    let reconcile: ReconcileIndex;
 
-  beforeEach(async () => {
-    runtime = await LocalRuntime.start();
-    await runtime.migrate();
-    race = await StaleIndexRace.on(runtime);
-    queue = new SpyPathQueue();
-    reconcile = new ReconcileIndex(new InMemoryNoteCatalog(race.notes), race.manifest, queue);
-  });
+    beforeEach(async () => {
+        runtime = await LocalRuntime.start();
+        await runtime.migrate();
+        race = await StaleIndexRace.on(runtime);
+        queue = new SpyPathQueue();
+        reconcile = new ReconcileIndex(new InMemoryNoteCatalog(race.notes), race.manifest, queue);
+    });
 
-  afterEach(async () => {
-    await runtime?.stop();
-    runtime = undefined;
-  });
+    afterEach(async () => {
+        await runtime?.stop();
+        runtime = undefined;
+    });
 
-  async function consumeQueued(): Promise<void> {
-    const bodies = queue.paths.map((path) => ({ path }));
-    await new IndexQueueConsumer(race.indexer, race.log, new FixedClock(NOW)).handle(
-      FakeMessageBatch.of(bodies),
-    );
-  }
+    async function consumeQueued(): Promise<void> {
+        const bodies = queue.paths.map((path) => ({ path }));
+        await new IndexQueueConsumer(race.indexer, race.log, new FixedClock(NOW)).handle(FakeMessageBatch.of(bodies));
+    }
 
-  it("queues a note written then deleted within moments that stayed in search", async () => {
-    await race.writeThenDelete(PLAN, PLAN_CONTENT);
+    it("queues a note written then deleted within moments that stayed in search", async () => {
+        await race.writeThenDelete(PLAN, PLAN_CONTENT);
 
-    await reconcile.execute();
+        await reconcile.execute();
 
-    expect(queue.paths).toEqual([PLAN]);
-  });
+        expect(queue.paths).toEqual([PLAN]);
+    });
 
-  it("removes that note from search once its fix is consumed", async () => {
-    await race.writeThenDelete(PLAN, PLAN_CONTENT);
-    await reconcile.execute();
+    it("removes that note from search once its fix is consumed", async () => {
+        await race.writeThenDelete(PLAN, PLAN_CONTENT);
+        await reconcile.execute();
 
-    await consumeQueued();
+        await consumeQueued();
 
-    expect(await race.searchPaths("nebula")).toEqual([]);
-  });
+        expect(await race.searchPaths("nebula")).toEqual([]);
+    });
 
-  it("indexes a note the index never saw", async () => {
-    await race.notes.create(NotePath.of(IDEA), IDEA_CONTENT);
-    await reconcile.execute();
+    it("indexes a note the index never saw", async () => {
+        await race.notes.create(NotePath.of(IDEA), IDEA_CONTENT);
+        await reconcile.execute();
 
-    await consumeQueued();
+        await consumeQueued();
 
-    expect(await race.searchPaths("quasar")).toEqual([IDEA]);
-  });
+        expect(await race.searchPaths("quasar")).toEqual([IDEA]);
+    });
 
-  it("finds nothing to fix once the index matches the repository", async () => {
-    await race.notes.create(NotePath.of(IDEA), IDEA_CONTENT);
-    await reconcile.execute();
-    await consumeQueued();
+    it("finds nothing to fix once the index matches the repository", async () => {
+        await race.notes.create(NotePath.of(IDEA), IDEA_CONTENT);
+        await reconcile.execute();
+        await consumeQueued();
 
-    const result = await reconcile.execute();
+        const result = await reconcile.execute();
 
-    expect(result).toEqual({ missing: 0, stale: 0, orphaned: 0 });
-  });
+        expect(result).toEqual({ missing: 0, stale: 0, orphaned: 0 });
+    });
 });

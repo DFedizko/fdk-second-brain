@@ -11,38 +11,38 @@ const ONE_COMMIT = 1;
 const BRANCH_LEVEL: FailureContext = {};
 
 export interface CommitHistory {
-  includes(head: string, commit: string): Promise<boolean>;
-  descendsFrom(head: string, commit: string): Promise<boolean>;
+    includes(head: string, commit: string): Promise<boolean>;
+    descendsFrom(head: string, commit: string): Promise<boolean>;
 }
 
 export class CommitCompare implements CommitHistory {
-  constructor(private readonly github: GitHubAccess) {}
+    constructor(private readonly github: GitHubAccess) {}
 
-  async includes(head: string, commit: string): Promise<boolean> {
-    if (head === commit) return true;
-    const status = await this.statusOf(commit, head);
-    return status === AHEAD || status === DIVERGED;
-  }
+    async includes(head: string, commit: string): Promise<boolean> {
+        if (head === commit) return true;
+        const status = await this.statusOf(commit, head);
+        return status === AHEAD || status === DIVERGED;
+    }
 
-  async descendsFrom(head: string, commit: string): Promise<boolean> {
-    if (head === commit) return true;
-    return (await this.statusOf(commit, head)) === AHEAD;
-  }
+    async descendsFrom(head: string, commit: string): Promise<boolean> {
+        if (head === commit) return true;
+        return (await this.statusOf(commit, head)) === AHEAD;
+    }
 
-  private async statusOf(base: string, head: string): Promise<string> {
-    const basehead = base + RANGE + head;
-    return this.github
-      .send(BRANCH_LEVEL, (client, repo) =>
-        client.rest.repos.compareCommitsWithBasehead({ ...repo, basehead, per_page: ONE_COMMIT }),
-      )
-      .then(
-        ({ data }) => data.status,
-        (error: unknown) => this.treatUnknownAsMissing(error),
-      );
-  }
+    private async statusOf(base: string, head: string): Promise<string> {
+        const basehead = base + RANGE + head;
+        return this.github
+            .send(BRANCH_LEVEL, (client, repo) =>
+                client.rest.repos.compareCommitsWithBasehead({ ...repo, basehead, per_page: ONE_COMMIT }),
+            )
+            .then(
+                ({ data }) => data.status,
+                (error: unknown) => this.treatUnknownAsMissing(error),
+            );
+    }
 
-  private treatUnknownAsMissing(error: unknown): string {
-    if (error instanceof NotesUnavailable && error.status === NOT_FOUND) return MISSING;
-    throw error;
-  }
+    private treatUnknownAsMissing(error: unknown): string {
+        if (error instanceof NotesUnavailable && error.status === NOT_FOUND) return MISSING;
+        throw error;
+    }
 }

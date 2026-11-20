@@ -12,46 +12,45 @@ const SAVED_LABEL = "Saved ";
 const DELETED_LABEL = "Deleted ";
 
 export interface ToolReplies {
-  paths(paths: readonly string[]): CallToolResult;
-  note(view: NoteView): CallToolResult;
-  saved(view: MovedNoteView): CallToolResult;
-  deleted(path: string): CallToolResult;
-  hits(results: readonly SearchResult[]): CallToolResult;
+    paths(paths: readonly string[]): CallToolResult;
+    note(view: NoteView): CallToolResult;
+    saved(view: MovedNoteView): CallToolResult;
+    deleted(path: string): CallToolResult;
+    hits(results: readonly SearchResult[]): CallToolResult;
 }
 
 export class ToolResults implements ToolReplies {
-  paths(paths: readonly string[]): CallToolResult {
-    return this.reply(paths.length === 0 ? NO_NOTES : paths.join(LINE_BREAK));
-  }
+    paths(paths: readonly string[]): CallToolResult {
+        return this.reply(paths.length === 0 ? NO_NOTES : paths.join(LINE_BREAK));
+    }
 
-  note(view: NoteView): CallToolResult {
-    return this.reply(view.content, this.versionLine(view));
-  }
+    note(view: NoteView): CallToolResult {
+        return this.reply(view.content, this.versionLine(view));
+    }
 
-  saved(view: MovedNoteView): CallToolResult {
-    return this.reply(`${SAVED_LABEL}${view.path}${LINE_BREAK}${this.versionLine(view)}`);
-  }
+    saved(view: MovedNoteView): CallToolResult {
+        return this.reply(`${SAVED_LABEL}${view.path}${LINE_BREAK}${this.versionLine(view)}`);
+    }
 
-  deleted(path: string): CallToolResult {
-    return this.reply(`${DELETED_LABEL}${path}`);
-  }
+    deleted(path: string): CallToolResult {
+        return this.reply(`${DELETED_LABEL}${path}`);
+    }
 
-  hits(results: readonly SearchResult[]): CallToolResult {
-    if (results.length === 0) return this.reply(NO_MATCHES);
-    return this.reply(...results.map((hit) => this.describeHit(hit)));
-  }
+    hits(results: readonly SearchResult[]): CallToolResult {
+        if (results.length === 0) return this.reply(NO_MATCHES);
+        return this.reply(...results.map((hit) => this.describeHit(hit)));
+    }
 
-  private describeHit(hit: SearchResult): string {
-    const place =
-      hit.heading === NO_HEADING ? hit.path : `${hit.path}${HEADING_MARK}${hit.heading}`;
-    return `${place}${LINE_BREAK}${hit.snippet}`;
-  }
+    private describeHit(hit: SearchResult): string {
+        const place = hit.heading === NO_HEADING ? hit.path : `${hit.path}${HEADING_MARK}${hit.heading}`;
+        return `${place}${LINE_BREAK}${hit.snippet}`;
+    }
 
-  private versionLine(view: MovedNoteView): string {
-    return `${VERSION_LABEL}${view.version}`;
-  }
+    private versionLine(view: MovedNoteView): string {
+        return `${VERSION_LABEL}${view.version}`;
+    }
 
-  private reply(...texts: string[]): CallToolResult {
-    return { content: texts.map((text): TextContent => ({ type: "text", text })) };
-  }
+    private reply(...texts: string[]): CallToolResult {
+        return { content: texts.map((text): TextContent => ({ type: "text", text })) };
+    }
 }

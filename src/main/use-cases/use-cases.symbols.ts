@@ -13,12 +13,12 @@ import type { WriteNoteInput } from "../../application/use-cases/write-note";
 type Change<Input, Output = NoteView> = ServiceIdentifier<NoteChange<Input, Output>>;
 
 export const USE_CASES = {
-  listNotes: Symbol.for("ListNotes") as ServiceIdentifier<ListNotes>,
-  readNote: Symbol.for("ReadNote") as ServiceIdentifier<ReadNote>,
-  readSection: Symbol.for("ReadSection") as ServiceIdentifier<ReadSection>,
-  writeNote: Symbol.for("WriteNote") as Change<WriteNoteInput>,
-  editNote: Symbol.for("EditNote") as Change<EditNoteInput>,
-  deleteNote: Symbol.for("DeleteNote") as Change<DeleteNoteInput, void>,
-  moveNote: Symbol.for("MoveNote") as Change<MoveNoteInput, MovedNoteView>,
-  saveIdea: Symbol.for("SaveIdea") as Change<SaveIdeaInput>,
+    listNotes: Symbol.for("ListNotes") as ServiceIdentifier<ListNotes>,
+    readNote: Symbol.for("ReadNote") as ServiceIdentifier<ReadNote>,
+    readSection: Symbol.for("ReadSection") as ServiceIdentifier<ReadSection>,
+    writeNote: Symbol.for("WriteNote") as Change<WriteNoteInput>,
+    editNote: Symbol.for("EditNote") as Change<EditNoteInput>,
+    deleteNote: Symbol.for("DeleteNote") as Change<DeleteNoteInput, void>,
+    moveNote: Symbol.for("MoveNote") as Change<MoveNoteInput, MovedNoteView>,
+    saveIdea: Symbol.for("SaveIdea") as Change<SaveIdeaInput>,
 } as const;

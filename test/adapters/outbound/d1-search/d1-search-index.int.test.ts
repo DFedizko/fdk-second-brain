@@ -17,167 +17,150 @@ const FILLER_REPEATS = 40;
 const chunk = (heading: string, text: string, seq = 0): MarkdownChunk => ({ heading, seq, text });
 
 describe("D1SearchIndex", () => {
-  let runtime: LocalRuntime | undefined;
-  let index: D1SearchIndex;
+    let runtime: LocalRuntime | undefined;
+    let index: D1SearchIndex;
 
-  beforeEach(async () => {
-    runtime = await LocalRuntime.start();
-    await runtime.migrate();
-    index = new D1SearchIndex(await runtime.database(), new SpyIndexFailureLog());
-  });
+    beforeEach(async () => {
+        runtime = await LocalRuntime.start();
+        await runtime.migrate();
+        index = new D1SearchIndex(await runtime.database(), new SpyIndexFailureLog());
+    });
 
-  afterEach(async () => {
-    await runtime?.stop();
-    runtime = undefined;
-  });
+    afterEach(async () => {
+        await runtime?.stop();
+        runtime = undefined;
+    });
 
-  const search = (raw: string) => index.search(SearchQuery.of(raw), LIMIT);
-  const pathsOf = (hits: { path: NotePath }[]) => hits.map((hit) => hit.path.value);
+    const search = (raw: string) => index.search(SearchQuery.of(raw), LIMIT);
+    const pathsOf = (hits: { path: NotePath }[]) => hits.map((hit) => hit.path.value);
 
-  it("finds a chunk by the start of a word", async () => {
-    await index.replace(PLAN, FIRST_VERSION, [chunk("Steps", "deploy the worker")], null);
-    await index.replace(GARDEN, FIRST_VERSION, [chunk("Spring", "plant tomatoes")], null);
+    it("finds a chunk by the start of a word", async () => {
+        await index.replace(PLAN, FIRST_VERSION, [chunk("Steps", "deploy the worker")], null);
+        await index.replace(GARDEN, FIRST_VERSION, [chunk("Spring", "plant tomatoes")], null);
 
-    const hits = await search("depl");
+        const hits = await search("depl");
 
-    expect(hits).toEqual([{ path: PLAN, heading: "Steps", snippet: "deploy the worker" }]);
-  });
+        expect(hits).toEqual([{ path: PLAN, heading: "Steps", snippet: "deploy the worker" }]);
+    });
 
-  it("finds Portuguese words typed without accents", async () => {
-    await index.replace(PLAN, FIRST_VERSION, [chunk("Decisões", "A decisão foi usar o D1")], null);
+    it("finds Portuguese words typed without accents", async () => {
+        await index.replace(PLAN, FIRST_VERSION, [chunk("Decisões", "A decisão foi usar o D1")], null);
 
-    const hits = await search("decisao");
+        const hits = await search("decisao");
 
-    expect(pathsOf(hits)).toEqual([PLAN.value]);
-  });
+        expect(pathsOf(hits)).toEqual([PLAN.value]);
+    });
 
-  it("finds words written without accents when the query has them", async () => {
-    await index.replace(PLAN, FIRST_VERSION, [chunk("Notas", "a decisao final")], null);
+    it("finds words written without accents when the query has them", async () => {
+        await index.replace(PLAN, FIRST_VERSION, [chunk("Notas", "a decisao final")], null);
 
-    const hits = await search("DECISÃO");
+        const hits = await search("DECISÃO");
 
-    expect(pathsOf(hits)).toEqual([PLAN.value]);
-  });
+        expect(pathsOf(hits)).toEqual([PLAN.value]);
+    });
 
-  it("finds a chunk by a word in its heading", async () => {
-    await index.replace(PLAN, FIRST_VERSION, [chunk("Roadmap", "first quarter goals")], null);
+    it("finds a chunk by a word in its heading", async () => {
+        await index.replace(PLAN, FIRST_VERSION, [chunk("Roadmap", "first quarter goals")], null);
 
-    const hits = await search("roadmap");
+        const hits = await search("roadmap");
 
-    expect(hits).toEqual([{ path: PLAN, heading: "Roadmap", snippet: "first quarter goals" }]);
-  });
+        expect(hits).toEqual([{ path: PLAN, heading: "Roadmap", snippet: "first quarter goals" }]);
+    });
 
-  it("ranks the chunk that matches best first", async () => {
-    await index.replace(
-      GARDEN,
-      FIRST_VERSION,
-      [chunk("Spring", "water the plants, maybe deploy a sensor some day, and pull the weeds")],
-      null,
-    );
-    await index.replace(
-      PLAN,
-      FIRST_VERSION,
-      [chunk("Deploy", "deploy steps: deploy the worker")],
-      null,
-    );
+    it("ranks the chunk that matches best first", async () => {
+        await index.replace(
+            GARDEN,
+            FIRST_VERSION,
+            [chunk("Spring", "water the plants, maybe deploy a sensor some day, and pull the weeds")],
+            null,
+        );
+        await index.replace(PLAN, FIRST_VERSION, [chunk("Deploy", "deploy steps: deploy the worker")], null);
 
-    const hits = await search("deploy");
+        const hits = await search("deploy");
 
-    expect(pathsOf(hits)).toEqual([PLAN.value, GARDEN.value]);
-  });
+        expect(pathsOf(hits)).toEqual([PLAN.value, GARDEN.value]);
+    });
 
-  it("matches any of the query's words", async () => {
-    await index.replace(PLAN, FIRST_VERSION, [chunk("Steps", "deploy the worker")], null);
-    await index.replace(GARDEN, FIRST_VERSION, [chunk("Spring", "plant tomatoes")], null);
+    it("matches any of the query's words", async () => {
+        await index.replace(PLAN, FIRST_VERSION, [chunk("Steps", "deploy the worker")], null);
+        await index.replace(GARDEN, FIRST_VERSION, [chunk("Spring", "plant tomatoes")], null);
 
-    const hits = await search("tomatoes deploy");
+        const hits = await search("tomatoes deploy");
 
-    expect(pathsOf(hits).sort()).toEqual([GARDEN.value, PLAN.value]);
-  });
+        expect(pathsOf(hits).sort()).toEqual([GARDEN.value, PLAN.value]);
+    });
 
-  it("returns no more hits than the limit", async () => {
-    const paths = Array.from({ length: MANY_NOTES }, (_, n) => NotePath.of(`log/day${n}.md`));
-    await Promise.all(
-      paths.map((path) => index.replace(path, FIRST_VERSION, [chunk("Log", "deploy")], null)),
-    );
+    it("returns no more hits than the limit", async () => {
+        const paths = Array.from({ length: MANY_NOTES }, (_, n) => NotePath.of(`log/day${n}.md`));
+        await Promise.all(paths.map((path) => index.replace(path, FIRST_VERSION, [chunk("Log", "deploy")], null)));
 
-    const hits = await index.search(SearchQuery.of("deploy"), LIMIT);
+        const hits = await index.search(SearchQuery.of("deploy"), LIMIT);
 
-    expect(hits).toHaveLength(LIMIT);
-  });
+        expect(hits).toHaveLength(LIMIT);
+    });
 
-  it("matches a one-letter word only as a whole word", async () => {
-    await index.replace(PLAN, FIRST_VERSION, [chunk("Fruit", "apple pie")], null);
+    it("matches a one-letter word only as a whole word", async () => {
+        await index.replace(PLAN, FIRST_VERSION, [chunk("Fruit", "apple pie")], null);
 
-    const hits = await search("a");
+        const hits = await search("a");
 
-    expect(hits).toEqual([]);
-  });
+        expect(hits).toEqual([]);
+    });
 
-  it("treats search operators as plain words", async () => {
-    await index.replace(PLAN, FIRST_VERSION, [chunk("Logic", "NOT a gate, OR a wire")], null);
+    it("treats search operators as plain words", async () => {
+        await index.replace(PLAN, FIRST_VERSION, [chunk("Logic", "NOT a gate, OR a wire")], null);
 
-    const hits = await search('NOT "OR');
+        const hits = await search('NOT "OR');
 
-    expect(pathsOf(hits)).toEqual([PLAN.value]);
-  });
+        expect(pathsOf(hits)).toEqual([PLAN.value]);
+    });
 
-  it("shows a short snippet around the match", async () => {
-    const filler = "lorem ipsum dolor sit amet ".repeat(FILLER_REPEATS);
-    await index.replace(
-      PLAN,
-      FIRST_VERSION,
-      [chunk("Long", `${filler}kubernetes ${filler}`)],
-      null,
-    );
+    it("shows a short snippet around the match", async () => {
+        const filler = "lorem ipsum dolor sit amet ".repeat(FILLER_REPEATS);
+        await index.replace(PLAN, FIRST_VERSION, [chunk("Long", `${filler}kubernetes ${filler}`)], null);
 
-    const [hit] = await search("kubernetes");
+        const [hit] = await search("kubernetes");
 
-    expect(hit!.snippet).toContain("kubernetes");
-    expect(hit!.snippet.length).toBeLessThan(filler.length);
-  });
+        expect(hit!.snippet).toContain("kubernetes");
+        expect(hit!.snippet.length).toBeLessThan(filler.length);
+    });
 
-  it("replaces a note's old chunks when it is indexed again", async () => {
-    await index.replace(PLAN, FIRST_VERSION, [chunk("Steps", "deploy the worker")], null);
+    it("replaces a note's old chunks when it is indexed again", async () => {
+        await index.replace(PLAN, FIRST_VERSION, [chunk("Steps", "deploy the worker")], null);
 
-    await index.replace(
-      PLAN,
-      SECOND_VERSION,
-      [chunk("Steps", "migrate the database")],
-      FIRST_VERSION,
-    );
+        await index.replace(PLAN, SECOND_VERSION, [chunk("Steps", "migrate the database")], FIRST_VERSION);
 
-    expect(await search("deploy")).toEqual([]);
-    expect(pathsOf(await search("migrate"))).toEqual([PLAN.value]);
-  });
+        expect(await search("deploy")).toEqual([]);
+        expect(pathsOf(await search("migrate"))).toEqual([PLAN.value]);
+    });
 
-  it("remembers the version it indexed", async () => {
-    await index.replace(PLAN, SECOND_VERSION, [chunk("Steps", "deploy")], null);
+    it("remembers the version it indexed", async () => {
+        await index.replace(PLAN, SECOND_VERSION, [chunk("Steps", "deploy")], null);
 
-    const version = await index.versionOf(PLAN);
+        const version = await index.versionOf(PLAN);
 
-    expect(version?.value).toBe(SECOND_VERSION.value);
-  });
+        expect(version?.value).toBe(SECOND_VERSION.value);
+    });
 
-  it("has no version for a note it never indexed", async () => {
-    const version = await index.versionOf(PLAN);
+    it("has no version for a note it never indexed", async () => {
+        const version = await index.versionOf(PLAN);
 
-    expect(version).toBeNull();
-  });
+        expect(version).toBeNull();
+    });
 
-  it("removes a note's chunks", async () => {
-    await index.replace(PLAN, FIRST_VERSION, [chunk("Steps", "deploy the worker")], null);
+    it("removes a note's chunks", async () => {
+        await index.replace(PLAN, FIRST_VERSION, [chunk("Steps", "deploy the worker")], null);
 
-    await index.remove(PLAN, FIRST_VERSION);
+        await index.remove(PLAN, FIRST_VERSION);
 
-    expect(await search("deploy")).toEqual([]);
-  });
+        expect(await search("deploy")).toEqual([]);
+    });
 
-  it("forgets a removed note's version", async () => {
-    await index.replace(PLAN, FIRST_VERSION, [chunk("Steps", "deploy the worker")], null);
+    it("forgets a removed note's version", async () => {
+        await index.replace(PLAN, FIRST_VERSION, [chunk("Steps", "deploy the worker")], null);
 
-    await index.remove(PLAN, FIRST_VERSION);
+        await index.remove(PLAN, FIRST_VERSION);
 
-    expect(await index.versionOf(PLAN)).toBeNull();
-  });
+        expect(await index.versionOf(PLAN)).toBeNull();
+    });
 });

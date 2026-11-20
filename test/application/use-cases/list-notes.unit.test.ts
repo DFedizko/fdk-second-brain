@@ -7,30 +7,30 @@ const PATHS = ["inbox.md", "projects/plan.md", "projects/old/notes.md"];
 const CONTENT = "# Note\n";
 
 describe("ListNotes", () => {
-  let repository: InMemoryNoteRepo;
-  let listNotes: ListNotes;
+    let repository: InMemoryNoteRepo;
+    let listNotes: ListNotes;
 
-  beforeEach(async () => {
-    repository = new InMemoryNoteRepo();
-    listNotes = new ListNotes(repository);
-    await Promise.all(PATHS.map((raw) => repository.create(NotePath.of(raw), CONTENT)));
-  });
+    beforeEach(async () => {
+        repository = new InMemoryNoteRepo();
+        listNotes = new ListNotes(repository);
+        await Promise.all(PATHS.map((raw) => repository.create(NotePath.of(raw), CONTENT)));
+    });
 
-  it("lists every note when no folder is given", async () => {
-    const paths = await listNotes.execute({});
+    it("lists every note when no folder is given", async () => {
+        const paths = await listNotes.execute({});
 
-    expect(paths).toEqual(["inbox.md", "projects/old/notes.md", "projects/plan.md"]);
-  });
+        expect(paths).toEqual(["inbox.md", "projects/old/notes.md", "projects/plan.md"]);
+    });
 
-  it("lists only the notes inside the given folder", async () => {
-    const paths = await listNotes.execute({ folder: "projects/old" });
+    it("lists only the notes inside the given folder", async () => {
+        const paths = await listNotes.execute({ folder: "projects/old" });
 
-    expect(paths).toEqual(["projects/old/notes.md"]);
-  });
+        expect(paths).toEqual(["projects/old/notes.md"]);
+    });
 
-  it("rejects a folder that escapes the notes", async () => {
-    const list = listNotes.execute({ folder: "../secrets" });
+    it("rejects a folder that escapes the notes", async () => {
+        const list = listNotes.execute({ folder: "../secrets" });
 
-    await expect(list).rejects.toThrow(InvalidPath);
-  });
+        await expect(list).rejects.toThrow(InvalidPath);
+    });
 });

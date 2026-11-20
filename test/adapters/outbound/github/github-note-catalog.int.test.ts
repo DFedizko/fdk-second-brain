@@ -10,11 +10,11 @@ import { ActionPause, NO_PAUSE } from "./__fake__/action-pause";
 import { FixedClock } from "../../../__stub__/fixed-clock";
 import type { FakeGitHubApi } from "./__fake__/fake-github-api";
 import {
-  buildEmptyNotesRepo,
-  buildFakeNotesRepo,
-  NOTES_BRANCH,
-  NOTES_OWNER,
-  NOTES_REPO,
+    buildEmptyNotesRepo,
+    buildFakeNotesRepo,
+    NOTES_BRANCH,
+    NOTES_OWNER,
+    NOTES_REPO,
 } from "./__fake__/fake-notes-repo";
 import { FIXED_NOW } from "./__fake__/github-note-repo-on-fake";
 import { GITHUB_CONFIG } from "./__stub__/github-config";
@@ -25,94 +25,94 @@ const PLAN_CONTENT = "# Plan\n";
 const TREES = `/repos/${NOTES_OWNER}/${NOTES_REPO}/git/trees/`;
 
 function connectCatalog(api: FakeGitHubApi, pause: RetryPause = NO_PAUSE): GitHubNoteCatalog {
-  const errors = new GitHubErrorTranslator(new FixedClock(FIXED_NOW));
-  const github = new GitHubGateway(api.octokit(GITHUB_CONFIG.token), GITHUB_CONFIG, errors);
-  const reader = new GitHubNoteReader(github);
-  return new GitHubNoteCatalog(github, reader, new CommitCompare(github), pause);
+    const errors = new GitHubErrorTranslator(new FixedClock(FIXED_NOW));
+    const github = new GitHubGateway(api.octokit(GITHUB_CONFIG.token), GITHUB_CONFIG, errors);
+    const reader = new GitHubNoteReader(github);
+    return new GitHubNoteCatalog(github, reader, new CommitCompare(github), pause);
 }
 
 function treeReads(api: FakeGitHubApi): string[] {
-  return api.requested.filter((request) => request.includes(TREES));
+    return api.requested.filter((request) => request.includes(TREES));
 }
 
 function shaOf(api: FakeGitHubApi, path: string): string {
-  return api.store.filesAt(NOTES_BRANCH)?.get(path) ?? "";
+    return api.store.filesAt(NOTES_BRANCH)?.get(path) ?? "";
 }
 
 async function listed(catalog: GitHubNoteCatalog) {
-  const { stamps } = await catalog.snapshot();
-  return stamps.map((stamp) => ({ path: stamp.path.value, version: stamp.version.value }));
+    const { stamps } = await catalog.snapshot();
+    return stamps.map((stamp) => ({ path: stamp.path.value, version: stamp.version.value }));
 }
 
 describe("GitHubNoteCatalog", () => {
-  it("lists each note at the head of the branch with its blob sha", async () => {
-    const api = buildFakeNotesRepo();
-    api.addEntry(NOTES_BRANCH, PLAN, FILE_MODE, PLAN_CONTENT);
+    it("lists each note at the head of the branch with its blob sha", async () => {
+        const api = buildFakeNotesRepo();
+        api.addEntry(NOTES_BRANCH, PLAN, FILE_MODE, PLAN_CONTENT);
 
-    const stamps = await listed(connectCatalog(api));
+        const stamps = await listed(connectCatalog(api));
 
-    expect(stamps).toEqual([{ path: PLAN, version: shaOf(api, PLAN) }]);
-  });
+        expect(stamps).toEqual([{ path: PLAN, version: shaOf(api, PLAN) }]);
+    });
 
-  it("reads the tree at the head commit instead of by branch name", async () => {
-    const api = buildFakeNotesRepo();
-    api.addEntry(NOTES_BRANCH, PLAN, FILE_MODE, PLAN_CONTENT);
-    const head = api.store.headOf(NOTES_BRANCH) ?? "";
+    it("reads the tree at the head commit instead of by branch name", async () => {
+        const api = buildFakeNotesRepo();
+        api.addEntry(NOTES_BRANCH, PLAN, FILE_MODE, PLAN_CONTENT);
+        const head = api.store.headOf(NOTES_BRANCH) ?? "";
 
-    await connectCatalog(api).snapshot();
+        await connectCatalog(api).snapshot();
 
-    expect(treeReads(api)).toEqual([`GET ${TREES}${head}`]);
-  });
+        expect(treeReads(api)).toEqual([`GET ${TREES}${head}`]);
+    });
 
-  it("names the head commit it read the notes at", async () => {
-    const api = buildFakeNotesRepo();
-    api.addEntry(NOTES_BRANCH, PLAN, FILE_MODE, PLAN_CONTENT);
-    const head = api.store.headOf(NOTES_BRANCH);
+    it("names the head commit it read the notes at", async () => {
+        const api = buildFakeNotesRepo();
+        api.addEntry(NOTES_BRANCH, PLAN, FILE_MODE, PLAN_CONTENT);
+        const head = api.store.headOf(NOTES_BRANCH);
 
-    const snapshot = await connectCatalog(api).snapshot();
+        const snapshot = await connectCatalog(api).snapshot();
 
-    expect(snapshot.commit).toBe(head);
-  });
+        expect(snapshot.commit).toBe(head);
+    });
 
-  it("waits for a head that includes the pushed commit before reading", async () => {
-    const api = buildFakeNotesRepo();
-    const shown = api.store.headOf(NOTES_BRANCH) ?? "";
-    api.addEntry(NOTES_BRANCH, PLAN, FILE_MODE, PLAN_CONTENT);
-    const pushed = api.store.headOf(NOTES_BRANCH) ?? "";
-    api.store.setRef(NOTES_BRANCH, shown);
-    const catchUp = new ActionPause(() => api.store.setRef(NOTES_BRANCH, pushed));
+    it("waits for a head that includes the pushed commit before reading", async () => {
+        const api = buildFakeNotesRepo();
+        const shown = api.store.headOf(NOTES_BRANCH) ?? "";
+        api.addEntry(NOTES_BRANCH, PLAN, FILE_MODE, PLAN_CONTENT);
+        const pushed = api.store.headOf(NOTES_BRANCH) ?? "";
+        api.store.setRef(NOTES_BRANCH, shown);
+        const catchUp = new ActionPause(() => api.store.setRef(NOTES_BRANCH, pushed));
 
-    const snapshot = await connectCatalog(api, catchUp).snapshot(pushed);
+        const snapshot = await connectCatalog(api, catchUp).snapshot(pushed);
 
-    expect(snapshot.commit).toBe(pushed);
-  });
+        expect(snapshot.commit).toBe(pushed);
+    });
 
-  it("gives up when the branch never reaches the pushed commit", async () => {
-    const api = buildFakeNotesRepo();
-    const shown = api.store.headOf(NOTES_BRANCH) ?? "";
-    api.addEntry(NOTES_BRANCH, PLAN, FILE_MODE, PLAN_CONTENT);
-    const pushed = api.store.headOf(NOTES_BRANCH) ?? "";
-    api.store.setRef(NOTES_BRANCH, shown);
+    it("gives up when the branch never reaches the pushed commit", async () => {
+        const api = buildFakeNotesRepo();
+        const shown = api.store.headOf(NOTES_BRANCH) ?? "";
+        api.addEntry(NOTES_BRANCH, PLAN, FILE_MODE, PLAN_CONTENT);
+        const pushed = api.store.headOf(NOTES_BRANCH) ?? "";
+        api.store.setRef(NOTES_BRANCH, shown);
 
-    const snapshot = connectCatalog(api).snapshot(pushed);
+        const snapshot = connectCatalog(api).snapshot(pushed);
 
-    await expect(snapshot).rejects.toThrow(BranchBehind);
-  });
+        await expect(snapshot).rejects.toThrow(BranchBehind);
+    });
 
-  it("lists nothing in an empty repository", async () => {
-    const api = buildEmptyNotesRepo();
+    it("lists nothing in an empty repository", async () => {
+        const api = buildEmptyNotesRepo();
 
-    const stamps = await listed(connectCatalog(api));
+        const stamps = await listed(connectCatalog(api));
 
-    expect(stamps).toEqual([]);
-  });
+        expect(stamps).toEqual([]);
+    });
 
-  it("refuses a tree GitHub cut short", async () => {
-    const api = buildFakeNotesRepo();
-    api.truncateTrees();
+    it("refuses a tree GitHub cut short", async () => {
+        const api = buildFakeNotesRepo();
+        api.truncateTrees();
 
-    const stamps = connectCatalog(api).snapshot();
+        const stamps = connectCatalog(api).snapshot();
 
-    await expect(stamps).rejects.toThrow(NotesUnavailable);
-  });
+        await expect(stamps).rejects.toThrow(NotesUnavailable);
+    });
 });

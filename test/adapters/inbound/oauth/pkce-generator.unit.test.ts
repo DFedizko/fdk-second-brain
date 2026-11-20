@@ -6,32 +6,32 @@ const MAX_VERIFIER = 128;
 const UNRESERVED = /^[A-Za-z0-9._~-]+$/;
 
 async function s256(verifier: string): Promise<string> {
-  const digest = await crypto.subtle.digest(SHA_256, new TextEncoder().encode(verifier));
-  return Buffer.from(digest).toString("base64url");
+    const digest = await crypto.subtle.digest(SHA_256, new TextEncoder().encode(verifier));
+    return Buffer.from(digest).toString("base64url");
 }
 
 describe("PkceGenerator", () => {
-  it("derives the challenge from the verifier with S256", async () => {
-    const pair = await new PkceGenerator().create();
+    it("derives the challenge from the verifier with S256", async () => {
+        const pair = await new PkceGenerator().create();
 
-    expect(pair.challenge).toBe(await s256(pair.verifier));
-  });
+        expect(pair.challenge).toBe(await s256(pair.verifier));
+    });
 
-  it("makes a verifier of allowed length and characters", async () => {
-    const { verifier } = await new PkceGenerator().create();
+    it("makes a verifier of allowed length and characters", async () => {
+        const { verifier } = await new PkceGenerator().create();
 
-    expect([
-      verifier.length >= MIN_VERIFIER,
-      verifier.length <= MAX_VERIFIER,
-      UNRESERVED.test(verifier),
-    ]).toEqual([true, true, true]);
-  });
+        expect([verifier.length >= MIN_VERIFIER, verifier.length <= MAX_VERIFIER, UNRESERVED.test(verifier)]).toEqual([
+            true,
+            true,
+            true,
+        ]);
+    });
 
-  it("makes a new verifier each time", async () => {
-    const generator = new PkceGenerator();
+    it("makes a new verifier each time", async () => {
+        const generator = new PkceGenerator();
 
-    const [first, second] = await Promise.all([generator.create(), generator.create()]);
+        const [first, second] = await Promise.all([generator.create(), generator.create()]);
 
-    expect(first.verifier).not.toBe(second.verifier);
-  });
+        expect(first.verifier).not.toBe(second.verifier);
+    });
 });

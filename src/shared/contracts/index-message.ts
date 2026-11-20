@@ -1,4 +1,4 @@
 export interface IndexMessage {
-  readonly path: string;
-  readonly commit?: string;
+    readonly path: string;
+    readonly commit?: string;
 }

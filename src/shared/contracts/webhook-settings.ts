@@ -1,3 +1,3 @@
 export interface WebhookSettings {
-  readonly secret: string;
+    readonly secret: string;
 }

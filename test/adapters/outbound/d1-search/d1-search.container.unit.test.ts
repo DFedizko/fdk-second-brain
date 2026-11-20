@@ -9,31 +9,31 @@ import { SpyIndexFailureLog } from "../../../__spy__/spy-index-failure-log";
 import { DUMMY_D1_DATABASE } from "../../../__dummy__/dummy-d1-database";
 
 describe("createD1SearchModule", () => {
-  let container: Container;
+    let container: Container;
 
-  beforeEach(async () => {
-    container = new Container();
-    container.bind(LOGGING.indexFailureLog).toConstantValue(new SpyIndexFailureLog());
-    await container.load(createD1SearchModule(DUMMY_D1_DATABASE));
-  });
+    beforeEach(async () => {
+        container = new Container();
+        container.bind(LOGGING.indexFailureLog).toConstantValue(new SpyIndexFailureLog());
+        await container.load(createD1SearchModule(DUMMY_D1_DATABASE));
+    });
 
-  it("binds the search index to the D1 adapter", () => {
-    const index = container.get<SearchIndex>(D1_SEARCH_SYMBOLS.SearchIndex);
+    it("binds the search index to the D1 adapter", () => {
+        const index = container.get<SearchIndex>(D1_SEARCH_SYMBOLS.SearchIndex);
 
-    expect(index).toBeInstanceOf(D1SearchIndex);
-  });
+        expect(index).toBeInstanceOf(D1SearchIndex);
+    });
 
-  it("binds the search index as a single instance", () => {
-    const first = container.get<SearchIndex>(D1_SEARCH_SYMBOLS.SearchIndex);
+    it("binds the search index as a single instance", () => {
+        const first = container.get<SearchIndex>(D1_SEARCH_SYMBOLS.SearchIndex);
 
-    const second = container.get<SearchIndex>(D1_SEARCH_SYMBOLS.SearchIndex);
+        const second = container.get<SearchIndex>(D1_SEARCH_SYMBOLS.SearchIndex);
 
-    expect(second).toBe(first);
-  });
+        expect(second).toBe(first);
+    });
 
-  it("binds the index manifest to the D1 adapter", () => {
-    const manifest = container.get(D1_SEARCH_SYMBOLS.IndexManifest);
+    it("binds the index manifest to the D1 adapter", () => {
+        const manifest = container.get(D1_SEARCH_SYMBOLS.IndexManifest);
 
-    expect(manifest).toBeInstanceOf(D1IndexManifest);
-  });
+        expect(manifest).toBeInstanceOf(D1IndexManifest);
+    });
 });

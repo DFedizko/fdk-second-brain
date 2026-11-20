@@ -60,12 +60,12 @@ This repository holds only the server code. Notes never go here; the notes repos
 - `/mcp` sits behind `OAuthProvider` from `@cloudflare/workers-oauth-provider`, built in `src/adapters/inbound/oauth/`. The core knows nothing about it. MCP clients register themselves at `/oauth/register` (dynamic client registration), open `/authorize`, and trade codes for tokens at `/oauth/token`. Client ID Metadata Documents stay off: they need the `global_fetch_strictly_public` flag, which would also stop the Worker from reaching the local GitHub fakes in e2e tests.
 - `/authorize` shows a consent page (client name, where access goes, a warning for local apps). Allow sends the browser to GitHub with PKCE (S256); `/callback` exchanges GitHub's code, reads `GET /user`, and completes the authorization only when the account's numeric ID equals `OWNER_GITHUB_ID`. The ID, not the login, because a login can be renamed and then claimed by someone else; the ID never changes. To find yours, open `https://api.github.com/users/<your-login>` and copy `"id"`. Anyone else gets a 403 page and no code. GitHub's token is used once and never stored.
 - **The GitHub OAuth app.** On GitHub: Settings → Developer settings → OAuth Apps → New OAuth App (an OAuth App, not a GitHub App).
-  - Application name: anything, e.g. `Second brain`. Homepage URL: `PUBLIC_URL`.
-  - Authorization callback URL: `<PUBLIC_URL>/callback`, e.g. `https://second-brain-mcp.<your-subdomain>.workers.dev/callback`. For `wrangler dev`, use a second OAuth app with `http://localhost:8787/callback`.
-  - Leave Enable Device Flow off.
-  - Scopes: none. The Worker asks for no scope, which grants read-only access to public information, enough for `GET /user` to return the login. No `repo` or `read:user` scope is needed: notes are read and written with `GITHUB_TOKEN`, never with the signed-in user's token.
-  - Put your numeric GitHub user ID (the `"id"` at `https://api.github.com/users/<your-login>`) in `OWNER_GITHUB_ID`.
-  - Copy the Client ID into `GITHUB_CLIENT_ID`, generate a client secret and put it in `GITHUB_CLIENT_SECRET` (`bunx wrangler secret put GITHUB_CLIENT_SECRET` in production).
+    - Application name: anything, e.g. `Second brain`. Homepage URL: `PUBLIC_URL`.
+    - Authorization callback URL: `<PUBLIC_URL>/callback`, e.g. `https://second-brain-mcp.<your-subdomain>.workers.dev/callback`. For `wrangler dev`, use a second OAuth app with `http://localhost:8787/callback`.
+    - Leave Enable Device Flow off.
+    - Scopes: none. The Worker asks for no scope, which grants read-only access to public information, enough for `GET /user` to return the login. No `repo` or `read:user` scope is needed: notes are read and written with `GITHUB_TOKEN`, never with the signed-in user's token.
+    - Put your numeric GitHub user ID (the `"id"` at `https://api.github.com/users/<your-login>`) in `OWNER_GITHUB_ID`.
+    - Copy the Client ID into `GITHUB_CLIENT_ID`, generate a client secret and put it in `GITHUB_CLIENT_SECRET` (`bunx wrangler secret put GITHUB_CLIENT_SECRET` in production).
 - **KV namespace.** The provider stores clients, grants and hashed tokens in a KV namespace bound as `OAUTH_KV` in `wrangler.jsonc`. Workers KV is included in the Workers Free plan: 100,000 reads, 1,000 writes, 1,000 deletes and 1,000 lists per day, 1 GB storage (checked 2026-11-19 on developers.cloudflare.com/kv/platform/limits and /pricing). One owner signing in a few times a day stays far below that. `wrangler.jsonc` holds the real namespace `id`, created with `bunx wrangler kv namespace create OAUTH_KV`.
 
 ## Indexing outside the MCP server

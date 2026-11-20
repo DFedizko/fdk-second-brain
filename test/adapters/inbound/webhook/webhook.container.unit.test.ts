@@ -19,41 +19,41 @@ const RECONCILER = Symbol.for("TestReconciler");
 let changes: SpyChangeQueue;
 
 function buildContainer(): Container {
-  const container = new Container();
-  container.bind(CHANGES).toConstantValue(changes);
-  container.bind(RECONCILER).toConstantValue(new SpyReconciler());
-  container.bind(BACKGROUND.tasks).toConstantValue(new ManualBackgroundTasks());
-  container.bind(LOGGING.indexFailureLog).toConstantValue(new SpyIndexFailureLog());
-  container.load(
-    createWebhookModule({
-      secret: SECRET,
-      branch: BRANCH,
-      changes: CHANGES,
-      reconciler: RECONCILER,
-    }),
-  );
-  return container;
+    const container = new Container();
+    container.bind(CHANGES).toConstantValue(changes);
+    container.bind(RECONCILER).toConstantValue(new SpyReconciler());
+    container.bind(BACKGROUND.tasks).toConstantValue(new ManualBackgroundTasks());
+    container.bind(LOGGING.indexFailureLog).toConstantValue(new SpyIndexFailureLog());
+    container.load(
+        createWebhookModule({
+            secret: SECRET,
+            branch: BRANCH,
+            changes: CHANGES,
+            reconciler: RECONCILER,
+        }),
+    );
+    return container;
 }
 
 beforeEach(() => {
-  changes = new SpyChangeQueue();
+    changes = new SpyChangeQueue();
 });
 
 describe("createWebhookModule", () => {
-  it("binds the GitHub webhook route", () => {
-    const route = buildContainer().get(WEBHOOK.route);
+    it("binds the GitHub webhook route", () => {
+        const route = buildContainer().get(WEBHOOK.route);
 
-    expect(route).toBeInstanceOf(GitHubWebhookRoute);
-  });
-
-  it("checks signatures with the configured secret and branch", async () => {
-    const request = new FakeGitHubWebhook(SECRET).push({
-      branch: BRANCH,
-      commits: [{ added: [PLAN] }],
+        expect(route).toBeInstanceOf(GitHubWebhookRoute);
     });
 
-    await buildContainer().get(WEBHOOK.route).fetch(request);
+    it("checks signatures with the configured secret and branch", async () => {
+        const request = new FakeGitHubWebhook(SECRET).push({
+            branch: BRANCH,
+            commits: [{ added: [PLAN] }],
+        });
 
-    expect(changes.calls).toEqual([[PLAN]]);
-  });
+        await buildContainer().get(WEBHOOK.route).fetch(request);
+
+        expect(changes.calls).toEqual([[PLAN]]);
+    });
 });

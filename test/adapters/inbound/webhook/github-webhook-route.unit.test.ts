@@ -1,8 +1,8 @@
 import {
-  GitHubWebhookRoute,
-  MAX_PUSH_COMMITS,
-  QUEUE_LABEL,
-  RECONCILE_LABEL,
+    GitHubWebhookRoute,
+    MAX_PUSH_COMMITS,
+    QUEUE_LABEL,
+    RECONCILE_LABEL,
 } from "../../../../src/adapters/inbound/webhook/github-webhook-route";
 import { WebhookSignature } from "../../../../src/adapters/inbound/webhook/webhook-signature";
 import { FakeGitHubWebhook, WEBHOOK_URL } from "./__fake__/fake-github-webhook";
@@ -32,236 +32,227 @@ const BYTE_MARKER = "projects/marker.md";
 const INVALID_UTF8 = 0xff;
 
 function withInvalidUtf8(json: string): Uint8Array {
-  const bytes = new TextEncoder().encode(json);
-  const at = json.indexOf(BYTE_MARKER);
-  bytes[at] = INVALID_UTF8;
-  return bytes;
+    const bytes = new TextEncoder().encode(json);
+    const at = json.indexOf(BYTE_MARKER);
+    bytes[at] = INVALID_UTF8;
+    return bytes;
 }
 
 describe("GitHubWebhookRoute", () => {
-  let changes: SpyChangeQueue;
-  let reconciler: SpyReconciler;
-  let background: ManualBackgroundTasks;
-  let log: SpyIndexFailureLog;
-  let route: GitHubWebhookRoute;
-  const github = new FakeGitHubWebhook(SECRET);
-
-  beforeEach(() => {
-    changes = new SpyChangeQueue();
-    reconciler = new SpyReconciler();
-    background = new ManualBackgroundTasks();
-    log = new SpyIndexFailureLog();
-    route = new GitHubWebhookRoute(
-      new WebhookSignature({ secret: SECRET }),
-      changes,
-      { reconciler, background, log },
-      BRANCH,
-    );
-  });
-
-  it("queues the added, modified and removed files of a push to the notes branch", async () => {
-    const request = github.push({
-      branch: BRANCH,
-      commits: [{ added: [PLAN] }, { modified: [IDEA], removed: [OLD] }],
-    });
-
-    await route.fetch(request);
-
-    expect(changes.calls).toEqual([[PLAN, IDEA, OLD]]);
-  });
-
-  it("answers a queued push with accepted", async () => {
-    const response = await route.fetch(
-      github.push({ branch: BRANCH, commits: [{ added: [PLAN] }] }),
-    );
-
-    expect(response.status).toBe(ACCEPTED);
-  });
-
-  it("ignores a push to another branch", async () => {
-    const response = await route.fetch(
-      github.push({ branch: OTHER_BRANCH, commits: [{ added: [PLAN] }] }),
-    );
-
-    expect({ status: response.status, calls: changes.calls }).toEqual({
-      status: IGNORED,
-      calls: [],
-    });
-  });
-
-  it("ignores the deletion of the notes branch", async () => {
-    const response = await route.fetch(github.push({ branch: BRANCH, deleted: true, commits: [] }));
-
-    expect({ status: response.status, runs: reconciler.runs }).toEqual({
-      status: IGNORED,
-      runs: 0,
-    });
-  });
-
-  it("answers a ping without queueing anything", async () => {
-    const response = await route.fetch(github.ping());
-
-    expect({ status: response.status, calls: changes.calls }).toEqual({
-      status: IGNORED,
-      calls: [],
-    });
-  });
-
-  it("ignores events other than push", async () => {
-    const response = await route.fetch(github.deliver("issues", "{}"));
-
-    expect(response.status).toBe(IGNORED);
-  });
-
-  it("refuses a delivery with no signature", async () => {
-    const request = github.push(
-      { branch: BRANCH, commits: [{ added: [PLAN] }] },
-      { signature: null },
-    );
-
-    const response = await route.fetch(request);
-
-    expect({ status: response.status, calls: changes.calls }).toEqual({
-      status: UNAUTHORIZED,
-      calls: [],
-    });
-  });
-
-  it("refuses a delivery signed with another secret", async () => {
-    const forger = new FakeGitHubWebhook("another-secret-of-at-least-32-chars");
-
-    const response = await route.fetch(
-      forger.push({ branch: BRANCH, commits: [{ added: [PLAN] }] }),
-    );
-
-    expect({ status: response.status, calls: changes.calls }).toEqual({
-      status: UNAUTHORIZED,
-      calls: [],
-    });
-  });
-
-  it("checks the signature over the raw bytes GitHub sent", async () => {
-    const spec = { branch: BRANCH, commits: [{ added: [BYTE_MARKER] }] };
-    const body = withInvalidUtf8(JSON.stringify(buildPushPayload(spec)));
-
-    const response = await route.fetch(github.deliver("push", body));
-
-    expect(response.status).toBe(ACCEPTED);
-  });
-
-  it("refuses a request that is not a POST", async () => {
-    const response = await route.fetch(new Request(WEBHOOK_URL));
-
-    expect(response.status).toBe(NOT_ALLOWED);
-  });
-
-  it("refuses a form-encoded delivery", async () => {
-    const request = github.deliver("push", "payload=%7B%7D", { contentType: FORM_TYPE });
-
-    const response = await route.fetch(request);
-
-    expect(response.status).toBe(UNSUPPORTED);
-  });
-
-  it("refuses a signed push whose body is not a push payload", async () => {
-    const response = await route.fetch(github.deliver("push", JSON.stringify({ ref: 1 })));
-
-    expect(response.status).toBe(BAD_REQUEST);
-  });
-
-  it("reconciles the whole index after a force push", async () => {
-    const request = github.push({ branch: BRANCH, forced: true, commits: [{ added: [PLAN] }] });
-    await route.fetch(request);
-
-    await background.runQueued();
-
-    expect({ runs: reconciler.runs, calls: changes.calls }).toEqual({ runs: 1, calls: [] });
-  });
-
-  it("reconciles the whole index when GitHub left commits out of the payload", async () => {
-    const commits = Array.from({ length: MAX_PUSH_COMMITS }, () => ({ modified: [PLAN] }));
-    await route.fetch(github.push({ branch: BRANCH, commits }));
-
-    await background.runQueued();
-
-    expect({ runs: reconciler.runs, calls: changes.calls }).toEqual({ runs: 1, calls: [] });
-  });
-
-  it("reconciles at a head that includes the force push", async () => {
-    const spec = { branch: BRANCH, forced: true, commits: [] };
-    await route.fetch(github.push(spec));
-
-    await background.runQueued();
-
-    expect(reconciler.afters).toEqual([buildPushPayload(spec).after]);
-  });
-
-  it("tags the queued paths with the push's head commit", async () => {
-    const payload = buildPushPayload({ branch: BRANCH, commits: [{ added: [PLAN] }] });
-
-    await route.fetch(github.push({ branch: BRANCH, commits: [{ added: [PLAN] }] }));
-
-    expect(changes.commits).toEqual([payload.after]);
-  });
-
-  it("answers a force push before the reconciliation runs", async () => {
-    const request = github.push({ branch: BRANCH, forced: true, commits: [] });
-
-    const response = await route.fetch(request);
-
-    expect({ status: response.status, runs: reconciler.runs }).toEqual({
-      status: ACCEPTED,
-      runs: 0,
-    });
-  });
-
-  it("logs a reconciliation that failed after the reply", async () => {
-    const error = new NotesUnavailable();
-    const failing = new GitHubWebhookRoute(
-      new WebhookSignature({ secret: SECRET }),
-      changes,
-      { reconciler: new FailingReconciler(error), background, log },
-      BRANCH,
-    );
-    await failing.fetch(github.push({ branch: BRANCH, forced: true, commits: [] }));
-
-    await background.runQueued();
-
-    expect(log.reported).toEqual([{ path: RECONCILE_LABEL, error }]);
-  });
-
-  describe("when the queue refuses the push", () => {
-    const spec = { branch: BRANCH, commits: [{ added: [PLAN] }] };
-    const error = new Error("queue unavailable");
-    let failing: GitHubWebhookRoute;
+    let changes: SpyChangeQueue;
+    let reconciler: SpyReconciler;
+    let background: ManualBackgroundTasks;
+    let log: SpyIndexFailureLog;
+    let route: GitHubWebhookRoute;
+    const github = new FakeGitHubWebhook(SECRET);
 
     beforeEach(() => {
-      failing = new GitHubWebhookRoute(
-        new WebhookSignature({ secret: SECRET }),
-        new FailingChangeQueue(error),
-        { reconciler, background, log },
-        BRANCH,
-      );
+        changes = new SpyChangeQueue();
+        reconciler = new SpyReconciler();
+        background = new ManualBackgroundTasks();
+        log = new SpyIndexFailureLog();
+        route = new GitHubWebhookRoute(
+            new WebhookSignature({ secret: SECRET }),
+            changes,
+            { reconciler, background, log },
+            BRANCH,
+        );
     });
 
-    it("still accepts the push", async () => {
-      const response = await failing.fetch(github.push(spec));
+    it("queues the added, modified and removed files of a push to the notes branch", async () => {
+        const request = github.push({
+            branch: BRANCH,
+            commits: [{ added: [PLAN] }, { modified: [IDEA], removed: [OLD] }],
+        });
 
-      expect(response.status).toBe(ACCEPTED);
+        await route.fetch(request);
+
+        expect(changes.calls).toEqual([[PLAN, IDEA, OLD]]);
     });
 
-    it("logs the refused push", async () => {
-      await failing.fetch(github.push(spec));
+    it("answers a queued push with accepted", async () => {
+        const response = await route.fetch(github.push({ branch: BRANCH, commits: [{ added: [PLAN] }] }));
 
-      expect(log.reported).toEqual([{ path: QUEUE_LABEL, error }]);
+        expect(response.status).toBe(ACCEPTED);
     });
 
-    it("reconciles at a head that includes the push instead", async () => {
-      await failing.fetch(github.push(spec));
+    it("ignores a push to another branch", async () => {
+        const response = await route.fetch(github.push({ branch: OTHER_BRANCH, commits: [{ added: [PLAN] }] }));
 
-      await background.runQueued();
-
-      expect(reconciler.afters).toEqual([buildPushPayload(spec).after]);
+        expect({ status: response.status, calls: changes.calls }).toEqual({
+            status: IGNORED,
+            calls: [],
+        });
     });
-  });
+
+    it("ignores the deletion of the notes branch", async () => {
+        const response = await route.fetch(github.push({ branch: BRANCH, deleted: true, commits: [] }));
+
+        expect({ status: response.status, runs: reconciler.runs }).toEqual({
+            status: IGNORED,
+            runs: 0,
+        });
+    });
+
+    it("answers a ping without queueing anything", async () => {
+        const response = await route.fetch(github.ping());
+
+        expect({ status: response.status, calls: changes.calls }).toEqual({
+            status: IGNORED,
+            calls: [],
+        });
+    });
+
+    it("ignores events other than push", async () => {
+        const response = await route.fetch(github.deliver("issues", "{}"));
+
+        expect(response.status).toBe(IGNORED);
+    });
+
+    it("refuses a delivery with no signature", async () => {
+        const request = github.push({ branch: BRANCH, commits: [{ added: [PLAN] }] }, { signature: null });
+
+        const response = await route.fetch(request);
+
+        expect({ status: response.status, calls: changes.calls }).toEqual({
+            status: UNAUTHORIZED,
+            calls: [],
+        });
+    });
+
+    it("refuses a delivery signed with another secret", async () => {
+        const forger = new FakeGitHubWebhook("another-secret-of-at-least-32-chars");
+
+        const response = await route.fetch(forger.push({ branch: BRANCH, commits: [{ added: [PLAN] }] }));
+
+        expect({ status: response.status, calls: changes.calls }).toEqual({
+            status: UNAUTHORIZED,
+            calls: [],
+        });
+    });
+
+    it("checks the signature over the raw bytes GitHub sent", async () => {
+        const spec = { branch: BRANCH, commits: [{ added: [BYTE_MARKER] }] };
+        const body = withInvalidUtf8(JSON.stringify(buildPushPayload(spec)));
+
+        const response = await route.fetch(github.deliver("push", body));
+
+        expect(response.status).toBe(ACCEPTED);
+    });
+
+    it("refuses a request that is not a POST", async () => {
+        const response = await route.fetch(new Request(WEBHOOK_URL));
+
+        expect(response.status).toBe(NOT_ALLOWED);
+    });
+
+    it("refuses a form-encoded delivery", async () => {
+        const request = github.deliver("push", "payload=%7B%7D", { contentType: FORM_TYPE });
+
+        const response = await route.fetch(request);
+
+        expect(response.status).toBe(UNSUPPORTED);
+    });
+
+    it("refuses a signed push whose body is not a push payload", async () => {
+        const response = await route.fetch(github.deliver("push", JSON.stringify({ ref: 1 })));
+
+        expect(response.status).toBe(BAD_REQUEST);
+    });
+
+    it("reconciles the whole index after a force push", async () => {
+        const request = github.push({ branch: BRANCH, forced: true, commits: [{ added: [PLAN] }] });
+        await route.fetch(request);
+
+        await background.runQueued();
+
+        expect({ runs: reconciler.runs, calls: changes.calls }).toEqual({ runs: 1, calls: [] });
+    });
+
+    it("reconciles the whole index when GitHub left commits out of the payload", async () => {
+        const commits = Array.from({ length: MAX_PUSH_COMMITS }, () => ({ modified: [PLAN] }));
+        await route.fetch(github.push({ branch: BRANCH, commits }));
+
+        await background.runQueued();
+
+        expect({ runs: reconciler.runs, calls: changes.calls }).toEqual({ runs: 1, calls: [] });
+    });
+
+    it("reconciles at a head that includes the force push", async () => {
+        const spec = { branch: BRANCH, forced: true, commits: [] };
+        await route.fetch(github.push(spec));
+
+        await background.runQueued();
+
+        expect(reconciler.afters).toEqual([buildPushPayload(spec).after]);
+    });
+
+    it("tags the queued paths with the push's head commit", async () => {
+        const payload = buildPushPayload({ branch: BRANCH, commits: [{ added: [PLAN] }] });
+
+        await route.fetch(github.push({ branch: BRANCH, commits: [{ added: [PLAN] }] }));
+
+        expect(changes.commits).toEqual([payload.after]);
+    });
+
+    it("answers a force push before the reconciliation runs", async () => {
+        const request = github.push({ branch: BRANCH, forced: true, commits: [] });
+
+        const response = await route.fetch(request);
+
+        expect({ status: response.status, runs: reconciler.runs }).toEqual({
+            status: ACCEPTED,
+            runs: 0,
+        });
+    });
+
+    it("logs a reconciliation that failed after the reply", async () => {
+        const error = new NotesUnavailable();
+        const failing = new GitHubWebhookRoute(
+            new WebhookSignature({ secret: SECRET }),
+            changes,
+            { reconciler: new FailingReconciler(error), background, log },
+            BRANCH,
+        );
+        await failing.fetch(github.push({ branch: BRANCH, forced: true, commits: [] }));
+
+        await background.runQueued();
+
+        expect(log.reported).toEqual([{ path: RECONCILE_LABEL, error }]);
+    });
+
+    describe("when the queue refuses the push", () => {
+        const spec = { branch: BRANCH, commits: [{ added: [PLAN] }] };
+        const error = new Error("queue unavailable");
+        let failing: GitHubWebhookRoute;
+
+        beforeEach(() => {
+            failing = new GitHubWebhookRoute(
+                new WebhookSignature({ secret: SECRET }),
+                new FailingChangeQueue(error),
+                { reconciler, background, log },
+                BRANCH,
+            );
+        });
+
+        it("still accepts the push", async () => {
+            const response = await failing.fetch(github.push(spec));
+
+            expect(response.status).toBe(ACCEPTED);
+        });
+
+        it("logs the refused push", async () => {
+            await failing.fetch(github.push(spec));
+
+            expect(log.reported).toEqual([{ path: QUEUE_LABEL, error }]);
+        });
+
+        it("reconciles at a head that includes the push instead", async () => {
+            await failing.fetch(github.push(spec));
+
+            await background.runQueued();
+
+            expect(reconciler.afters).toEqual([buildPushPayload(spec).after]);
+        });
+    });
 });
