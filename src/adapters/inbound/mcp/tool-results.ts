@@ -42,7 +42,8 @@ export class ToolResults implements ToolReplies {
   }
 
   private describeHit(hit: SearchResult): string {
-    const place = hit.heading === NO_HEADING ? hit.path : `${hit.path}${HEADING_MARK}${hit.heading}`;
+    const place =
+      hit.heading === NO_HEADING ? hit.path : `${hit.path}${HEADING_MARK}${hit.heading}`;
     return `${place}${LINE_BREAK}${hit.snippet}`;
   }
 

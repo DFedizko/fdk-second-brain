@@ -7,6 +7,10 @@ import type { NoteView } from "../../../../application/use-cases/note-view";
 import type { ReadNoteInput } from "../../../../application/use-cases/read-note";
 import type { ReadSectionInput, SectionView } from "../../../../application/use-cases/read-section";
 import type { SaveIdeaInput } from "../../../../application/use-cases/save-idea";
+import type {
+  SearchNotesInput,
+  SearchResult,
+} from "../../../../application/use-cases/search-notes";
 import type { WriteNoteInput } from "../../../../application/use-cases/write-note";
 import type { UseCase } from "./use-case";
 
@@ -21,4 +25,5 @@ export interface ToolUseCases {
   readonly deleteNote: Driven<DeleteNoteInput, void>;
   readonly moveNote: Driven<MoveNoteInput>;
   readonly saveIdea: Driven<SaveIdeaInput>;
+  readonly searchNotes: Driven<SearchNotesInput, SearchResult[]>;
 }

@@ -8,9 +8,12 @@ import { toNotesRepoSettings } from "./config/config-settings";
 import { createConfigModule } from "./config/config.container";
 import type { AppConfig } from "./config/env-schema";
 import { searchModule } from "./search/search.container";
+import { SEARCH } from "./search/search.symbols";
 import { useCasesModule } from "./use-cases/use-cases.container";
 import { USE_CASES } from "./use-cases/use-cases.symbols";
 import type { WorkerBindings } from "./worker-bindings";
+
+const TOOL_USE_CASES = { ...USE_CASES, searchNotes: SEARCH.searchNotes };
 
 export type ModulesFactory = (config: AppConfig, bindings: WorkerBindings) => ContainerModule[];
 
@@ -22,5 +25,5 @@ export const appModules: ModulesFactory = (config, bindings) => [
   loggingModule,
   searchModule,
   useCasesModule,
-  createMcpModule(USE_CASES),
+  createMcpModule(TOOL_USE_CASES),
 ];

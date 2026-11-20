@@ -10,6 +10,7 @@ const TOOL_NAMES = [
   "read_note",
   "read_section",
   "save_idea",
+  "search_notes",
   "write_note",
 ];
 const NOT_FOUND = 404;
