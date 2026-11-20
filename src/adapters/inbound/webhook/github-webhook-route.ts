@@ -55,11 +55,11 @@ export class GitHubWebhookRoute {
   async fetch(request: Request): Promise<Response> {
     if (request.method !== POST) return this.reply(STATUS.notAllowed, { [ALLOW]: POST });
     if (!this.isJson(request)) return this.reply(STATUS.unsupported);
-    const body = await request.text();
+    const body = await request.arrayBuffer();
     const signed = await this.signature.verify(body, request.headers.get(SIGNATURE_HEADER));
     if (!signed) return this.reply(STATUS.unauthorized);
     if (request.headers.get(EVENT_HEADER) !== PUSH) return this.reply(STATUS.ignored);
-    const push = this.readPush(body);
+    const push = this.readPush(new TextDecoder().decode(body));
     if (push === null) return this.reply(STATUS.badRequest);
     return this.handlePush(push);
   }

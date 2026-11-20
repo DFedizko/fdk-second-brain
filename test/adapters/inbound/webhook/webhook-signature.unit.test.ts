@@ -1,7 +1,8 @@
 import { WebhookSignature } from "../../../../src/adapters/inbound/webhook/webhook-signature";
 
 const DOCS_SECRET = "It's a Secret to Everybody";
-const DOCS_PAYLOAD = "Hello, World!";
+const DOCS_TEXT = "Hello, World!";
+const DOCS_PAYLOAD = new TextEncoder().encode(DOCS_TEXT);
 const DOCS_SIGNATURE = "sha256=757107ea0eb2509fc211221cce984b8a37570b6d7586c22c46f4379c8b043e17";
 const OTHER_SIGNATURE = "sha256=0000000000000000000000000000000000000000000000000000000000000000";
 const WRONG_SCHEME = "sha1=757107ea0eb2509fc211221cce984b8a37570b6d7586c22c46f4379c8b043e17";
@@ -23,7 +24,7 @@ describe("WebhookSignature", () => {
   });
 
   it("rejects a payload changed after signing", async () => {
-    const valid = await signature.verify(`${DOCS_PAYLOAD}!`, DOCS_SIGNATURE);
+    const valid = await signature.verify(new TextEncoder().encode(`${DOCS_TEXT}!`), DOCS_SIGNATURE);
 
     expect(valid).toBe(false);
   });
