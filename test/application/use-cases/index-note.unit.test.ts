@@ -1,4 +1,8 @@
-import { IndexNote, MAX_INDEX_ATTEMPTS } from "../../../src/application/use-cases/index-note";
+import {
+  IndexNote,
+  MAX_INDEX_ATTEMPTS,
+  MAX_INDEX_PASSES,
+} from "../../../src/application/use-cases/index-note";
 import { IndexWriteConflict } from "../../../src/domain/errors/index-write-conflict";
 import { InvalidPath } from "../../../src/domain/errors/invalid-path";
 import { MarkdownChunker } from "../../../src/domain/markdown-chunker";
@@ -123,9 +127,24 @@ describe("IndexNote", () => {
     };
     index.beforeNextWrites(...Array.from({ length: QUICK_SAVES }, (_, n) => save(n + 1)));
 
-    await indexNote.execute({ path: PATH });
+    const result = await indexNote.execute({ path: PATH });
 
-    expect(index.chunksOf(PATH)).toEqual([{ heading: "Plan", seq: 0, text: LATEST_TEXT }]);
+    expect({ result, chunks: index.chunksOf(PATH) }).toEqual({
+      result: { path: PATH, status: "indexed" },
+      chunks: [{ heading: "Plan", seq: 0, text: LATEST_TEXT }],
+    });
+  });
+
+  it("gives up with IndexWriteConflict when saves never stop", async () => {
+    let current = await notes.create(NOTE, FIRST_CONTENT);
+    const save = (n: number) => async () => {
+      current = await notes.write(NOTE, `# Plan\nship save ${n}`, current.version);
+    };
+    index.beforeNextWrites(...Array.from({ length: MAX_INDEX_PASSES }, (_, n) => save(n + 1)));
+
+    const run = indexNote.execute({ path: PATH });
+
+    await expect(run).rejects.toThrow(IndexWriteConflict);
   });
 
   it("gives up with IndexWriteConflict when every write loses a race", async () => {
