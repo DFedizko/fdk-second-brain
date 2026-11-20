@@ -15,98 +15,94 @@ const INBOX_CREATE = `Create ${INBOX.value}`;
 const BOTH_NOTES = { [INBOX.value]: CONTENT, [PLAN.value]: PLAN_CONTENT };
 
 describe("GitHubNoteRepo creating the first notes of an empty repository", () => {
-  let api: FakeGitHubApi;
-  let repository: GitHubNoteRepo;
+    let api: FakeGitHubApi;
+    let repository: GitHubNoteRepo;
 
-  beforeEach(() => {
-    api = buildEmptyNotesRepo();
-    repository = connectRepo(api);
-  });
-
-  function pointNotesAtDefault(): void {
-    api.store.setRef(NOTES_BRANCH, api.store.headOf(DEFAULT_BRANCH) ?? "");
-  }
-
-  it("puts both of two first notes created at once on the configured branch", async () => {
-    const other = connectRepo(api);
-
-    await Promise.all([repository.create(INBOX, CONTENT), other.create(PLAN, PLAN_CONTENT)]);
-
-    expect(api.filesOn(NOTES_BRANCH)).toEqual(BOTH_NOTES);
-  });
-
-  it("creates a note after another client made the first commit", async () => {
-    api.raceOnce.afterBranchMiss(() => api.seedAllBranches({ [PLAN.value]: PLAN_CONTENT }));
-
-    await repository.create(INBOX, CONTENT);
-
-    expect(api.filesOn(NOTES_BRANCH)).toEqual(BOTH_NOTES);
-  });
-
-  it("waits for the branch another client is still creating", async () => {
-    api.raceOnce.afterBranchMiss(() =>
-      api.commitFiles(DEFAULT_BRANCH, { [PLAN.value]: PLAN_CONTENT }),
-    );
-    const waiting = connectRepo(api, {}, new ActionPause(pointNotesAtDefault));
-
-    await waiting.create(INBOX, CONTENT);
-
-    expect(api.filesOn(NOTES_BRANCH)).toEqual(BOTH_NOTES);
-  });
-
-  it("puts the note on the configured branch when another first note won", async () => {
-    api.raceOnce.beforeFirstCommit(() => api.seedAllBranches({ [PLAN.value]: PLAN_CONTENT }));
-
-    await repository.create(INBOX, CONTENT);
-
-    expect(api.filesOn(NOTES_BRANCH)).toEqual(BOTH_NOTES);
-  });
-
-  it("creates the note on the branch when the branch moved ahead without it", async () => {
-    api.raceOnce.beforeFirstCommit(() => api.seedAllBranches({ [PLAN.value]: PLAN_CONTENT }));
-    api.raceOnce.afterUnbranchedPut(() =>
-      api.commitFiles(NOTES_BRANCH, { [LOG.value]: LOG_CONTENT }),
-    );
-
-    await repository.create(INBOX, CONTENT);
-
-    expect(api.filesOn(NOTES_BRANCH)).toEqual({ ...BOTH_NOTES, [LOG.value]: LOG_CONTENT });
-  });
-
-  it("writes the note once when the branch already moved past it", async () => {
-    api.raceOnce.afterUnbranchedPut(() => {
-      api.commitFiles(DEFAULT_BRANCH, { [PLAN.value]: PLAN_CONTENT });
-      pointNotesAtDefault();
+    beforeEach(() => {
+        api = buildEmptyNotesRepo();
+        repository = connectRepo(api);
     });
 
-    await repository.create(INBOX, CONTENT);
+    function pointNotesAtDefault(): void {
+        api.store.setRef(NOTES_BRANCH, api.store.headOf(DEFAULT_BRANCH) ?? "");
+    }
 
-    const creates = api.store.history(NOTES_BRANCH).filter((c) => c.message === INBOX_CREATE);
-    expect(creates).toHaveLength(1);
-  });
+    it("puts both of two first notes created at once on the configured branch", async () => {
+        const other = connectRepo(api);
 
-  it("creates the note when another client creates the branch first", async () => {
-    api.raceOnce.beforeRefCreate(pointNotesAtDefault);
+        await Promise.all([repository.create(INBOX, CONTENT), other.create(PLAN, PLAN_CONTENT)]);
 
-    await repository.create(INBOX, CONTENT);
+        expect(api.filesOn(NOTES_BRANCH)).toEqual(BOTH_NOTES);
+    });
 
-    expect(api.filesOn(NOTES_BRANCH)).toEqual({ [INBOX.value]: CONTENT });
-  });
+    it("creates a note after another client made the first commit", async () => {
+        api.raceOnce.afterBranchMiss(() => api.seedAllBranches({ [PLAN.value]: PLAN_CONTENT }));
 
-  it("creates the first note while GitHub still reads the new commit as empty", async () => {
-    api.lagRefReadsAsEmpty(1);
+        await repository.create(INBOX, CONTENT);
 
-    await repository.create(INBOX, CONTENT);
+        expect(api.filesOn(NOTES_BRANCH)).toEqual(BOTH_NOTES);
+    });
 
-    expect(api.filesOn(NOTES_BRANCH)).toEqual({ [INBOX.value]: CONTENT });
-  });
+    it("waits for the branch another client is still creating", async () => {
+        api.raceOnce.afterBranchMiss(() => api.commitFiles(DEFAULT_BRANCH, { [PLAN.value]: PLAN_CONTENT }));
+        const waiting = connectRepo(api, {}, new ActionPause(pointNotesAtDefault));
 
-  it("creates the first note when another client makes the branch while reads lag", async () => {
-    api.lagRefReadsAsEmpty(1);
-    api.raceOnce.beforeRefCreate(pointNotesAtDefault);
+        await waiting.create(INBOX, CONTENT);
 
-    await repository.create(INBOX, CONTENT);
+        expect(api.filesOn(NOTES_BRANCH)).toEqual(BOTH_NOTES);
+    });
 
-    expect(api.filesOn(NOTES_BRANCH)).toEqual({ [INBOX.value]: CONTENT });
-  });
+    it("puts the note on the configured branch when another first note won", async () => {
+        api.raceOnce.beforeFirstCommit(() => api.seedAllBranches({ [PLAN.value]: PLAN_CONTENT }));
+
+        await repository.create(INBOX, CONTENT);
+
+        expect(api.filesOn(NOTES_BRANCH)).toEqual(BOTH_NOTES);
+    });
+
+    it("creates the note on the branch when the branch moved ahead without it", async () => {
+        api.raceOnce.beforeFirstCommit(() => api.seedAllBranches({ [PLAN.value]: PLAN_CONTENT }));
+        api.raceOnce.afterUnbranchedPut(() => api.commitFiles(NOTES_BRANCH, { [LOG.value]: LOG_CONTENT }));
+
+        await repository.create(INBOX, CONTENT);
+
+        expect(api.filesOn(NOTES_BRANCH)).toEqual({ ...BOTH_NOTES, [LOG.value]: LOG_CONTENT });
+    });
+
+    it("writes the note once when the branch already moved past it", async () => {
+        api.raceOnce.afterUnbranchedPut(() => {
+            api.commitFiles(DEFAULT_BRANCH, { [PLAN.value]: PLAN_CONTENT });
+            pointNotesAtDefault();
+        });
+
+        await repository.create(INBOX, CONTENT);
+
+        const creates = api.store.history(NOTES_BRANCH).filter((c) => c.message === INBOX_CREATE);
+        expect(creates).toHaveLength(1);
+    });
+
+    it("creates the note when another client creates the branch first", async () => {
+        api.raceOnce.beforeRefCreate(pointNotesAtDefault);
+
+        await repository.create(INBOX, CONTENT);
+
+        expect(api.filesOn(NOTES_BRANCH)).toEqual({ [INBOX.value]: CONTENT });
+    });
+
+    it("creates the first note while GitHub still reads the new commit as empty", async () => {
+        api.lagRefReadsAsEmpty(1);
+
+        await repository.create(INBOX, CONTENT);
+
+        expect(api.filesOn(NOTES_BRANCH)).toEqual({ [INBOX.value]: CONTENT });
+    });
+
+    it("creates the first note when another client makes the branch while reads lag", async () => {
+        api.lagRefReadsAsEmpty(1);
+        api.raceOnce.beforeRefCreate(pointNotesAtDefault);
+
+        await repository.create(INBOX, CONTENT);
+
+        expect(api.filesOn(NOTES_BRANCH)).toEqual({ [INBOX.value]: CONTENT });
+    });
 });

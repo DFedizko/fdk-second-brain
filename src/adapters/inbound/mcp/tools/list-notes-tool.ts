@@ -8,24 +8,24 @@ import type { UseCase } from "./use-case";
 import { FOLDER, READ_ONLY } from "./tool-fields";
 
 const SCHEMA = z.object({
-  folder: FOLDER.optional().describe("Only list notes under this folder"),
+    folder: FOLDER.optional().describe("Only list notes under this folder"),
 });
 
 export class ListNotesTool extends NoteTool<typeof SCHEMA> {
-  protected readonly name = "list_notes";
-  protected readonly description = "List note paths.";
-  protected readonly schema = SCHEMA;
-  protected override readonly annotations = READ_ONLY;
+    protected readonly name = "list_notes";
+    protected readonly description = "List note paths.";
+    protected readonly schema = SCHEMA;
+    protected override readonly annotations = READ_ONLY;
 
-  constructor(
-    runner: ToolCallRunner,
-    private readonly results: ToolReplies,
-    private readonly useCase: UseCase<ListNotesInput, string[]>,
-  ) {
-    super(runner);
-  }
+    constructor(
+        runner: ToolCallRunner,
+        private readonly results: ToolReplies,
+        private readonly useCase: UseCase<ListNotesInput, string[]>,
+    ) {
+        super(runner);
+    }
 
-  protected async handle(input: z.infer<typeof SCHEMA>): Promise<CallToolResult> {
-    return this.results.paths(await this.useCase.execute(input));
-  }
+    protected async handle(input: z.infer<typeof SCHEMA>): Promise<CallToolResult> {
+        return this.results.paths(await this.useCase.execute(input));
+    }
 }

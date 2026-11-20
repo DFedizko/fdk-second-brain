@@ -10,13 +10,13 @@ const QUEUE_BATCH_SIZE = 5;
 export const REQUESTS_PER_MESSAGE = FREE_PLAN_SUBREQUESTS / QUEUE_BATCH_SIZE;
 
 export class BudgetedHeadNotes implements HeadNotesFactory {
-  constructor(
-    private readonly github: GitHubAccess,
-    private readonly budget: number,
-  ) {}
+    constructor(
+        private readonly github: GitHubAccess,
+        private readonly budget: number,
+    ) {}
 
-  create(): PinnableNotes {
-    const github = new BudgetedGitHub(this.github, this.budget);
-    return new ForwardHeadNotes(new GitHubNoteReader(github), new CommitCompare(github));
-  }
+    create(): PinnableNotes {
+        const github = new BudgetedGitHub(this.github, this.budget);
+        return new ForwardHeadNotes(new GitHubNoteReader(github), new CommitCompare(github));
+    }
 }

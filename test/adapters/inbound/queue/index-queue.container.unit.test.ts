@@ -14,27 +14,27 @@ const PLAN = "projects/plan.md";
 const NOW = new Date("2026-11-20T12:00:00Z");
 
 describe("createIndexQueueModule", () => {
-  let indexer: SpyNoteIndexer;
-  let container: Container;
+    let indexer: SpyNoteIndexer;
+    let container: Container;
 
-  beforeEach(() => {
-    indexer = new SpyNoteIndexer();
-    container = new Container();
-    container.bind(INDEXER).toConstantValue(indexer);
-    container.bind(LOGGING.indexFailureLog).toConstantValue(new SpyIndexFailureLog());
-    container.bind(CLOCK.clock).toConstantValue(new FixedClock(NOW));
-    container.load(createIndexQueueModule(INDEXER));
-  });
+    beforeEach(() => {
+        indexer = new SpyNoteIndexer();
+        container = new Container();
+        container.bind(INDEXER).toConstantValue(indexer);
+        container.bind(LOGGING.indexFailureLog).toConstantValue(new SpyIndexFailureLog());
+        container.bind(CLOCK.clock).toConstantValue(new FixedClock(NOW));
+        container.load(createIndexQueueModule(INDEXER));
+    });
 
-  it("binds the index queue consumer", () => {
-    const consumer = container.get(INDEX_QUEUE.consumer);
+    it("binds the index queue consumer", () => {
+        const consumer = container.get(INDEX_QUEUE.consumer);
 
-    expect(consumer).toBeInstanceOf(IndexQueueConsumer);
-  });
+        expect(consumer).toBeInstanceOf(IndexQueueConsumer);
+    });
 
-  it("hands queued paths to the given indexer", async () => {
-    await container.get(INDEX_QUEUE.consumer).handle(FakeMessageBatch.of([{ path: PLAN }]));
+    it("hands queued paths to the given indexer", async () => {
+        await container.get(INDEX_QUEUE.consumer).handle(FakeMessageBatch.of([{ path: PLAN }]));
 
-    expect(indexer.paths).toEqual([PLAN]);
-  });
+        expect(indexer.paths).toEqual([PLAN]);
+    });
 });

@@ -5,21 +5,21 @@ import { createRootContainer } from "./root.container";
 import type { WorkerBindings } from "./worker-bindings";
 
 export class Bootstrap {
-  private readonly containers = new WeakMap<object, Container>();
+    private readonly containers = new WeakMap<object, Container>();
 
-  constructor(
-    private readonly parser: ConfigParser,
-    private readonly buildModules: ModulesFactory,
-  ) {}
+    constructor(
+        private readonly parser: ConfigParser,
+        private readonly buildModules: ModulesFactory,
+    ) {}
 
-  start(env: WorkerBindings): Container {
-    return this.containers.get(env) ?? this.compose(env);
-  }
+    start(env: WorkerBindings): Container {
+        return this.containers.get(env) ?? this.compose(env);
+    }
 
-  private compose(env: WorkerBindings): Container {
-    const config = this.parser.parse(env);
-    const container = createRootContainer(this.buildModules(config, env));
-    this.containers.set(env, container);
-    return container;
-  }
+    private compose(env: WorkerBindings): Container {
+        const config = this.parser.parse(env);
+        const container = createRootContainer(this.buildModules(config, env));
+        this.containers.set(env, container);
+        return container;
+    }
 }

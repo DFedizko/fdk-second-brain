@@ -5,12 +5,12 @@ import { IndexNote, type NoteIndexer } from "./index-note";
 import type { IndexerFactory } from "./index-pushed-note";
 
 export class IndexNoteFactory implements IndexerFactory {
-  constructor(
-    private readonly index: SearchIndex,
-    private readonly chunker: MarkdownChunker,
-  ) {}
+    constructor(
+        private readonly index: SearchIndex,
+        private readonly chunker: MarkdownChunker,
+    ) {}
 
-  over(notes: NoteLookup): NoteIndexer {
-    return new IndexNote(this.index, notes, this.chunker);
-  }
+    over(notes: NoteLookup): NoteIndexer {
+        return new IndexNote(this.index, notes, this.chunker);
+    }
 }

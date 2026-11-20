@@ -16,13 +16,13 @@ export const NOT_A_STRING = 42;
 export const EMPTY = "";
 
 export function textOfLength(length: number): string {
-  return "a".repeat(length);
+    return "a".repeat(length);
 }
 
 export function newRunner(): ToolRunner {
-  return new ToolRunner(new ToolErrorMapper(), new SpyErrorLog());
+    return new ToolRunner(new ToolErrorMapper(), new SpyErrorLog());
 }
 
 export function newReplies(): ToolResults {
-  return new ToolResults();
+    return new ToolResults();
 }

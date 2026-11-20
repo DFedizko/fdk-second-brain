@@ -76,6 +76,6 @@ For each feature's e2e tests, cover the happy path, then add whatever else prove
 
 - **Infrastructure we run** (database, MCP server, HTTP server, queue): use the real adapter in integration and e2e tests, against a local instance started by the test.
 - **External APIs we don't own** (e.g. a code-hosting, payment or AI provider): never call them in tests. Build a high-fidelity fake adapter, combined with strongly typed mocks, that behaves as close to the real API as possible: same response shapes, status codes, headers and error bodies.
-  - Before you write or change an integration, **look up the API's latest official documentation**.
-  - Take the exact request and response types and example payloads from it. Prefer the provider's official type package when one exists.
-  - Cover the documented errors too, not only success.
+    - Before you write or change an integration, **look up the API's latest official documentation**.
+    - Take the exact request and response types and example payloads from it. Prefer the provider's official type package when one exists.
+    - Cover the documented errors too, not only success.

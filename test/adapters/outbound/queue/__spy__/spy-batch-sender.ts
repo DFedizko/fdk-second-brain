@@ -2,14 +2,14 @@ import type { BatchSender } from "../../../../../src/adapters/outbound/queue/clo
 import type { IndexMessage } from "../../../../../src/shared/contracts/index-message";
 
 const SENT: QueueSendBatchResponse = {
-  metadata: { metrics: { backlogCount: 0, backlogBytes: 0 } },
+    metadata: { metrics: { backlogCount: 0, backlogBytes: 0 } },
 };
 
 export class SpyBatchSender implements BatchSender {
-  readonly batches: IndexMessage[][] = [];
+    readonly batches: IndexMessage[][] = [];
 
-  async sendBatch(messages: Iterable<MessageSendRequest<IndexMessage>>) {
-    this.batches.push([...messages].map((message) => message.body));
-    return SENT;
-  }
+    async sendBatch(messages: Iterable<MessageSendRequest<IndexMessage>>) {
+        this.batches.push([...messages].map((message) => message.body));
+        return SENT;
+    }
 }

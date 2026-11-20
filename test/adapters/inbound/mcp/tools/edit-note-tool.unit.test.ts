@@ -4,15 +4,15 @@ import type { NoteView } from "../../../../../src/application/use-cases/note-vie
 import { SpyUseCase } from "./__spy__/spy-use-case";
 import { InProcessTool } from "./in-process-tool";
 import {
-  EMPTY,
-  MAX_CONTENT_LENGTH,
-  newReplies,
-  newRunner,
-  NOTE,
-  PATH,
-  SAVED_TEXT,
-  textOfLength,
-  VERSION,
+    EMPTY,
+    MAX_CONTENT_LENGTH,
+    newReplies,
+    newRunner,
+    NOTE,
+    PATH,
+    SAVED_TEXT,
+    textOfLength,
+    VERSION,
 } from "./tool-kit";
 
 const NAME = "edit_note";
@@ -24,50 +24,50 @@ let useCase: SpyUseCase<EditNoteInput, NoteView>;
 let tool: InProcessTool;
 
 beforeEach(async () => {
-  useCase = new SpyUseCase(NOTE);
-  tool = await InProcessTool.connect(new EditNoteTool(newRunner(), newReplies(), useCase), NAME);
+    useCase = new SpyUseCase(NOTE);
+    tool = await InProcessTool.connect(new EditNoteTool(newRunner(), newReplies(), useCase), NAME);
 });
 
 describe("edit_note tool", () => {
-  it("passes the passage and replacement to the use case", async () => {
-    await tool.call(EDIT);
+    it("passes the passage and replacement to the use case", async () => {
+        await tool.call(EDIT);
 
-    expect(useCase.inputs).toEqual([EDIT]);
-  });
+        expect(useCase.inputs).toEqual([EDIT]);
+    });
 
-  it("passes the expected version through", async () => {
-    await tool.call({ ...EDIT, expectedVersion: VERSION });
+    it("passes the expected version through", async () => {
+        await tool.call({ ...EDIT, expectedVersion: VERSION });
 
-    expect(useCase.inputs).toEqual([{ ...EDIT, expectedVersion: VERSION }]);
-  });
+        expect(useCase.inputs).toEqual([{ ...EDIT, expectedVersion: VERSION }]);
+    });
 
-  it("reports the saved path and version", async () => {
-    const result = await tool.call(EDIT);
+    it("reports the saved path and version", async () => {
+        const result = await tool.call(EDIT);
 
-    expect(result.content).toEqual([{ type: "text", text: SAVED_TEXT }]);
-  });
+        expect(result.content).toEqual([{ type: "text", text: SAVED_TEXT }]);
+    });
 
-  it("accepts an empty replacement to delete the passage", async () => {
-    await tool.call({ ...EDIT, replacement: EMPTY });
+    it("accepts an empty replacement to delete the passage", async () => {
+        await tool.call({ ...EDIT, replacement: EMPTY });
 
-    expect(useCase.inputs).toEqual([{ ...EDIT, replacement: EMPTY }]);
-  });
+        expect(useCase.inputs).toEqual([{ ...EDIT, replacement: EMPTY }]);
+    });
 
-  it("rejects an empty passage", async () => {
-    await tool.call({ ...EDIT, passage: EMPTY });
+    it("rejects an empty passage", async () => {
+        await tool.call({ ...EDIT, passage: EMPTY });
 
-    expect(useCase.inputs).toEqual([]);
-  });
+        expect(useCase.inputs).toEqual([]);
+    });
 
-  it("requires a replacement", async () => {
-    const result = await tool.call({ path: PATH, passage: PASSAGE });
+    it("requires a replacement", async () => {
+        const result = await tool.call({ path: PATH, passage: PASSAGE });
 
-    expect(result.isError).toBe(true);
-  });
+        expect(result.isError).toBe(true);
+    });
 
-  it("rejects a replacement that is too long", async () => {
-    await tool.call({ ...EDIT, replacement: textOfLength(MAX_CONTENT_LENGTH + 1) });
+    it("rejects a replacement that is too long", async () => {
+        await tool.call({ ...EDIT, replacement: textOfLength(MAX_CONTENT_LENGTH + 1) });
 
-    expect(useCase.inputs).toEqual([]);
-  });
+        expect(useCase.inputs).toEqual([]);
+    });
 });

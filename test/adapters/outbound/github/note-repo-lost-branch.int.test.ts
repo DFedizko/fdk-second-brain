@@ -14,42 +14,40 @@ const PLAN_CONTENT = "# Plan\n";
 const BOTH_NOTES = { [PLAN.value]: PLAN_CONTENT, [INBOX.value]: CONTENT };
 
 const OUTAGES = [
-  ["a rate limit", "secondary", NotesRateLimited],
-  ["a refused token", "forbidden", NotesAccessDenied],
+    ["a rate limit", "secondary", NotesRateLimited],
+    ["a refused token", "forbidden", NotesAccessDenied],
 ] as const;
 
 describe("GitHubNoteRepo when a first note never made the configured branch", () => {
-  let api: FakeGitHubApi;
-  let repository: GitHubNoteRepo;
+    let api: FakeGitHubApi;
+    let repository: GitHubNoteRepo;
 
-  beforeEach(() => {
-    api = buildEmptyNotesRepo();
-    api.commitFiles(DEFAULT_BRANCH, { [PLAN.value]: PLAN_CONTENT });
-    repository = connectRepo(api);
-  });
+    beforeEach(() => {
+        api = buildEmptyNotesRepo();
+        api.commitFiles(DEFAULT_BRANCH, { [PLAN.value]: PLAN_CONTENT });
+        repository = connectRepo(api);
+    });
 
-  it("creates the branch from the default branch and saves the note on it", async () => {
-    await repository.create(INBOX, CONTENT);
+    it("creates the branch from the default branch and saves the note on it", async () => {
+        await repository.create(INBOX, CONTENT);
 
-    expect(api.filesOn(NOTES_BRANCH)).toEqual(BOTH_NOTES);
-  });
+        expect(api.filesOn(NOTES_BRANCH)).toEqual(BOTH_NOTES);
+    });
 
-  it("saves the note when another client creates the branch at the same time", async () => {
-    api.raceOnce.beforeRefCreate(() =>
-      api.store.setRef(NOTES_BRANCH, api.store.headOf(DEFAULT_BRANCH) ?? ""),
-    );
+    it("saves the note when another client creates the branch at the same time", async () => {
+        api.raceOnce.beforeRefCreate(() => api.store.setRef(NOTES_BRANCH, api.store.headOf(DEFAULT_BRANCH) ?? ""));
 
-    await repository.create(INBOX, CONTENT);
+        await repository.create(INBOX, CONTENT);
 
-    expect(api.filesOn(NOTES_BRANCH)).toEqual(BOTH_NOTES);
-  });
+        expect(api.filesOn(NOTES_BRANCH)).toEqual(BOTH_NOTES);
+    });
 
-  it.each(OUTAGES)("reports %s met while checking the branch", async (_name, outage, error) => {
-    api.raceOnce.afterBranchMiss(() => api.startOutage(outage));
-    const pausing = connectRepo(api, {}, new ActionPause(() => api.endOutage()));
+    it.each(OUTAGES)("reports %s met while checking the branch", async (_name, outage, error) => {
+        api.raceOnce.afterBranchMiss(() => api.startOutage(outage));
+        const pausing = connectRepo(api, {}, new ActionPause(() => api.endOutage()));
 
-    const create = pausing.create(INBOX, CONTENT);
+        const create = pausing.create(INBOX, CONTENT);
 
-    await expect(create).rejects.toThrow(error);
-  });
+        await expect(create).rejects.toThrow(error);
+    });
 });

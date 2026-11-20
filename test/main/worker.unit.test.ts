@@ -17,74 +17,74 @@ const IGNORED = 204;
 const FORGED_SECRET = "a-forged-secret-of-at-least-32-chars";
 
 describe("worker", () => {
-  it("answers not found outside the MCP path", async () => {
-    const env = { ...WORKER_ENV } as unknown as Env;
+    it("answers not found outside the MCP path", async () => {
+        const env = { ...WORKER_ENV } as unknown as Env;
 
-    const response = await worker.fetch(new Request(ANY_URL), env, DUMMY_CONTEXT);
+        const response = await worker.fetch(new Request(ANY_URL), env, DUMMY_CONTEXT);
 
-    expect(response.status).toBe(NOT_FOUND);
-  });
+        expect(response.status).toBe(NOT_FOUND);
+    });
 
-  it("guards MCP at /mcp behind sign-in", async () => {
-    const env = { ...WORKER_ENV } as unknown as Env;
+    it("guards MCP at /mcp behind sign-in", async () => {
+        const env = { ...WORKER_ENV } as unknown as Env;
 
-    const response = await worker.fetch(new Request(MCP_URL), env, DUMMY_CONTEXT);
+        const response = await worker.fetch(new Request(MCP_URL), env, DUMMY_CONTEXT);
 
-    expect(response.status).toBe(UNAUTHORIZED);
-  });
+        expect(response.status).toBe(UNAUTHORIZED);
+    });
 
-  it("guards MCP at /mcp/ with a trailing slash", async () => {
-    const env = { ...WORKER_ENV } as unknown as Env;
+    it("guards MCP at /mcp/ with a trailing slash", async () => {
+        const env = { ...WORKER_ENV } as unknown as Env;
 
-    const response = await worker.fetch(new Request(MCP_URL_WITH_SLASH), env, DUMMY_CONTEXT);
+        const response = await worker.fetch(new Request(MCP_URL_WITH_SLASH), env, DUMMY_CONTEXT);
 
-    expect(response.status).toBe(UNAUTHORIZED);
-  });
+        expect(response.status).toBe(UNAUTHORIZED);
+    });
 
-  it("does not serve paths that only start with /mcp", async () => {
-    const env = { ...WORKER_ENV } as unknown as Env;
+    it("does not serve paths that only start with /mcp", async () => {
+        const env = { ...WORKER_ENV } as unknown as Env;
 
-    const response = await worker.fetch(new Request(NEAR_MISS_URL), env, DUMMY_CONTEXT);
+        const response = await worker.fetch(new Request(NEAR_MISS_URL), env, DUMMY_CONTEXT);
 
-    expect(response.status).toBe(NOT_FOUND);
-  });
+        expect(response.status).toBe(NOT_FOUND);
+    });
 
-  it("refuses to serve when the env is invalid", async () => {
-    const env = {} as Env;
+    it("refuses to serve when the env is invalid", async () => {
+        const env = {} as Env;
 
-    const serve = worker.fetch(new Request(ANY_URL), env, DUMMY_CONTEXT);
+        const serve = worker.fetch(new Request(ANY_URL), env, DUMMY_CONTEXT);
 
-    await expect(serve).rejects.toThrow(InvalidEnvError);
-  });
+        await expect(serve).rejects.toThrow(InvalidEnvError);
+    });
 
-  it("hands a signed GitHub delivery to the webhook route", async () => {
-    const env = { ...WORKER_ENV } as unknown as Env;
-    const ping = new FakeGitHubWebhook(VALID_ENV.GITHUB_WEBHOOK_SECRET, WEBHOOK_URL).ping();
+    it("hands a signed GitHub delivery to the webhook route", async () => {
+        const env = { ...WORKER_ENV } as unknown as Env;
+        const ping = new FakeGitHubWebhook(VALID_ENV.GITHUB_WEBHOOK_SECRET, WEBHOOK_URL).ping();
 
-    const response = await worker.fetch(new Request(ping), env, DUMMY_CONTEXT);
+        const response = await worker.fetch(new Request(ping), env, DUMMY_CONTEXT);
 
-    expect(response.status).toBe(IGNORED);
-  });
+        expect(response.status).toBe(IGNORED);
+    });
 
-  it("refuses a webhook delivery signed with another secret", async () => {
-    const env = { ...WORKER_ENV } as unknown as Env;
-    const forged = new FakeGitHubWebhook(FORGED_SECRET, WEBHOOK_URL).ping();
+    it("refuses a webhook delivery signed with another secret", async () => {
+        const env = { ...WORKER_ENV } as unknown as Env;
+        const forged = new FakeGitHubWebhook(FORGED_SECRET, WEBHOOK_URL).ping();
 
-    const response = await worker.fetch(new Request(forged), env, DUMMY_CONTEXT);
+        const response = await worker.fetch(new Request(forged), env, DUMMY_CONTEXT);
 
-    expect(response.status).toBe(UNAUTHORIZED);
-  });
+        expect(response.status).toBe(UNAUTHORIZED);
+    });
 
-  it("consumes index queue batches", async () => {
-    const env = { ...WORKER_ENV } as unknown as Env;
-    const batch = FakeMessageBatch.of([{ unreadable: true }]);
+    it("consumes index queue batches", async () => {
+        const env = { ...WORKER_ENV } as unknown as Env;
+        const batch = FakeMessageBatch.of([{ unreadable: true }]);
 
-    await worker.queue(batch, env);
+        await worker.queue(batch, env);
 
-    expect(batch.outcomes()).toEqual([{ acked: true }]);
-  });
+        expect(batch.outcomes()).toEqual([{ acked: true }]);
+    });
 
-  it("has a daily reconciliation entry", () => {
-    expect(worker.scheduled).toBeFunction();
-  });
+    it("has a daily reconciliation entry", () => {
+        expect(worker.scheduled).toBeFunction();
+    });
 });

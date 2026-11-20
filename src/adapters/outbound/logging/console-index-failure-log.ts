@@ -3,7 +3,7 @@ import type { IndexFailure, IndexFailureLog } from "../../../application/ports/i
 const LABEL = "Search index problem:";
 
 export class ConsoleIndexFailureLog implements IndexFailureLog {
-  report(failure: IndexFailure): void {
-    console.error(LABEL, failure.path, failure.error);
-  }
+    report(failure: IndexFailure): void {
+        console.error(LABEL, failure.path, failure.error);
+    }
 }

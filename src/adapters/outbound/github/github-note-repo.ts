@@ -35,200 +35,194 @@ const BRANCH_LEVEL: FailureContext = {};
 type BranchMoveCheck = (error: unknown) => Promise<boolean>;
 
 export class GitHubNoteRepo implements NoteRepository {
-  constructor(
-    private readonly github: GitHubAccess,
-    private readonly reader: NoteReader,
-    private readonly mover: NoteMover,
-    private readonly firstNote: FirstNoteWriter,
-    private readonly pause: RetryPause,
-    private readonly restorer: BranchRestorer,
-  ) {}
+    constructor(
+        private readonly github: GitHubAccess,
+        private readonly reader: NoteReader,
+        private readonly mover: NoteMover,
+        private readonly firstNote: FirstNoteWriter,
+        private readonly pause: RetryPause,
+        private readonly restorer: BranchRestorer,
+    ) {}
 
-  async list(folder: NoteFolder): Promise<NotePath[]> {
-    const entries = await this.treeEntries().catch((error: unknown) => {
-      if (error instanceof EmptyRepository) return [];
-      throw error;
-    });
-    return entries
-      .filter((entry) => entry.type === BLOB && entry.path.endsWith(NOTE_EXTENSION))
-      .map((entry) => entry.path)
-      .sort()
-      .flatMap((raw) => this.toNotePath(raw))
-      .filter((path) => folder.contains(path));
-  }
-
-  private async treeEntries() {
-    const { data } = await this.github.send(BRANCH_LEVEL, (client, repo) =>
-      client.rest.git.getTree({ ...repo, tree_sha: this.github.branch, recursive: RECURSIVE }),
-    );
-    if (data.truncated) throw new NotesUnavailable();
-    return data.tree;
-  }
-
-  async read(path: NotePath): Promise<Note> {
-    return this.reader
-      .read(path, this.github.branch)
-      .catch((error: unknown) => this.confirmBranchThenThrow(error));
-  }
-
-  async create(path: NotePath, content: string): Promise<Note> {
-    return this.createOnBranch(path, content).catch((error: unknown) =>
-      this.createFirstNote(error, path, content, FIRST_NOTE_ATTEMPTS),
-    );
-  }
-
-  private async createOnBranch(path: NotePath, content: string): Promise<Note> {
-    return this.retryFileWrite(
-      path,
-      () => this.putFile(path, content, `${CREATE} ${path.value}`),
-      async (error) => this.isBranchConflict(error),
-    );
-  }
-
-  private async createFirstNote(
-    error: unknown,
-    path: NotePath,
-    content: string,
-    attemptsLeft: number,
-  ): Promise<Note> {
-    if (!this.isMissingBranch(error)) throw error;
-    if (await this.isEmptyRepository()) return this.writeFirstNote(path, content);
-    if (attemptsLeft <= 1) return this.createOnRestoredBranch(path, content);
-    await this.pause.wait(FIRST_NOTE_RETRY_MILLIS);
-    return this.createOnBranch(path, content).catch((failure: unknown) =>
-      this.createFirstNote(failure, path, content, attemptsLeft - 1),
-    );
-  }
-
-  private async writeFirstNote(path: NotePath, content: string): Promise<Note> {
-    return (await this.firstNote.create(path, content)) ?? this.createOnBranch(path, content);
-  }
-
-  private async createOnRestoredBranch(path: NotePath, content: string): Promise<Note> {
-    await this.restorer.restore();
-    return this.createOnBranch(path, content);
-  }
-
-  private isMissingBranch(error: unknown): boolean {
-    if (error instanceof EmptyRepository) return true;
-    return error instanceof NotesUnavailable && error.status === NOT_FOUND;
-  }
-
-  private async isEmptyRepository(): Promise<boolean> {
-    return this.reader.headCommit().then(
-      () => false,
-      (error: unknown) => this.treatEmptyAsTrue(error),
-    );
-  }
-
-  private treatEmptyAsTrue(error: unknown): boolean {
-    if (error instanceof EmptyRepository) return true;
-    if (this.isMissingBranch(error)) return false;
-    throw error;
-  }
-
-  async write(path: NotePath, content: string, expected: NoteVersion): Promise<Note> {
-    const current = await this.currentVersion(path);
-    if (!current.equals(expected)) {
-      throw new VersionConflict(path.value, expected.value, current.value);
+    async list(folder: NoteFolder): Promise<NotePath[]> {
+        const entries = await this.treeEntries().catch((error: unknown) => {
+            if (error instanceof EmptyRepository) return [];
+            throw error;
+        });
+        return entries
+            .filter((entry) => entry.type === BLOB && entry.path.endsWith(NOTE_EXTENSION))
+            .map((entry) => entry.path)
+            .sort()
+            .flatMap((raw) => this.toNotePath(raw))
+            .filter((path) => folder.contains(path));
     }
-    return this.retryFileWrite(
-      path,
-      () => this.putFile(path, content, `${UPDATE} ${path.value}`, expected),
-      (error) => this.isStillCurrent(error, path, expected),
-    );
-  }
 
-  async delete(path: NotePath): Promise<void> {
-    const version = await this.currentVersion(path);
-    await this.retryFileWrite(
-      path,
-      () => this.deleteFile(path, version),
-      (error) => this.isStillCurrent(error, path, version),
-    );
-  }
-
-  private async currentVersion(path: NotePath): Promise<NoteVersion> {
-    return this.reader
-      .versionOf(path, this.github.branch)
-      .catch((error: unknown) => this.confirmBranchThenThrow(error));
-  }
-
-  async move(from: NotePath, to: NotePath): Promise<MovedNote> {
-    return this.mover.move(from, to);
-  }
-
-  private async retryFileWrite<T>(
-    path: NotePath,
-    attempt: () => Promise<T>,
-    branchMoved: BranchMoveCheck,
-    attemptsLeft = FILE_WRITE_ATTEMPTS,
-  ): Promise<T> {
-    return attempt().catch(async (error: unknown) => {
-      if (!(await branchMoved(error))) throw error;
-      if (attemptsLeft <= 1) throw new ConcurrentChange(path.value);
-      return this.retryFileWrite(path, attempt, branchMoved, attemptsLeft - 1);
-    });
-  }
-
-  private isBranchConflict(error: unknown): boolean {
-    return error instanceof NotesUnavailable && error.status === CONFLICT;
-  }
-
-  private async isStillCurrent(
-    error: unknown,
-    path: NotePath,
-    expected: NoteVersion,
-  ): Promise<boolean> {
-    if (!(error instanceof VersionConflict)) return false;
-    const current = await this.currentVersion(path);
-    if (current.equals(expected)) return true;
-    throw new VersionConflict(path.value, expected.value, current.value);
-  }
-
-  private async confirmBranchThenThrow(error: unknown): Promise<never> {
-    if (!(error instanceof NoteNotFound)) throw error;
-    await this.reader.headCommit().catch((failure: unknown) => {
-      if (!(failure instanceof EmptyRepository)) throw failure;
-    });
-    throw error;
-  }
-
-  private async putFile(path: NotePath, content: string, message: string, expected?: NoteVersion) {
-    const context = { path: path.value, expected: expected?.value };
-    const { data } = await this.github.send(context, (client, repo) =>
-      client.rest.repos.createOrUpdateFileContents({
-        ...repo,
-        path: path.value,
-        message,
-        content: encodeBase64(content),
-        sha: expected?.value,
-        branch: this.github.branch,
-      }),
-    );
-    return new Note(path, content, NoteVersion.of(data.content?.sha ?? ""));
-  }
-
-  private async deleteFile(path: NotePath, version: NoteVersion): Promise<void> {
-    const sha = version.value;
-    const context = { path: path.value, expected: sha, mayBeMissing: true };
-    await this.github.send(context, (client, repo) =>
-      client.rest.repos.deleteFile({
-        ...repo,
-        path: path.value,
-        message: `${DELETE} ${path.value}`,
-        sha,
-        branch: this.github.branch,
-      }),
-    );
-  }
-
-  private toNotePath(raw: string): NotePath[] {
-    try {
-      return [NotePath.of(raw)];
-    } catch (error) {
-      if (error instanceof InvalidPath) return [];
-      throw error;
+    private async treeEntries() {
+        const { data } = await this.github.send(BRANCH_LEVEL, (client, repo) =>
+            client.rest.git.getTree({ ...repo, tree_sha: this.github.branch, recursive: RECURSIVE }),
+        );
+        if (data.truncated) throw new NotesUnavailable();
+        return data.tree;
     }
-  }
+
+    async read(path: NotePath): Promise<Note> {
+        return this.reader.read(path, this.github.branch).catch((error: unknown) => this.confirmBranchThenThrow(error));
+    }
+
+    async create(path: NotePath, content: string): Promise<Note> {
+        return this.createOnBranch(path, content).catch((error: unknown) =>
+            this.createFirstNote(error, path, content, FIRST_NOTE_ATTEMPTS),
+        );
+    }
+
+    private async createOnBranch(path: NotePath, content: string): Promise<Note> {
+        return this.retryFileWrite(
+            path,
+            () => this.putFile(path, content, `${CREATE} ${path.value}`),
+            async (error) => this.isBranchConflict(error),
+        );
+    }
+
+    private async createFirstNote(
+        error: unknown,
+        path: NotePath,
+        content: string,
+        attemptsLeft: number,
+    ): Promise<Note> {
+        if (!this.isMissingBranch(error)) throw error;
+        if (await this.isEmptyRepository()) return this.writeFirstNote(path, content);
+        if (attemptsLeft <= 1) return this.createOnRestoredBranch(path, content);
+        await this.pause.wait(FIRST_NOTE_RETRY_MILLIS);
+        return this.createOnBranch(path, content).catch((failure: unknown) =>
+            this.createFirstNote(failure, path, content, attemptsLeft - 1),
+        );
+    }
+
+    private async writeFirstNote(path: NotePath, content: string): Promise<Note> {
+        return (await this.firstNote.create(path, content)) ?? this.createOnBranch(path, content);
+    }
+
+    private async createOnRestoredBranch(path: NotePath, content: string): Promise<Note> {
+        await this.restorer.restore();
+        return this.createOnBranch(path, content);
+    }
+
+    private isMissingBranch(error: unknown): boolean {
+        if (error instanceof EmptyRepository) return true;
+        return error instanceof NotesUnavailable && error.status === NOT_FOUND;
+    }
+
+    private async isEmptyRepository(): Promise<boolean> {
+        return this.reader.headCommit().then(
+            () => false,
+            (error: unknown) => this.treatEmptyAsTrue(error),
+        );
+    }
+
+    private treatEmptyAsTrue(error: unknown): boolean {
+        if (error instanceof EmptyRepository) return true;
+        if (this.isMissingBranch(error)) return false;
+        throw error;
+    }
+
+    async write(path: NotePath, content: string, expected: NoteVersion): Promise<Note> {
+        const current = await this.currentVersion(path);
+        if (!current.equals(expected)) {
+            throw new VersionConflict(path.value, expected.value, current.value);
+        }
+        return this.retryFileWrite(
+            path,
+            () => this.putFile(path, content, `${UPDATE} ${path.value}`, expected),
+            (error) => this.isStillCurrent(error, path, expected),
+        );
+    }
+
+    async delete(path: NotePath): Promise<void> {
+        const version = await this.currentVersion(path);
+        await this.retryFileWrite(
+            path,
+            () => this.deleteFile(path, version),
+            (error) => this.isStillCurrent(error, path, version),
+        );
+    }
+
+    private async currentVersion(path: NotePath): Promise<NoteVersion> {
+        return this.reader
+            .versionOf(path, this.github.branch)
+            .catch((error: unknown) => this.confirmBranchThenThrow(error));
+    }
+
+    async move(from: NotePath, to: NotePath): Promise<MovedNote> {
+        return this.mover.move(from, to);
+    }
+
+    private async retryFileWrite<T>(
+        path: NotePath,
+        attempt: () => Promise<T>,
+        branchMoved: BranchMoveCheck,
+        attemptsLeft = FILE_WRITE_ATTEMPTS,
+    ): Promise<T> {
+        return attempt().catch(async (error: unknown) => {
+            if (!(await branchMoved(error))) throw error;
+            if (attemptsLeft <= 1) throw new ConcurrentChange(path.value);
+            return this.retryFileWrite(path, attempt, branchMoved, attemptsLeft - 1);
+        });
+    }
+
+    private isBranchConflict(error: unknown): boolean {
+        return error instanceof NotesUnavailable && error.status === CONFLICT;
+    }
+
+    private async isStillCurrent(error: unknown, path: NotePath, expected: NoteVersion): Promise<boolean> {
+        if (!(error instanceof VersionConflict)) return false;
+        const current = await this.currentVersion(path);
+        if (current.equals(expected)) return true;
+        throw new VersionConflict(path.value, expected.value, current.value);
+    }
+
+    private async confirmBranchThenThrow(error: unknown): Promise<never> {
+        if (!(error instanceof NoteNotFound)) throw error;
+        await this.reader.headCommit().catch((failure: unknown) => {
+            if (!(failure instanceof EmptyRepository)) throw failure;
+        });
+        throw error;
+    }
+
+    private async putFile(path: NotePath, content: string, message: string, expected?: NoteVersion) {
+        const context = { path: path.value, expected: expected?.value };
+        const { data } = await this.github.send(context, (client, repo) =>
+            client.rest.repos.createOrUpdateFileContents({
+                ...repo,
+                path: path.value,
+                message,
+                content: encodeBase64(content),
+                sha: expected?.value,
+                branch: this.github.branch,
+            }),
+        );
+        return new Note(path, content, NoteVersion.of(data.content?.sha ?? ""));
+    }
+
+    private async deleteFile(path: NotePath, version: NoteVersion): Promise<void> {
+        const sha = version.value;
+        const context = { path: path.value, expected: sha, mayBeMissing: true };
+        await this.github.send(context, (client, repo) =>
+            client.rest.repos.deleteFile({
+                ...repo,
+                path: path.value,
+                message: `${DELETE} ${path.value}`,
+                sha,
+                branch: this.github.branch,
+            }),
+        );
+    }
+
+    private toNotePath(raw: string): NotePath[] {
+        try {
+            return [NotePath.of(raw)];
+        } catch (error) {
+            if (error instanceof InvalidPath) return [];
+            throw error;
+        }
+    }
 }

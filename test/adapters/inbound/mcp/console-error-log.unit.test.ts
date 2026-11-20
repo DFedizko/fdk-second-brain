@@ -6,20 +6,20 @@ const LABEL = "MCP tool failed:";
 let printError: Mock<typeof console.error>;
 
 beforeEach(() => {
-  printError = jest.spyOn(console, "error").mockImplementation(() => undefined);
+    printError = jest.spyOn(console, "error").mockImplementation(() => undefined);
 });
 
 afterEach(() => {
-  printError.mockRestore();
+    printError.mockRestore();
 });
 
 describe("ConsoleErrorLog", () => {
-  it("prints the error to the Worker's logs", () => {
-    const log = new ConsoleErrorLog();
-    const bug = new TypeError("boom");
+    it("prints the error to the Worker's logs", () => {
+        const log = new ConsoleErrorLog();
+        const bug = new TypeError("boom");
 
-    log.report(bug);
+        log.report(bug);
 
-    expect(printError).toHaveBeenCalledWith(LABEL, bug);
-  });
+        expect(printError).toHaveBeenCalledWith(LABEL, bug);
+    });
 });

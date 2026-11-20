@@ -16,27 +16,27 @@ const INDEX: ServiceIdentifier<SearchIndex> = D1_SEARCH_SYMBOLS.SearchIndex;
 const REPOSITORY: ServiceIdentifier<NoteRepository> = GITHUB.noteRepository;
 
 export const searchModule = new ContainerModule(({ bind }) => {
-  bind(SEARCH.chunker)
-    .toResolvedValue(() => new MarkdownChunker())
-    .inSingletonScope();
-  bind(SEARCH.indexNote)
-    .toResolvedValue(
-      (index: SearchIndex, notes: NoteRepository, chunker: MarkdownChunker) =>
-        new IndexNote(index, notes, chunker),
-      [INDEX, REPOSITORY, SEARCH.chunker],
-    )
-    .inSingletonScope();
-  bind(SEARCH.removeNoteIndex)
-    .toResolvedValue((indexer: IndexNote) => new RemoveNoteIndex(indexer), [SEARCH.indexNote])
-    .inSingletonScope();
-  bind(SEARCH.searchNotes)
-    .toResolvedValue((index: SearchIndex) => new SearchNotes(index), [INDEX])
-    .inSingletonScope();
-  bind(SEARCH.indexSync)
-    .toResolvedValue(
-      (indexer: IndexNote, remover: RemoveNoteIndex, log: IndexFailureLog) =>
-        new NoteIndexSync(indexer, remover, log),
-      [SEARCH.indexNote, SEARCH.removeNoteIndex, LOGGING.indexFailureLog],
-    )
-    .inSingletonScope();
+    bind(SEARCH.chunker)
+        .toResolvedValue(() => new MarkdownChunker())
+        .inSingletonScope();
+    bind(SEARCH.indexNote)
+        .toResolvedValue(
+            (index: SearchIndex, notes: NoteRepository, chunker: MarkdownChunker) =>
+                new IndexNote(index, notes, chunker),
+            [INDEX, REPOSITORY, SEARCH.chunker],
+        )
+        .inSingletonScope();
+    bind(SEARCH.removeNoteIndex)
+        .toResolvedValue((indexer: IndexNote) => new RemoveNoteIndex(indexer), [SEARCH.indexNote])
+        .inSingletonScope();
+    bind(SEARCH.searchNotes)
+        .toResolvedValue((index: SearchIndex) => new SearchNotes(index), [INDEX])
+        .inSingletonScope();
+    bind(SEARCH.indexSync)
+        .toResolvedValue(
+            (indexer: IndexNote, remover: RemoveNoteIndex, log: IndexFailureLog) =>
+                new NoteIndexSync(indexer, remover, log),
+            [SEARCH.indexNote, SEARCH.removeNoteIndex, LOGGING.indexFailureLog],
+        )
+        .inSingletonScope();
 });

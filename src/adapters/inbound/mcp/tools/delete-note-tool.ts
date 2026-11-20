@@ -8,25 +8,25 @@ import type { UseCase } from "./use-case";
 import { DESTRUCTIVE, NOTE_PATH } from "./tool-fields";
 
 const SCHEMA = z.object({
-  path: NOTE_PATH,
+    path: NOTE_PATH,
 });
 
 export class DeleteNoteTool extends NoteTool<typeof SCHEMA> {
-  protected readonly name = "delete_note";
-  protected readonly description = "Delete a note.";
-  protected readonly schema = SCHEMA;
-  protected override readonly annotations = DESTRUCTIVE;
+    protected readonly name = "delete_note";
+    protected readonly description = "Delete a note.";
+    protected readonly schema = SCHEMA;
+    protected override readonly annotations = DESTRUCTIVE;
 
-  constructor(
-    runner: ToolCallRunner,
-    private readonly results: ToolReplies,
-    private readonly useCase: UseCase<DeleteNoteInput, void>,
-  ) {
-    super(runner);
-  }
+    constructor(
+        runner: ToolCallRunner,
+        private readonly results: ToolReplies,
+        private readonly useCase: UseCase<DeleteNoteInput, void>,
+    ) {
+        super(runner);
+    }
 
-  protected async handle(input: z.infer<typeof SCHEMA>): Promise<CallToolResult> {
-    await this.useCase.execute(input);
-    return this.results.deleted(input.path);
-  }
+    protected async handle(input: z.infer<typeof SCHEMA>): Promise<CallToolResult> {
+        await this.useCase.execute(input);
+        return this.results.deleted(input.path);
+    }
 }

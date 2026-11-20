@@ -13,66 +13,66 @@ import { GITHUB_CONFIG } from "./__stub__/github-config";
 const LOCAL_API_URL = "http://127.0.0.1:8787";
 
 describe("githubContainer", () => {
-  it("binds the NoteRepository port to the GitHub adapter", () => {
-    const container = new Container();
-    container.load(githubContainer(GITHUB_CONFIG), clockModule);
+    it("binds the NoteRepository port to the GitHub adapter", () => {
+        const container = new Container();
+        container.load(githubContainer(GITHUB_CONFIG), clockModule);
 
-    const repository = container.get<NoteRepository>(GITHUB.noteRepository);
+        const repository = container.get<NoteRepository>(GITHUB.noteRepository);
 
-    expect(repository).toBeInstanceOf(GitHubNoteRepo);
-  });
+        expect(repository).toBeInstanceOf(GitHubNoteRepo);
+    });
 
-  it("binds the note catalog to the GitHub tree adapter", () => {
-    const container = new Container();
-    container.load(githubContainer(GITHUB_CONFIG), clockModule);
+    it("binds the note catalog to the GitHub tree adapter", () => {
+        const container = new Container();
+        container.load(githubContainer(GITHUB_CONFIG), clockModule);
 
-    const catalog = container.get(GITHUB.noteCatalog);
+        const catalog = container.get(GITHUB.noteCatalog);
 
-    expect(catalog).toBeInstanceOf(GitHubNoteCatalog);
-  });
+        expect(catalog).toBeInstanceOf(GitHubNoteCatalog);
+    });
 
-  it("binds the branch head to the GitHub compare adapter", () => {
-    const container = new Container();
-    container.load(githubContainer(GITHUB_CONFIG), clockModule);
+    it("binds the branch head to the GitHub compare adapter", () => {
+        const container = new Container();
+        container.load(githubContainer(GITHUB_CONFIG), clockModule);
 
-    const head = container.get(GITHUB.branchHead);
+        const head = container.get(GITHUB.branchHead);
 
-    expect(head).toBeInstanceOf(GitHubBranchHead);
-  });
+        expect(head).toBeInstanceOf(GitHubBranchHead);
+    });
 
-  it("binds the factory of budgeted head readers", () => {
-    const container = new Container();
-    container.load(githubContainer(GITHUB_CONFIG), clockModule);
+    it("binds the factory of budgeted head readers", () => {
+        const container = new Container();
+        container.load(githubContainer(GITHUB_CONFIG), clockModule);
 
-    const factory = container.get(GITHUB.headNotes);
+        const factory = container.get(GITHUB.headNotes);
 
-    expect(factory).toBeInstanceOf(BudgetedHeadNotes);
-  });
+        expect(factory).toBeInstanceOf(BudgetedHeadNotes);
+    });
 
-  it("builds a GitHub client that logs nothing, as request URLs hold note paths", () => {
-    const container = new Container();
-    container.load(githubContainer(GITHUB_CONFIG), clockModule);
+    it("builds a GitHub client that logs nothing, as request URLs hold note paths", () => {
+        const container = new Container();
+        container.load(githubContainer(GITHUB_CONFIG), clockModule);
 
-    const client = container.get(GITHUB.client);
+        const client = container.get(GITHUB.client);
 
-    expect(client.log).toBe(SILENT_LOG);
-  });
+        expect(client.log).toBe(SILENT_LOG);
+    });
 
-  it("sends requests to the configured API URL", () => {
-    const container = new Container();
-    container.load(githubContainer({ ...GITHUB_CONFIG, apiUrl: LOCAL_API_URL }));
+    it("sends requests to the configured API URL", () => {
+        const container = new Container();
+        container.load(githubContainer({ ...GITHUB_CONFIG, apiUrl: LOCAL_API_URL }));
 
-    const client = container.get(GITHUB.client);
+        const client = container.get(GITHUB.client);
 
-    expect(client.request.endpoint.DEFAULTS.baseUrl).toBe(LOCAL_API_URL);
-  });
+        expect(client.request.endpoint.DEFAULTS.baseUrl).toBe(LOCAL_API_URL);
+    });
 
-  it("binds the injected config", () => {
-    const container = new Container();
-    container.load(githubContainer(GITHUB_CONFIG), clockModule);
+    it("binds the injected config", () => {
+        const container = new Container();
+        container.load(githubContainer(GITHUB_CONFIG), clockModule);
 
-    const config = container.get(GITHUB.config);
+        const config = container.get(GITHUB.config);
 
-    expect(config).toBe(GITHUB_CONFIG);
-  });
+        expect(config).toBe(GITHUB_CONFIG);
+    });
 });

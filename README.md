@@ -109,14 +109,14 @@ The MCP endpoint is `<PUBLIC_URL>/mcp`. Each client registers itself, opens a co
 - Failed indexing messages wait in the `second-brain-index-dlq` queue for 24 hours (Cloudflare dashboard → Queues); the daily reconciliation at 04:17 UTC repairs the index anyway.
 - To sign out every connected client, delete the server's grants and tokens from `OAUTH_KV`. Clients then have to sign in again:
 
-  ```sh
-  for p in grant: token:; do
-    bunx wrangler kv key list --binding OAUTH_KV --remote --prefix "$p" | jq -r '.[].name' |
-      xargs -n1 bunx wrangler kv key delete --binding OAUTH_KV --remote
-  done
-  ```
+    ```sh
+    for p in grant: token:; do
+      bunx wrangler kv key list --binding OAUTH_KV --remote --prefix "$p" | jq -r '.[].name' |
+        xargs -n1 bunx wrangler kv key delete --binding OAUTH_KV --remote
+    done
+    ```
 
-  The OAuth App's authorizations on GitHub and `GITHUB_CLIENT_SECRET` only guard new sign-ins; GitHub's token is used once and never kept. To cut off note access, revoke the fine-grained token.
+    The OAuth App's authorizations on GitHub and `GITHUB_CLIENT_SECRET` only guard new sign-ins; GitHub's token is used once and never kept. To cut off note access, revoke the fine-grained token.
 
 ## Free-plan limits
 

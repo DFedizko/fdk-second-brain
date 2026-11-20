@@ -14,32 +14,32 @@ import type { ToolUseCases } from "./tools/tool-use-cases";
 const ALL_TOOLS = { serviceIdentifier: MCP.tool, isMultiple: true } as const;
 
 export function createMcpModule(useCases: ToolUseCases): ContainerModule {
-  return new ContainerModule(({ bind }) => {
-    bind(MCP.errorMapper)
-      .toResolvedValue(() => new ToolErrorMapper())
-      .inSingletonScope();
-    bind(MCP.errorLog)
-      .toResolvedValue(() => new ConsoleErrorLog())
-      .inSingletonScope();
-    bind(MCP.runner)
-      .toResolvedValue(
-        (errors: ErrorResultMapper, log: ErrorLog) => new ToolRunner(errors, log),
-        [MCP.errorMapper, MCP.errorLog],
-      )
-      .inSingletonScope();
-    bind(MCP.results)
-      .toResolvedValue(() => new ToolResults())
-      .inSingletonScope();
-    toolBindings(useCases).forEach((bindTool) => bindTool(bind));
-    bind(MCP.server)
-      .toResolvedValue((tools: McpTool[]) => new NotesMcpServer(tools), [ALL_TOOLS])
-      .inSingletonScope();
-    bind(MCP.httpHandler)
-      .toResolvedValue(
-        (server: NotesMcpServer, log: ErrorLog) =>
-          createMcpHandler(() => server.build(), { onerror: (error) => log.report(error) }),
-        [MCP.server, MCP.errorLog],
-      )
-      .inSingletonScope();
-  });
+    return new ContainerModule(({ bind }) => {
+        bind(MCP.errorMapper)
+            .toResolvedValue(() => new ToolErrorMapper())
+            .inSingletonScope();
+        bind(MCP.errorLog)
+            .toResolvedValue(() => new ConsoleErrorLog())
+            .inSingletonScope();
+        bind(MCP.runner)
+            .toResolvedValue(
+                (errors: ErrorResultMapper, log: ErrorLog) => new ToolRunner(errors, log),
+                [MCP.errorMapper, MCP.errorLog],
+            )
+            .inSingletonScope();
+        bind(MCP.results)
+            .toResolvedValue(() => new ToolResults())
+            .inSingletonScope();
+        toolBindings(useCases).forEach((bindTool) => bindTool(bind));
+        bind(MCP.server)
+            .toResolvedValue((tools: McpTool[]) => new NotesMcpServer(tools), [ALL_TOOLS])
+            .inSingletonScope();
+        bind(MCP.httpHandler)
+            .toResolvedValue(
+                (server: NotesMcpServer, log: ErrorLog) =>
+                    createMcpHandler(() => server.build(), { onerror: (error) => log.report(error) }),
+                [MCP.server, MCP.errorLog],
+            )
+            .inSingletonScope();
+    });
 }

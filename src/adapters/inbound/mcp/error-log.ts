@@ -1,3 +1,3 @@
 export interface ErrorLog {
-  report(error: unknown): void;
+    report(error: unknown): void;
 }

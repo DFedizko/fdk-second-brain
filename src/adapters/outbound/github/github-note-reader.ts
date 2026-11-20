@@ -13,75 +13,75 @@ const BASE64 = "base64";
 const BRANCH_LEVEL: FailureContext = {};
 
 export interface NoteReader {
-  read(path: NotePath, ref: string): Promise<Note>;
-  versionOf(path: NotePath, ref: string): Promise<NoteVersion>;
-  exists(path: NotePath, ref: string): Promise<boolean>;
-  headCommit(): Promise<string>;
+    read(path: NotePath, ref: string): Promise<Note>;
+    versionOf(path: NotePath, ref: string): Promise<NoteVersion>;
+    exists(path: NotePath, ref: string): Promise<boolean>;
+    headCommit(): Promise<string>;
 }
 
 export class GitHubNoteReader implements NoteReader {
-  constructor(private readonly github: GitHubAccess) {}
+    constructor(private readonly github: GitHubAccess) {}
 
-  async read(path: NotePath, ref: string): Promise<Note> {
-    const data = await this.getFile(path, ref);
-    const encoded = data.encoding === BASE64 ? data.content : await this.readBlob(data.sha);
-    const content = this.decode(path, encoded);
-    return new Note(path, content, NoteVersion.of(data.sha));
-  }
-
-  async versionOf(path: NotePath, ref: string): Promise<NoteVersion> {
-    return NoteVersion.of((await this.getFile(path, ref)).sha);
-  }
-
-  async exists(path: NotePath, ref: string): Promise<boolean> {
-    return this.getContent(path, ref).then(
-      () => true,
-      (error: unknown) => this.treatMissingAsAbsent(error),
-    );
-  }
-
-  async headCommit(): Promise<string> {
-    const { data } = await this.github.send(BRANCH_LEVEL, (client, repo) =>
-      client.rest.git.getRef({ ...repo, ref: this.github.branchRef }),
-    );
-    return data.object.sha;
-  }
-
-  private async readBlob(sha: string): Promise<string> {
-    const { data } = await this.github.send(BRANCH_LEVEL, (client, repo) =>
-      client.rest.git.getBlob({ ...repo, file_sha: sha }),
-    );
-    if (data.encoding !== BASE64) throw new NotesUnavailable();
-    return data.content;
-  }
-
-  private async getFile(path: NotePath, ref: string) {
-    const data = await this.getContent(path, ref);
-    if (Array.isArray(data) || data.type !== FILE || !("content" in data)) {
-      throw new NoteNotFound(path.value);
+    async read(path: NotePath, ref: string): Promise<Note> {
+        const data = await this.getFile(path, ref);
+        const encoded = data.encoding === BASE64 ? data.content : await this.readBlob(data.sha);
+        const content = this.decode(path, encoded);
+        return new Note(path, content, NoteVersion.of(data.sha));
     }
-    return data;
-  }
 
-  private decode(path: NotePath, encoded: string): string {
-    try {
-      return decodeBase64(encoded);
-    } catch (error) {
-      if (error instanceof TypeError) throw new UnreadableNote(path.value);
-      throw error;
+    async versionOf(path: NotePath, ref: string): Promise<NoteVersion> {
+        return NoteVersion.of((await this.getFile(path, ref)).sha);
     }
-  }
 
-  private async getContent(path: NotePath, ref: string) {
-    const context = { path: path.value, mayBeMissing: true };
-    const { data } = await this.github.send(context, (client, repo) =>
-      client.rest.repos.getContent({ ...repo, path: path.value, ref }),
-    );
-    return data;
-  }
+    async exists(path: NotePath, ref: string): Promise<boolean> {
+        return this.getContent(path, ref).then(
+            () => true,
+            (error: unknown) => this.treatMissingAsAbsent(error),
+        );
+    }
 
-  private treatMissingAsAbsent(error: unknown): boolean {
-    if (error instanceof NoteNotFound) return false;
-    throw error;
-  }
+    async headCommit(): Promise<string> {
+        const { data } = await this.github.send(BRANCH_LEVEL, (client, repo) =>
+            client.rest.git.getRef({ ...repo, ref: this.github.branchRef }),
+        );
+        return data.object.sha;
+    }
+
+    private async readBlob(sha: string): Promise<string> {
+        const { data } = await this.github.send(BRANCH_LEVEL, (client, repo) =>
+            client.rest.git.getBlob({ ...repo, file_sha: sha }),
+        );
+        if (data.encoding !== BASE64) throw new NotesUnavailable();
+        return data.content;
+    }
+
+    private async getFile(path: NotePath, ref: string) {
+        const data = await this.getContent(path, ref);
+        if (Array.isArray(data) || data.type !== FILE || !("content" in data)) {
+            throw new NoteNotFound(path.value);
+        }
+        return data;
+    }
+
+    private decode(path: NotePath, encoded: string): string {
+        try {
+            return decodeBase64(encoded);
+        } catch (error) {
+            if (error instanceof TypeError) throw new UnreadableNote(path.value);
+            throw error;
+        }
+    }
+
+    private async getContent(path: NotePath, ref: string) {
+        const context = { path: path.value, mayBeMissing: true };
+        const { data } = await this.github.send(context, (client, repo) =>
+            client.rest.repos.getContent({ ...repo, path: path.value, ref }),
+        );
+        return data;
+    }
+
+    private treatMissingAsAbsent(error: unknown): boolean {
+        if (error instanceof NoteNotFound) return false;
+        throw error;
+    }
 }

@@ -1,31 +1,31 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "second-brain-mcp",
-  "main": "src/main/worker.ts",
-  "compatibility_date": "2026-11-19",
-  "workers_dev": true,
-  "preview_urls": false,
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "second-brain",
-      "database_id": "ec2efe47-3c0f-4aa5-8284-6fae38b8083b",
-      "migrations_dir": "migrations",
-    },
-  ],
-  "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "5251c49999cd4f8eb6ed0654a510ddd5" }],
-  "queues": {
-    "producers": [{ "binding": "INDEX_QUEUE", "queue": "second-brain-index" }],
-    "consumers": [
-      {
-        "queue": "second-brain-index",
-        "max_batch_size": 5,
-        "max_batch_timeout": 2,
-        "max_retries": 5,
-        "retry_delay": 30,
-        "dead_letter_queue": "second-brain-index-dlq",
-      },
+    "$schema": "node_modules/wrangler/config-schema.json",
+    "name": "second-brain-mcp",
+    "main": "src/main/worker.ts",
+    "compatibility_date": "2026-11-19",
+    "workers_dev": true,
+    "preview_urls": false,
+    "d1_databases": [
+        {
+            "binding": "DB",
+            "database_name": "second-brain",
+            "database_id": "ec2efe47-3c0f-4aa5-8284-6fae38b8083b",
+            "migrations_dir": "migrations",
+        },
     ],
-  },
-  "triggers": { "crons": ["17 4 * * *"] },
+    "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "5251c49999cd4f8eb6ed0654a510ddd5" }],
+    "queues": {
+        "producers": [{ "binding": "INDEX_QUEUE", "queue": "second-brain-index" }],
+        "consumers": [
+            {
+                "queue": "second-brain-index",
+                "max_batch_size": 5,
+                "max_batch_timeout": 2,
+                "max_retries": 5,
+                "retry_delay": 30,
+                "dead_letter_queue": "second-brain-index-dlq",
+            },
+        ],
+    },
+    "triggers": { "crons": ["17 4 * * *"] },
 }

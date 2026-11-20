@@ -15,60 +15,60 @@ import { VALID_ENV } from "./__stub__/valid-env";
 import { WORKER_ENV } from "./__stub__/worker-env";
 
 describe("appModules", () => {
-  it("includes the config module", () => {
-    const config: AppConfig = { ...VALID_ENV };
-    const container = new Container();
+    it("includes the config module", () => {
+        const config: AppConfig = { ...VALID_ENV };
+        const container = new Container();
 
-    container.load(...appModules(config, WORKER_ENV));
+        container.load(...appModules(config, WORKER_ENV));
 
-    expect(container.get(CONFIG_SYMBOLS.AppConfig)).toBe(config);
-  });
+        expect(container.get(CONFIG_SYMBOLS.AppConfig)).toBe(config);
+    });
 
-  it("wires the MCP HTTP handler down to the note repository", () => {
-    const container = new Container();
+    it("wires the MCP HTTP handler down to the note repository", () => {
+        const container = new Container();
 
-    container.load(...appModules({ ...VALID_ENV }, WORKER_ENV));
+        container.load(...appModules({ ...VALID_ENV }, WORKER_ENV));
 
-    expect(container.get(MCP.httpHandler).fetch).toBeFunction();
-  });
+        expect(container.get(MCP.httpHandler).fetch).toBeFunction();
+    });
 
-  it("keeps the search index in the Worker's D1 database", () => {
-    const container = new Container();
+    it("keeps the search index in the Worker's D1 database", () => {
+        const container = new Container();
 
-    container.load(...appModules({ ...VALID_ENV }, WORKER_ENV));
+        container.load(...appModules({ ...VALID_ENV }, WORKER_ENV));
 
-    expect(container.get(D1_SEARCH_SYMBOLS.Database)).toBe(WORKER_ENV.DB);
-  });
+        expect(container.get(D1_SEARCH_SYMBOLS.Database)).toBe(WORKER_ENV.DB);
+    });
 
-  it("wires the GitHub webhook route", () => {
-    const container = new Container();
+    it("wires the GitHub webhook route", () => {
+        const container = new Container();
 
-    container.load(...appModules({ ...VALID_ENV }, WORKER_ENV));
+        container.load(...appModules({ ...VALID_ENV }, WORKER_ENV));
 
-    expect(container.get(WEBHOOK.route)).toBeInstanceOf(GitHubWebhookRoute);
-  });
+        expect(container.get(WEBHOOK.route)).toBeInstanceOf(GitHubWebhookRoute);
+    });
 
-  it("wires the index queue consumer", () => {
-    const container = new Container();
+    it("wires the index queue consumer", () => {
+        const container = new Container();
 
-    container.load(...appModules({ ...VALID_ENV }, WORKER_ENV));
+        container.load(...appModules({ ...VALID_ENV }, WORKER_ENV));
 
-    expect(container.get(INDEX_QUEUE.consumer)).toBeInstanceOf(IndexQueueConsumer);
-  });
+        expect(container.get(INDEX_QUEUE.consumer)).toBeInstanceOf(IndexQueueConsumer);
+    });
 
-  it("wires the daily reconciliation", () => {
-    const container = new Container();
+    it("wires the daily reconciliation", () => {
+        const container = new Container();
 
-    container.load(...appModules({ ...VALID_ENV }, WORKER_ENV));
+        container.load(...appModules({ ...VALID_ENV }, WORKER_ENV));
 
-    expect(container.get(INDEXING.reconcile)).toBeInstanceOf(ReconcileIndex);
-  });
+        expect(container.get(INDEXING.reconcile)).toBeInstanceOf(ReconcileIndex);
+    });
 
-  it("sends queued paths to the Worker's index queue", () => {
-    const container = new Container();
+    it("sends queued paths to the Worker's index queue", () => {
+        const container = new Container();
 
-    container.load(...appModules({ ...VALID_ENV }, WORKER_ENV));
+        container.load(...appModules({ ...VALID_ENV }, WORKER_ENV));
 
-    expect(container.get(QUEUE.binding)).toBe(WORKER_ENV.INDEX_QUEUE);
-  });
+        expect(container.get(QUEUE.binding)).toBe(WORKER_ENV.INDEX_QUEUE);
+    });
 });

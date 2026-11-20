@@ -19,81 +19,80 @@ const UNEXPECTED_MESSAGE = "Something went wrong on the server. Try again later.
 const SECRET_DETAIL = "token ghp_secret leaked in a stack";
 
 describe("ToolErrorMapper", () => {
-  it("marks the result as an error", () => {
-    const mapper = new ToolErrorMapper();
+    it("marks the result as an error", () => {
+        const mapper = new ToolErrorMapper();
 
-    const result = mapper.toResult(new NoteNotFound(PATH));
+        const result = mapper.toResult(new NoteNotFound(PATH));
 
-    expect(result.isError).toBe(true);
-  });
+        expect(result.isError).toBe(true);
+    });
 
-  it("tells how to find existing notes when a note is missing", () => {
-    const mapper = new ToolErrorMapper();
+    it("tells how to find existing notes when a note is missing", () => {
+        const mapper = new ToolErrorMapper();
 
-    const result = mapper.toResult(new NoteNotFound(PATH));
+        const result = mapper.toResult(new NoteNotFound(PATH));
 
-    expect(result.content).toEqual([
-      { type: "text", text: `Note not found: "${PATH}". Call list_notes to see the paths.` },
-    ]);
-  });
+        expect(result.content).toEqual([
+            { type: "text", text: `Note not found: "${PATH}". Call list_notes to see the paths.` },
+        ]);
+    });
 
-  it("tells to read the note again on a version conflict", () => {
-    const mapper = new ToolErrorMapper();
+    it("tells to read the note again on a version conflict", () => {
+        const mapper = new ToolErrorMapper();
 
-    const result = mapper.toResult(new VersionConflict(PATH, "aaa", "bbb"));
+        const result = mapper.toResult(new VersionConflict(PATH, "aaa", "bbb"));
 
-    expect(result.content).toEqual([
-      {
-        type: "text",
-        text: `Note "${PATH}" changed: expected version aaa, found bbb. Read the note again and retry with its current version.`,
-      },
-    ]);
-  });
+        expect(result.content).toEqual([
+            {
+                type: "text",
+                text: `Note "${PATH}" changed: expected version aaa, found bbb. Read the note again and retry with its current version.`,
+            },
+        ]);
+    });
 
-  it("tells how to replace a note that already exists", () => {
-    const mapper = new ToolErrorMapper();
+    it("tells how to replace a note that already exists", () => {
+        const mapper = new ToolErrorMapper();
 
-    const result = mapper.toResult(new NoteAlreadyExists(PATH));
+        const result = mapper.toResult(new NoteAlreadyExists(PATH));
 
-    expect(result.content).toEqual([
-      {
-        type: "text",
-        text: `Note already exists: "${PATH}". Use a free path, or replace it with write_note and the expectedVersion from read_note.`,
-      },
-    ]);
-  });
+        expect(result.content).toEqual([
+            {
+                type: "text",
+                text: `Note already exists: "${PATH}". Use a free path, or replace it with write_note and the expectedVersion from read_note.`,
+            },
+        ]);
+    });
 
-  it.each([
-    new InvalidPath("../x.md", "it leaves the notes folder"),
-    new PassageNotUnique("todo", OCCURRENCES),
-    new PassageNotFound("todo"),
-    new SectionNotFound("Goals"),
-    new EmptySearchQuery("  "),
-  ])("passes the message of $name through", (error) => {
-    const mapper = new ToolErrorMapper();
+    it.each([
+        new InvalidPath("../x.md", "it leaves the notes folder"),
+        new PassageNotUnique("todo", OCCURRENCES),
+        new PassageNotFound("todo"),
+        new SectionNotFound("Goals"),
+        new EmptySearchQuery("  "),
+    ])("passes the message of $name through", (error) => {
+        const mapper = new ToolErrorMapper();
 
-    const result = mapper.toResult(error);
+        const result = mapper.toResult(error);
 
-    expect(result.content).toEqual([{ type: "text", text: error.message }]);
-  });
+        expect(result.content).toEqual([{ type: "text", text: error.message }]);
+    });
 
-  it.each([
-    new NotesAccessDenied(),
-    new NotesRateLimited(),
-    new NotesUnavailable(SERVICE_UNAVAILABLE),
-  ])("gives the client a generic message for $name", (error) => {
-    const mapper = new ToolErrorMapper();
+    it.each([new NotesAccessDenied(), new NotesRateLimited(), new NotesUnavailable(SERVICE_UNAVAILABLE)])(
+        "gives the client a generic message for $name",
+        (error) => {
+            const mapper = new ToolErrorMapper();
 
-    const result = mapper.toResult(error);
+            const result = mapper.toResult(error);
 
-    expect(result.content).toEqual([{ type: "text", text: STORE_DOWN_MESSAGE }]);
-  });
+            expect(result.content).toEqual([{ type: "text", text: STORE_DOWN_MESSAGE }]);
+        },
+    );
 
-  it("hides the details of an unexpected error", () => {
-    const mapper = new ToolErrorMapper();
+    it("hides the details of an unexpected error", () => {
+        const mapper = new ToolErrorMapper();
 
-    const result = mapper.toResult(new Error(SECRET_DETAIL));
+        const result = mapper.toResult(new Error(SECRET_DETAIL));
 
-    expect(result.content).toEqual([{ type: "text", text: UNEXPECTED_MESSAGE }]);
-  });
+        expect(result.content).toEqual([{ type: "text", text: UNEXPECTED_MESSAGE }]);
+    });
 });

@@ -10,38 +10,38 @@ let useCase: SpyUseCase<DeleteNoteInput, void>;
 let tool: InProcessTool;
 
 beforeEach(async () => {
-  useCase = new SpyUseCase(undefined);
-  tool = await InProcessTool.connect(new DeleteNoteTool(newRunner(), newReplies(), useCase), NAME);
+    useCase = new SpyUseCase(undefined);
+    tool = await InProcessTool.connect(new DeleteNoteTool(newRunner(), newReplies(), useCase), NAME);
 });
 
 describe("delete_note tool", () => {
-  it("passes the path to the use case", async () => {
-    await tool.call({ path: PATH });
+    it("passes the path to the use case", async () => {
+        await tool.call({ path: PATH });
 
-    expect(useCase.inputs).toEqual([{ path: PATH }]);
-  });
+        expect(useCase.inputs).toEqual([{ path: PATH }]);
+    });
 
-  it("confirms the deleted path", async () => {
-    const result = await tool.call({ path: PATH });
+    it("confirms the deleted path", async () => {
+        const result = await tool.call({ path: PATH });
 
-    expect(result.content).toEqual([{ type: "text", text: `Deleted ${PATH}` }]);
-  });
+        expect(result.content).toEqual([{ type: "text", text: `Deleted ${PATH}` }]);
+    });
 
-  it("requires a path", async () => {
-    const result = await tool.call({});
+    it("requires a path", async () => {
+        const result = await tool.call({});
 
-    expect(result.isError).toBe(true);
-  });
+        expect(result.isError).toBe(true);
+    });
 
-  it("rejects an empty path", async () => {
-    await tool.call({ path: EMPTY });
+    it("rejects an empty path", async () => {
+        await tool.call({ path: EMPTY });
 
-    expect(useCase.inputs).toEqual([]);
-  });
+        expect(useCase.inputs).toEqual([]);
+    });
 
-  it("is marked destructive", async () => {
-    const definition = await tool.definition();
+    it("is marked destructive", async () => {
+        const definition = await tool.definition();
 
-    expect(definition?.annotations?.destructiveHint).toBe(true);
-  });
+        expect(definition?.annotations?.destructiveHint).toBe(true);
+    });
 });

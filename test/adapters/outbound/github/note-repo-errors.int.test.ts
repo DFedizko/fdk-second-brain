@@ -29,220 +29,218 @@ const FORBIDDEN = 403;
 const CONFLICT = 409;
 
 async function failureOf(action: Promise<unknown>): Promise<unknown> {
-  return action.then(
-    () => undefined,
-    (error: unknown) => error,
-  );
+    return action.then(
+        () => undefined,
+        (error: unknown) => error,
+    );
 }
 
 describe("GitHubNoteRepo maps GitHub errors", () => {
-  let api: FakeGitHubApi;
+    let api: FakeGitHubApi;
 
-  beforeEach(() => {
-    api = buildFakeNotesRepo();
-  });
-
-  it("maps 404 Not Found to NoteNotFound", async () => {
-    const read = connectRepo(api).read(INBOX);
-
-    await expect(read).rejects.toThrow(NoteNotFound);
-  });
-
-  it("maps 422 'sha wasn't supplied' to NoteAlreadyExists", async () => {
-    const repository = connectRepo(api);
-    await repository.create(INBOX, CONTENT);
-
-    const create = repository.create(INBOX, CONTENT);
-
-    await expect(create).rejects.toThrow(NoteAlreadyExists);
-  });
-
-  it("maps 409 sha mismatch from a racing write to VersionConflict", async () => {
-    const repository = connectRepo(api);
-    const created = await repository.create(INBOX, CONTENT);
-
-    const writes = Promise.all([
-      repository.write(INBOX, FIRST_EDIT, created.version),
-      repository.write(INBOX, SECOND_EDIT, created.version),
-    ]);
-
-    await expect(writes).rejects.toThrow(VersionConflict);
-  });
-
-  it("reports the winning version when a racing write meets a 409", async () => {
-    const repository = connectRepo(api);
-    const created = await repository.create(INBOX, CONTENT);
-
-    const error = await failureOf(
-      Promise.all([
-        repository.write(INBOX, FIRST_EDIT, created.version),
-        repository.write(INBOX, SECOND_EDIT, created.version),
-      ]),
-    );
-
-    const winner = await repository.read(INBOX);
-    expect({ actual: (error as VersionConflict).actual, served: api.served }).toEqual({
-      actual: winner.version.value,
-      served: expect.arrayContaining([CONFLICT]),
+    beforeEach(() => {
+        api = buildFakeNotesRepo();
     });
-  });
 
-  it("retries a move that loses the race for the branch, so both moves land", async () => {
-    const repository = connectRepo(api);
-    await Promise.all([INBOX, TODO].map((path) => repository.create(path, CONTENT)));
+    it("maps 404 Not Found to NoteNotFound", async () => {
+        const read = connectRepo(api).read(INBOX);
 
-    await Promise.all([repository.move(INBOX, PLAN), repository.move(TODO, DONE)]);
+        await expect(read).rejects.toThrow(NoteNotFound);
+    });
 
-    const paths = await repository.list(ROOT);
-    expect(paths.map((path) => path.value)).toEqual([DONE.value, PLAN.value]);
-  });
+    it("maps 422 'sha wasn't supplied' to NoteAlreadyExists", async () => {
+        const repository = connectRepo(api);
+        await repository.create(INBOX, CONTENT);
 
-  it("retries a move once when another commit lands on the branch", async () => {
-    const repository = connectRepo(api);
-    await repository.create(INBOX, CONTENT);
-    api.commitBeforeRefUpdates(1);
+        const create = repository.create(INBOX, CONTENT);
 
-    const moved = await repository.move(INBOX, PLAN);
+        await expect(create).rejects.toThrow(NoteAlreadyExists);
+    });
 
-    expect(moved.path).toEqual(PLAN);
-  });
+    it("maps 409 sha mismatch from a racing write to VersionConflict", async () => {
+        const repository = connectRepo(api);
+        const created = await repository.create(INBOX, CONTENT);
 
-  it("reports the winning version when a racing delete meets a 409", async () => {
-    const repository = connectRepo(api);
-    const created = await repository.create(INBOX, CONTENT);
+        const writes = Promise.all([
+            repository.write(INBOX, FIRST_EDIT, created.version),
+            repository.write(INBOX, SECOND_EDIT, created.version),
+        ]);
 
-    const error = await failureOf(
-      Promise.all([repository.write(INBOX, FIRST_EDIT, created.version), repository.delete(INBOX)]),
-    );
+        await expect(writes).rejects.toThrow(VersionConflict);
+    });
 
-    const winner = await repository.read(INBOX);
-    expect(error).toEqual(
-      new VersionConflict(INBOX.value, created.version.value, winner.version.value),
-    );
-  });
+    it("reports the winning version when a racing write meets a 409", async () => {
+        const repository = connectRepo(api);
+        const created = await repository.create(INBOX, CONTENT);
 
-  it("maps a 404 from a delete that lost the race to NoteNotFound", async () => {
-    const repository = connectRepo(api);
-    await repository.create(INBOX, CONTENT);
+        const error = await failureOf(
+            Promise.all([
+                repository.write(INBOX, FIRST_EDIT, created.version),
+                repository.write(INBOX, SECOND_EDIT, created.version),
+            ]),
+        );
 
-    const deletes = Promise.all([repository.delete(INBOX), repository.delete(INBOX)]);
+        const winner = await repository.read(INBOX);
+        expect({ actual: (error as VersionConflict).actual, served: api.served }).toEqual({
+            actual: winner.version.value,
+            served: expect.arrayContaining([CONFLICT]),
+        });
+    });
 
-    await expect(deletes).rejects.toThrow(NoteNotFound);
-  });
+    it("retries a move that loses the race for the branch, so both moves land", async () => {
+        const repository = connectRepo(api);
+        await Promise.all([INBOX, TODO].map((path) => repository.create(path, CONTENT)));
 
-  it("maps 401 Bad credentials to NotesAccessDenied", async () => {
-    const list = connectRepo(api, { token: WRONG_TOKEN }).list(ROOT);
+        await Promise.all([repository.move(INBOX, PLAN), repository.move(TODO, DONE)]);
 
-    await expect(list).rejects.toThrow(NotesAccessDenied);
-  });
+        const paths = await repository.list(ROOT);
+        expect(paths.map((path) => path.value)).toEqual([DONE.value, PLAN.value]);
+    });
 
-  it("maps 403 without permission to NotesAccessDenied", async () => {
-    api.startOutage("forbidden");
+    it("retries a move once when another commit lands on the branch", async () => {
+        const repository = connectRepo(api);
+        await repository.create(INBOX, CONTENT);
+        api.commitBeforeRefUpdates(1);
 
-    const create = connectRepo(api).create(ARCHIVE, CONTENT);
+        const moved = await repository.move(INBOX, PLAN);
 
-    await expect(create).rejects.toThrow(NotesAccessDenied);
-  });
+        expect(moved.path).toEqual(PLAN);
+    });
 
-  it("maps 403 with no requests remaining to NotesRateLimited", async () => {
-    api.exhaustRateLimit();
+    it("reports the winning version when a racing delete meets a 409", async () => {
+        const repository = connectRepo(api);
+        const created = await repository.create(INBOX, CONTENT);
 
-    const list = connectRepo(api).list(ROOT);
+        const error = await failureOf(
+            Promise.all([repository.write(INBOX, FIRST_EDIT, created.version), repository.delete(INBOX)]),
+        );
 
-    await expect(list).rejects.toThrow(NotesRateLimited);
-  });
+        const winner = await repository.read(INBOX);
+        expect(error).toEqual(new VersionConflict(INBOX.value, created.version.value, winner.version.value));
+    });
 
-  it("gives the time the primary rate limit resets", async () => {
-    api.exhaustRateLimit();
+    it("maps a 404 from a delete that lost the race to NoteNotFound", async () => {
+        const repository = connectRepo(api);
+        await repository.create(INBOX, CONTENT);
 
-    const error = await failureOf(connectRepo(api).list(ROOT));
+        const deletes = Promise.all([repository.delete(INBOX), repository.delete(INBOX)]);
 
-    expect((error as NotesRateLimited).resetsAt).toBeInstanceOf(Date);
-  });
+        await expect(deletes).rejects.toThrow(NoteNotFound);
+    });
 
-  it("maps 429 secondary rate limit to NotesRateLimited with its retry-after", async () => {
-    api.startOutage("secondary");
+    it("maps 401 Bad credentials to NotesAccessDenied", async () => {
+        const list = connectRepo(api, { token: WRONG_TOKEN }).list(ROOT);
 
-    const error = await failureOf(connectRepo(api).read(INBOX));
+        await expect(list).rejects.toThrow(NotesAccessDenied);
+    });
 
-    expect((error as NotesRateLimited).retryAfterSeconds).toBe(RETRY_AFTER_SECONDS);
-  });
+    it("maps 403 without permission to NotesAccessDenied", async () => {
+        api.startOutage("forbidden");
 
-  it("derives the reset time of a secondary rate limit from retry-after", async () => {
-    api.startOutage("secondary");
+        const create = connectRepo(api).create(ARCHIVE, CONTENT);
 
-    const error = await failureOf(connectRepo(api).read(INBOX));
+        await expect(create).rejects.toThrow(NotesAccessDenied);
+    });
 
-    expect((error as NotesRateLimited).resetsAt).toEqual(RETRY_AT);
-  });
+    it("maps 403 with no requests remaining to NotesRateLimited", async () => {
+        api.exhaustRateLimit();
 
-  it("maps 403 secondary rate limit to NotesRateLimited with its retry-after", async () => {
-    api.startOutage("secondaryForbidden");
+        const list = connectRepo(api).list(ROOT);
 
-    const error = await failureOf(connectRepo(api).read(INBOX));
+        await expect(list).rejects.toThrow(NotesRateLimited);
+    });
 
-    expect((error as NotesRateLimited).retryAfterSeconds).toBe(RETRY_AFTER_SECONDS);
-  });
+    it("gives the time the primary rate limit resets", async () => {
+        api.exhaustRateLimit();
 
-  it("maps a 500 to NotesUnavailable with its status", async () => {
-    api.startOutage("server");
+        const error = await failureOf(connectRepo(api).list(ROOT));
 
-    const error = await failureOf(connectRepo(api).list(ROOT));
+        expect((error as NotesRateLimited).resetsAt).toBeInstanceOf(Date);
+    });
 
-    expect((error as NotesUnavailable).status).toBe(SERVER_ERROR);
-  });
+    it("maps 429 secondary rate limit to NotesRateLimited with its retry-after", async () => {
+        api.startOutage("secondary");
 
-  it("keeps GitHub's failure as the cause of NotesUnavailable", async () => {
-    api.startOutage("server");
+        const error = await failureOf(connectRepo(api).read(INBOX));
 
-    const error = await failureOf(connectRepo(api).list(ROOT));
+        expect((error as NotesRateLimited).retryAfterSeconds).toBe(RETRY_AFTER_SECONDS);
+    });
 
-    expect((error as Error).cause).toMatchObject({ status: SERVER_ERROR });
-  });
+    it("derives the reset time of a secondary rate limit from retry-after", async () => {
+        api.startOutage("secondary");
 
-  it("keeps the network failure as the cause", async () => {
-    api.startOutage("network");
+        const error = await failureOf(connectRepo(api).read(INBOX));
 
-    const error = await failureOf(connectRepo(api).list(ROOT));
+        expect((error as NotesRateLimited).resetsAt).toEqual(RETRY_AT);
+    });
 
-    expect((error as Error).cause).toBeInstanceOf(Error);
-  });
+    it("maps 403 secondary rate limit to NotesRateLimited with its retry-after", async () => {
+        api.startOutage("secondaryForbidden");
 
-  it("keeps GitHub's failure as the cause of NotesAccessDenied", async () => {
-    api.revokeToken();
+        const error = await failureOf(connectRepo(api).read(INBOX));
 
-    const error = await failureOf(connectRepo(api).list(ROOT));
+        expect((error as NotesRateLimited).retryAfterSeconds).toBe(RETRY_AFTER_SECONDS);
+    });
 
-    expect((error as Error).cause).toMatchObject({ status: UNAUTHORIZED });
-  });
+    it("maps a 500 to NotesUnavailable with its status", async () => {
+        api.startOutage("server");
 
-  it("keeps GitHub's failure as the cause of NotesRateLimited", async () => {
-    api.exhaustRateLimit();
+        const error = await failureOf(connectRepo(api).list(ROOT));
 
-    const error = await failureOf(connectRepo(api).list(ROOT));
+        expect((error as NotesUnavailable).status).toBe(SERVER_ERROR);
+    });
 
-    expect((error as Error).cause).toMatchObject({ status: FORBIDDEN });
-  });
+    it("keeps GitHub's failure as the cause of NotesUnavailable", async () => {
+        api.startOutage("server");
 
-  it("maps a network failure to NotesUnavailable", async () => {
-    api.startOutage("network");
+        const error = await failureOf(connectRepo(api).list(ROOT));
 
-    const list = connectRepo(api).list(ROOT);
+        expect((error as Error).cause).toMatchObject({ status: SERVER_ERROR });
+    });
 
-    await expect(list).rejects.toThrow(NotesUnavailable);
-  });
+    it("keeps the network failure as the cause", async () => {
+        api.startOutage("network");
 
-  it.each([
-    ["bad credentials", (fake: FakeGitHubApi) => fake.revokeToken()],
-    ["missing permission", (fake: FakeGitHubApi) => fake.startOutage("forbidden")],
-    ["a server error", (fake: FakeGitHubApi) => fake.startOutage("server")],
-    ["a rate limit", (fake: FakeGitHubApi) => fake.exhaustRateLimit()],
-    ["a network failure", (fake: FakeGitHubApi) => fake.startOutage("network")],
-  ])("never puts the token in the error for %s", async (_name, breakApi) => {
-    breakApi(api);
+        const error = await failureOf(connectRepo(api).list(ROOT));
 
-    const error = await failureOf(connectRepo(api).create(ARCHIVE, CONTENT));
+        expect((error as Error).cause).toBeInstanceOf(Error);
+    });
 
-    expect(JSON.stringify({ error, text: String(error) })).not.toContain(NOTES_TOKEN);
-  });
+    it("keeps GitHub's failure as the cause of NotesAccessDenied", async () => {
+        api.revokeToken();
+
+        const error = await failureOf(connectRepo(api).list(ROOT));
+
+        expect((error as Error).cause).toMatchObject({ status: UNAUTHORIZED });
+    });
+
+    it("keeps GitHub's failure as the cause of NotesRateLimited", async () => {
+        api.exhaustRateLimit();
+
+        const error = await failureOf(connectRepo(api).list(ROOT));
+
+        expect((error as Error).cause).toMatchObject({ status: FORBIDDEN });
+    });
+
+    it("maps a network failure to NotesUnavailable", async () => {
+        api.startOutage("network");
+
+        const list = connectRepo(api).list(ROOT);
+
+        await expect(list).rejects.toThrow(NotesUnavailable);
+    });
+
+    it.each([
+        ["bad credentials", (fake: FakeGitHubApi) => fake.revokeToken()],
+        ["missing permission", (fake: FakeGitHubApi) => fake.startOutage("forbidden")],
+        ["a server error", (fake: FakeGitHubApi) => fake.startOutage("server")],
+        ["a rate limit", (fake: FakeGitHubApi) => fake.exhaustRateLimit()],
+        ["a network failure", (fake: FakeGitHubApi) => fake.startOutage("network")],
+    ])("never puts the token in the error for %s", async (_name, breakApi) => {
+        breakApi(api);
+
+        const error = await failureOf(connectRepo(api).create(ARCHIVE, CONTENT));
+
+        expect(JSON.stringify({ error, text: String(error) })).not.toContain(NOTES_TOKEN);
+    });
 });

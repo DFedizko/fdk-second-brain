@@ -4,10 +4,10 @@ import type { Note } from "../../../../src/domain/note";
 import type { NotePath } from "../../../../src/domain/note-path";
 
 export class UnreadableNoteLookup implements NoteLookup {
-  constructor(private readonly beforeRead: () => Promise<void> = async () => undefined) {}
+    constructor(private readonly beforeRead: () => Promise<void> = async () => undefined) {}
 
-  async read(path: NotePath): Promise<Note> {
-    await this.beforeRead();
-    throw new UnreadableNote(path.value);
-  }
+    async read(path: NotePath): Promise<Note> {
+        await this.beforeRead();
+        throw new UnreadableNote(path.value);
+    }
 }

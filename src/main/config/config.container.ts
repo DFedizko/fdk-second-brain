@@ -9,16 +9,16 @@ import type { AppConfig } from "./env-schema";
 const FROM_CONFIG: [symbol] = [CONFIG_SYMBOLS.AppConfig];
 
 export function createConfigModule(config: AppConfig): ContainerModule {
-  return new ContainerModule(({ bind }) => {
-    bind<AppConfig>(CONFIG_SYMBOLS.AppConfig).toConstantValue(config);
-    bind<NotesRepoSettings>(CONFIG_SYMBOLS.NotesRepoSettings)
-      .toResolvedValue(toNotesRepoSettings, FROM_CONFIG)
-      .inSingletonScope();
-    bind<OAuthSettings>(CONFIG_SYMBOLS.OAuthSettings)
-      .toResolvedValue(toOAuthSettings, FROM_CONFIG)
-      .inSingletonScope();
-    bind<WebhookSettings>(CONFIG_SYMBOLS.WebhookSettings)
-      .toResolvedValue(toWebhookSettings, FROM_CONFIG)
-      .inSingletonScope();
-  });
+    return new ContainerModule(({ bind }) => {
+        bind<AppConfig>(CONFIG_SYMBOLS.AppConfig).toConstantValue(config);
+        bind<NotesRepoSettings>(CONFIG_SYMBOLS.NotesRepoSettings)
+            .toResolvedValue(toNotesRepoSettings, FROM_CONFIG)
+            .inSingletonScope();
+        bind<OAuthSettings>(CONFIG_SYMBOLS.OAuthSettings)
+            .toResolvedValue(toOAuthSettings, FROM_CONFIG)
+            .inSingletonScope();
+        bind<WebhookSettings>(CONFIG_SYMBOLS.WebhookSettings)
+            .toResolvedValue(toWebhookSettings, FROM_CONFIG)
+            .inSingletonScope();
+    });
 }

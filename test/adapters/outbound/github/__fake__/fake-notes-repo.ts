@@ -9,22 +9,22 @@ export const HIDDEN_NOTE = ".github/pull-request.md";
 export const IMAGE = "assets/logo.png";
 
 export function buildFakeNotesRepo(): FakeGitHubApi {
-  return new FakeGitHubApi({
-    owner: NOTES_OWNER,
-    repo: NOTES_REPO,
-    token: NOTES_TOKEN,
-    branches: [DEFAULT_BRANCH, NOTES_BRANCH],
-    seed: { [HIDDEN_NOTE]: "# PR template\n", [IMAGE]: "PNG" },
-  });
+    return new FakeGitHubApi({
+        owner: NOTES_OWNER,
+        repo: NOTES_REPO,
+        token: NOTES_TOKEN,
+        branches: [DEFAULT_BRANCH, NOTES_BRANCH],
+        seed: { [HIDDEN_NOTE]: "# PR template\n", [IMAGE]: "PNG" },
+    });
 }
 
 export function buildEmptyNotesRepo(): FakeGitHubApi {
-  return new FakeGitHubApi({
-    owner: NOTES_OWNER,
-    repo: NOTES_REPO,
-    token: NOTES_TOKEN,
-    branches: [DEFAULT_BRANCH, NOTES_BRANCH],
-    seed: {},
-    empty: true,
-  });
+    return new FakeGitHubApi({
+        owner: NOTES_OWNER,
+        repo: NOTES_REPO,
+        token: NOTES_TOKEN,
+        branches: [DEFAULT_BRANCH, NOTES_BRANCH],
+        seed: {},
+        empty: true,
+    });
 }

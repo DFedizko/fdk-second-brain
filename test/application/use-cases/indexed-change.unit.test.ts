@@ -18,68 +18,66 @@ const INPUT: WriteNoteInput = { path: PATH, content: CONTENT };
 const INDEX_DOWN = new Error("D1 is down");
 
 describe("IndexedChange", () => {
-  let repository: InMemoryNoteRepo;
-  let sync: SpyIndexSync;
-  let background: ManualBackgroundTasks;
-  let writeNote: IndexedChange<WriteNoteInput, NoteView>;
+    let repository: InMemoryNoteRepo;
+    let sync: SpyIndexSync;
+    let background: ManualBackgroundTasks;
+    let writeNote: IndexedChange<WriteNoteInput, NoteView>;
 
-  beforeEach(() => {
-    repository = new InMemoryNoteRepo();
-    sync = new SpyIndexSync();
-    background = new ManualBackgroundTasks();
-    const write = new WriteNote(repository);
-    writeNote = new IndexedChange(write, new SavedNotePaths(), sync, background);
-  });
+    beforeEach(() => {
+        repository = new InMemoryNoteRepo();
+        sync = new SpyIndexSync();
+        background = new ManualBackgroundTasks();
+        const write = new WriteNote(repository);
+        writeNote = new IndexedChange(write, new SavedNotePaths(), sync, background);
+    });
 
-  it("returns what the change returned", async () => {
-    const view = await writeNote.execute(INPUT);
+    it("returns what the change returned", async () => {
+        const view = await writeNote.execute(INPUT);
 
-    expect(view.path).toBe(PATH);
-  });
+        expect(view.path).toBe(PATH);
+    });
 
-  it("replies before the index is synced", async () => {
-    await writeNote.execute(INPUT);
+    it("replies before the index is synced", async () => {
+        await writeNote.execute(INPUT);
 
-    expect(sync.changes).toEqual([]);
-  });
+        expect(sync.changes).toEqual([]);
+    });
 
-  it("syncs the index with the paths the change touched after the reply", async () => {
-    await writeNote.execute(INPUT);
+    it("syncs the index with the paths the change touched after the reply", async () => {
+        await writeNote.execute(INPUT);
 
-    await background.runQueued();
+        await background.runQueued();
 
-    expect(sync.changes).toEqual([
-      { indexed: [expect.objectContaining({ path: PATH })], removed: [] },
-    ]);
-  });
+        expect(sync.changes).toEqual([{ indexed: [expect.objectContaining({ path: PATH })], removed: [] }]);
+    });
 
-  it("rejects with the error of a failed change", async () => {
-    await repository.create(NotePath.of(PATH), CONTENT);
+    it("rejects with the error of a failed change", async () => {
+        await repository.create(NotePath.of(PATH), CONTENT);
 
-    const run = writeNote.execute(INPUT);
+        const run = writeNote.execute(INPUT);
 
-    await expect(run).rejects.toThrow(NoteAlreadyExists);
-  });
+        await expect(run).rejects.toThrow(NoteAlreadyExists);
+    });
 
-  it("leaves the index alone when the change failed", async () => {
-    await repository.create(NotePath.of(PATH), CONTENT);
+    it("leaves the index alone when the change failed", async () => {
+        await repository.create(NotePath.of(PATH), CONTENT);
 
-    await writeNote.execute(INPUT).catch(() => undefined);
+        await writeNote.execute(INPUT).catch(() => undefined);
 
-    await background.runQueued();
-    expect(sync.changes).toEqual([]);
-  });
+        await background.runQueued();
+        expect(sync.changes).toEqual([]);
+    });
 
-  it("keeps the write when the index update fails", async () => {
-    const failing = new FailingNoteIndexer(INDEX_DOWN);
-    const indexSync = new NoteIndexSync(failing, new SpyNoteIndexer(), new SpyIndexFailureLog());
-    const change = new WriteNote(repository);
-    const write = new IndexedChange(change, new SavedNotePaths(), indexSync, background);
-    await write.execute(INPUT);
-    await background.runQueued();
+    it("keeps the write when the index update fails", async () => {
+        const failing = new FailingNoteIndexer(INDEX_DOWN);
+        const indexSync = new NoteIndexSync(failing, new SpyNoteIndexer(), new SpyIndexFailureLog());
+        const change = new WriteNote(repository);
+        const write = new IndexedChange(change, new SavedNotePaths(), indexSync, background);
+        await write.execute(INPUT);
+        await background.runQueued();
 
-    const saved = await repository.read(NotePath.of(PATH));
+        const saved = await repository.read(NotePath.of(PATH));
 
-    expect(saved.content).toBe(CONTENT);
-  });
+        expect(saved.content).toBe(CONTENT);
+    });
 });

@@ -15,77 +15,77 @@ const NEWER: MarkdownChunk[] = [{ heading: "Steps", seq: 0, text: "deploy the wo
 const OLDER: MarkdownChunk[] = [{ heading: "Steps", seq: 0, text: "migrate the database" }];
 
 describe("D1SearchIndex writes only over the version it expects", () => {
-  let runtime: LocalRuntime | undefined;
-  let index: D1SearchIndex;
+    let runtime: LocalRuntime | undefined;
+    let index: D1SearchIndex;
 
-  beforeEach(async () => {
-    runtime = await LocalRuntime.start();
-    await runtime.migrate();
-    index = new D1SearchIndex(await runtime.database(), new SpyIndexFailureLog());
-  });
-
-  afterEach(async () => {
-    await runtime?.stop();
-    runtime = undefined;
-  });
-
-  const pathsFor = async (raw: string) =>
-    (await index.search(SearchQuery.of(raw), LIMIT)).map((hit) => hit.path.value);
-
-  it("reports a replace over the expected version as applied", async () => {
-    await index.replace(PLAN, FIRST_VERSION, OLDER, null);
-
-    const applied = await index.replace(PLAN, SECOND_VERSION, NEWER, FIRST_VERSION);
-
-    expect(applied).toBe(true);
-  });
-
-  it("refuses a replace when the index moved on", async () => {
-    await index.replace(PLAN, SECOND_VERSION, NEWER, null);
-
-    const applied = await index.replace(PLAN, STALE_VERSION, OLDER, FIRST_VERSION);
-
-    expect({ applied, version: (await index.versionOf(PLAN))?.value }).toEqual({
-      applied: false,
-      version: SECOND_VERSION.value,
+    beforeEach(async () => {
+        runtime = await LocalRuntime.start();
+        await runtime.migrate();
+        index = new D1SearchIndex(await runtime.database(), new SpyIndexFailureLog());
     });
-  });
 
-  it("keeps the newer chunks when a replace is refused", async () => {
-    await index.replace(PLAN, SECOND_VERSION, NEWER, null);
-
-    await index.replace(PLAN, STALE_VERSION, OLDER, FIRST_VERSION);
-
-    expect({ newer: await pathsFor("deploy"), older: await pathsFor("migrate") }).toEqual({
-      newer: [PLAN.value],
-      older: [],
+    afterEach(async () => {
+        await runtime?.stop();
+        runtime = undefined;
     });
-  });
 
-  it("refuses a first index when another one got there first", async () => {
-    await index.replace(PLAN, SECOND_VERSION, NEWER, null);
+    const pathsFor = async (raw: string) =>
+        (await index.search(SearchQuery.of(raw), LIMIT)).map((hit) => hit.path.value);
 
-    const applied = await index.replace(PLAN, STALE_VERSION, OLDER, null);
+    it("reports a replace over the expected version as applied", async () => {
+        await index.replace(PLAN, FIRST_VERSION, OLDER, null);
 
-    expect(applied).toBe(false);
-  });
+        const applied = await index.replace(PLAN, SECOND_VERSION, NEWER, FIRST_VERSION);
 
-  it("refuses a remove when the index moved on", async () => {
-    await index.replace(PLAN, SECOND_VERSION, NEWER, null);
-
-    const applied = await index.remove(PLAN, FIRST_VERSION);
-
-    expect({ applied, hits: await pathsFor("deploy") }).toEqual({
-      applied: false,
-      hits: [PLAN.value],
+        expect(applied).toBe(true);
     });
-  });
 
-  it("reports a remove of the expected version as applied", async () => {
-    await index.replace(PLAN, FIRST_VERSION, NEWER, null);
+    it("refuses a replace when the index moved on", async () => {
+        await index.replace(PLAN, SECOND_VERSION, NEWER, null);
 
-    const applied = await index.remove(PLAN, FIRST_VERSION);
+        const applied = await index.replace(PLAN, STALE_VERSION, OLDER, FIRST_VERSION);
 
-    expect(applied).toBe(true);
-  });
+        expect({ applied, version: (await index.versionOf(PLAN))?.value }).toEqual({
+            applied: false,
+            version: SECOND_VERSION.value,
+        });
+    });
+
+    it("keeps the newer chunks when a replace is refused", async () => {
+        await index.replace(PLAN, SECOND_VERSION, NEWER, null);
+
+        await index.replace(PLAN, STALE_VERSION, OLDER, FIRST_VERSION);
+
+        expect({ newer: await pathsFor("deploy"), older: await pathsFor("migrate") }).toEqual({
+            newer: [PLAN.value],
+            older: [],
+        });
+    });
+
+    it("refuses a first index when another one got there first", async () => {
+        await index.replace(PLAN, SECOND_VERSION, NEWER, null);
+
+        const applied = await index.replace(PLAN, STALE_VERSION, OLDER, null);
+
+        expect(applied).toBe(false);
+    });
+
+    it("refuses a remove when the index moved on", async () => {
+        await index.replace(PLAN, SECOND_VERSION, NEWER, null);
+
+        const applied = await index.remove(PLAN, FIRST_VERSION);
+
+        expect({ applied, hits: await pathsFor("deploy") }).toEqual({
+            applied: false,
+            hits: [PLAN.value],
+        });
+    });
+
+    it("reports a remove of the expected version as applied", async () => {
+        await index.replace(PLAN, FIRST_VERSION, NEWER, null);
+
+        const applied = await index.remove(PLAN, FIRST_VERSION);
+
+        expect(applied).toBe(true);
+    });
 });

@@ -22,84 +22,84 @@ const ALWAYS = Number.POSITIVE_INFINITY;
 const UNPROCESSABLE = 422;
 
 async function failureOf(action: Promise<unknown>): Promise<unknown> {
-  return action.then(
-    () => undefined,
-    (error: unknown) => error,
-  );
+    return action.then(
+        () => undefined,
+        (error: unknown) => error,
+    );
 }
 
 describe("GitHubNoteRepo moves", () => {
-  let api: FakeGitHubApi;
-  let repository: GitHubNoteRepo;
+    let api: FakeGitHubApi;
+    let repository: GitHubNoteRepo;
 
-  beforeEach(async () => {
-    api = buildFakeNotesRepo();
-    repository = connectRepo(api);
-    await repository.create(INBOX, CONTENT);
-  });
+    beforeEach(async () => {
+        api = buildFakeNotesRepo();
+        repository = connectRepo(api);
+        await repository.create(INBOX, CONTENT);
+    });
 
-  it("refuses to move a note onto a folder", async () => {
-    await repository.create(NESTED, KEPT_CONTENT);
+    it("refuses to move a note onto a folder", async () => {
+        await repository.create(NESTED, KEPT_CONTENT);
 
-    const move = repository.move(INBOX, TAKEN);
+        const move = repository.move(INBOX, TAKEN);
 
-    await expect(move).rejects.toThrow(NoteAlreadyExists);
-  });
+        await expect(move).rejects.toThrow(NoteAlreadyExists);
+    });
 
-  it("keeps the folder's notes when a move onto it is refused", async () => {
-    await repository.create(NESTED, KEPT_CONTENT);
+    it("keeps the folder's notes when a move onto it is refused", async () => {
+        await repository.create(NESTED, KEPT_CONTENT);
 
-    await repository.move(INBOX, TAKEN).catch(() => undefined);
+        await repository.move(INBOX, TAKEN).catch(() => undefined);
 
-    expect(api.filesOn(NOTES_BRANCH)).toMatchObject({ [NESTED.value]: KEPT_CONTENT });
-  });
+        expect(api.filesOn(NOTES_BRANCH)).toMatchObject({ [NESTED.value]: KEPT_CONTENT });
+    });
 
-  it("refuses to move a note onto a symlink", async () => {
-    api.addEntry(NOTES_BRANCH, TAKEN.value, SYMLINK_MODE, OUTSIDE_TARGET);
+    it("refuses to move a note onto a symlink", async () => {
+        api.addEntry(NOTES_BRANCH, TAKEN.value, SYMLINK_MODE, OUTSIDE_TARGET);
 
-    const move = repository.move(INBOX, TAKEN);
+        const move = repository.move(INBOX, TAKEN);
 
-    await expect(move).rejects.toThrow(NoteAlreadyExists);
-  });
+        await expect(move).rejects.toThrow(NoteAlreadyExists);
+    });
 
-  it("refuses to move a note onto a submodule", async () => {
-    api.addEntry(NOTES_BRANCH, TAKEN.value, SUBMODULE_MODE, SUBMODULE_COMMIT);
+    it("refuses to move a note onto a submodule", async () => {
+        api.addEntry(NOTES_BRANCH, TAKEN.value, SUBMODULE_MODE, SUBMODULE_COMMIT);
 
-    const move = repository.move(INBOX, TAKEN);
+        const move = repository.move(INBOX, TAKEN);
 
-    await expect(move).rejects.toThrow(NoteAlreadyExists);
-  });
+        await expect(move).rejects.toThrow(NoteAlreadyExists);
+    });
 
-  it("keeps the file mode of the note it moves", async () => {
-    api.addEntry(NOTES_BRANCH, INBOX.value, EXECUTABLE_MODE, CONTENT);
+    it("keeps the file mode of the note it moves", async () => {
+        api.addEntry(NOTES_BRANCH, INBOX.value, EXECUTABLE_MODE, CONTENT);
 
-    await repository.move(INBOX, TAKEN);
+        await repository.move(INBOX, TAKEN);
 
-    expect(api.store.modesAt(NOTES_BRANCH).get(TAKEN.value)).toBe(EXECUTABLE_MODE);
-  });
+        expect(api.store.modesAt(NOTES_BRANCH).get(TAKEN.value)).toBe(EXECUTABLE_MODE);
+    });
 
-  it("gives up with ConcurrentChange when the branch keeps moving", async () => {
-    api.commitBeforeRefUpdates(ALWAYS);
+    it("gives up with ConcurrentChange when the branch keeps moving", async () => {
+        api.commitBeforeRefUpdates(ALWAYS);
 
-    const move = repository.move(INBOX, TAKEN);
+        const move = repository.move(INBOX, TAKEN);
 
-    await expect(move).rejects.toThrow(ConcurrentChange);
-  });
+        await expect(move).rejects.toThrow(ConcurrentChange);
+    });
 
-  it("does not retry a ref update rejected for another reason", async () => {
-    api.dropBranchBeforeRefUpdates();
+    it("does not retry a ref update rejected for another reason", async () => {
+        api.dropBranchBeforeRefUpdates();
 
-    const error = await failureOf(repository.move(INBOX, TAKEN));
+        const error = await failureOf(repository.move(INBOX, TAKEN));
 
-    expect(error).toMatchObject({ name: NotesUnavailable.name, status: UNPROCESSABLE });
-  });
+        expect(error).toMatchObject({ name: NotesUnavailable.name, status: UNPROCESSABLE });
+    });
 
-  it("keeps the file mode of a nested note without reading the whole tree", async () => {
-    api.addEntry(NOTES_BRANCH, NESTED_SOURCE.value, EXECUTABLE_MODE, CONTENT);
-    api.truncateTrees();
+    it("keeps the file mode of a nested note without reading the whole tree", async () => {
+        api.addEntry(NOTES_BRANCH, NESTED_SOURCE.value, EXECUTABLE_MODE, CONTENT);
+        api.truncateTrees();
 
-    await repository.move(NESTED_SOURCE, TAKEN);
+        await repository.move(NESTED_SOURCE, TAKEN);
 
-    expect(api.store.modesAt(NOTES_BRANCH).get(TAKEN.value)).toBe(EXECUTABLE_MODE);
-  });
+        expect(api.store.modesAt(NOTES_BRANCH).get(TAKEN.value)).toBe(EXECUTABLE_MODE);
+    });
 });

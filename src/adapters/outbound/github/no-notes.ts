@@ -4,7 +4,7 @@ import type { Note } from "../../../domain/note";
 import type { NotePath } from "../../../domain/note-path";
 
 export class NoNotes implements NoteLookup {
-  async read(path: NotePath): Promise<Note> {
-    throw new NoteNotFound(path.value);
-  }
+    async read(path: NotePath): Promise<Note> {
+        throw new NoteNotFound(path.value);
+    }
 }

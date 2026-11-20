@@ -11,59 +11,59 @@ import { SpyConfigParser } from "./__spy__/spy-config-parser";
 const PARSE_ERROR = new Error("broken env");
 
 describe("Bootstrap", () => {
-  it("serves the parsed config through the container", () => {
-    const bootstrap = new Bootstrap(new SpyConfigParser(), appModules);
+    it("serves the parsed config through the container", () => {
+        const bootstrap = new Bootstrap(new SpyConfigParser(), appModules);
 
-    const container = bootstrap.start({ ...WORKER_ENV });
+        const container = bootstrap.start({ ...WORKER_ENV });
 
-    expect(container.get(CONFIG_SYMBOLS.AppConfig)).toEqual(VALID_ENV);
-  });
+        expect(container.get(CONFIG_SYMBOLS.AppConfig)).toEqual(VALID_ENV);
+    });
 
-  it("serves the Worker's D1 database through the container", () => {
-    const bootstrap = new Bootstrap(new SpyConfigParser(), appModules);
+    it("serves the Worker's D1 database through the container", () => {
+        const bootstrap = new Bootstrap(new SpyConfigParser(), appModules);
 
-    const container = bootstrap.start(WORKER_ENV);
+        const container = bootstrap.start(WORKER_ENV);
 
-    expect(container.get(D1_SEARCH_SYMBOLS.Database)).toBe(WORKER_ENV.DB);
-  });
+        expect(container.get(D1_SEARCH_SYMBOLS.Database)).toBe(WORKER_ENV.DB);
+    });
 
-  it("validates the same env bindings only once", () => {
-    const parser = new SpyConfigParser();
-    const bootstrap = new Bootstrap(parser, appModules);
-    const env = { ...WORKER_ENV };
-    bootstrap.start(env);
+    it("validates the same env bindings only once", () => {
+        const parser = new SpyConfigParser();
+        const bootstrap = new Bootstrap(parser, appModules);
+        const env = { ...WORKER_ENV };
+        bootstrap.start(env);
 
-    bootstrap.start(env);
+        bootstrap.start(env);
 
-    expect(parser.parsedEnvs).toEqual([env]);
-  });
+        expect(parser.parsedEnvs).toEqual([env]);
+    });
 
-  it("reuses the container for the same env bindings", () => {
-    const bootstrap = new Bootstrap(new SpyConfigParser(), appModules);
-    const env = { ...WORKER_ENV };
-    const first = bootstrap.start(env);
+    it("reuses the container for the same env bindings", () => {
+        const bootstrap = new Bootstrap(new SpyConfigParser(), appModules);
+        const env = { ...WORKER_ENV };
+        const first = bootstrap.start(env);
 
-    const second = bootstrap.start(env);
+        const second = bootstrap.start(env);
 
-    expect(second).toBe(first);
-  });
+        expect(second).toBe(first);
+    });
 
-  it("validates new env bindings again", () => {
-    const parser = new SpyConfigParser();
-    const bootstrap = new Bootstrap(parser, appModules);
-    bootstrap.start({ ...WORKER_ENV });
+    it("validates new env bindings again", () => {
+        const parser = new SpyConfigParser();
+        const bootstrap = new Bootstrap(parser, appModules);
+        bootstrap.start({ ...WORKER_ENV });
 
-    bootstrap.start({ ...WORKER_ENV });
+        bootstrap.start({ ...WORKER_ENV });
 
-    expect(parser.parsedEnvs).toHaveLength(2);
-  });
+        expect(parser.parsedEnvs).toHaveLength(2);
+    });
 
-  it("fails fast with the validation error", () => {
-    const parser = new FailingConfigParser(PARSE_ERROR);
-    const bootstrap = new Bootstrap(parser, appModules);
+    it("fails fast with the validation error", () => {
+        const parser = new FailingConfigParser(PARSE_ERROR);
+        const bootstrap = new Bootstrap(parser, appModules);
 
-    const start = () => bootstrap.start({} as WorkerBindings);
+        const start = () => bootstrap.start({} as WorkerBindings);
 
-    expect(start).toThrow(PARSE_ERROR);
-  });
+        expect(start).toThrow(PARSE_ERROR);
+    });
 });

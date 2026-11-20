@@ -9,27 +9,26 @@ import type { UseCase } from "./use-case";
 import { EXPECTED_VERSION, NOTE_PATH, PASSAGE, TEXT } from "./tool-fields";
 
 const SCHEMA = z.object({
-  path: NOTE_PATH,
-  passage: PASSAGE.describe("Exact text to replace"),
-  replacement: TEXT.describe("New text"),
-  expectedVersion: EXPECTED_VERSION,
+    path: NOTE_PATH,
+    passage: PASSAGE.describe("Exact text to replace"),
+    replacement: TEXT.describe("New text"),
+    expectedVersion: EXPECTED_VERSION,
 });
 
 export class EditNoteTool extends NoteTool<typeof SCHEMA> {
-  protected readonly name = "edit_note";
-  protected readonly description =
-    "Replace one passage of a note. The passage must appear exactly once.";
-  protected readonly schema = SCHEMA;
+    protected readonly name = "edit_note";
+    protected readonly description = "Replace one passage of a note. The passage must appear exactly once.";
+    protected readonly schema = SCHEMA;
 
-  constructor(
-    runner: ToolCallRunner,
-    private readonly results: ToolReplies,
-    private readonly useCase: UseCase<EditNoteInput, NoteView>,
-  ) {
-    super(runner);
-  }
+    constructor(
+        runner: ToolCallRunner,
+        private readonly results: ToolReplies,
+        private readonly useCase: UseCase<EditNoteInput, NoteView>,
+    ) {
+        super(runner);
+    }
 
-  protected async handle(input: z.infer<typeof SCHEMA>): Promise<CallToolResult> {
-    return this.results.saved(await this.useCase.execute(input));
-  }
+    protected async handle(input: z.infer<typeof SCHEMA>): Promise<CallToolResult> {
+        return this.results.saved(await this.useCase.execute(input));
+    }
 }

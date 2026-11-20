@@ -12,51 +12,51 @@ const CONTENT = "# Inbox\n";
 const ROOT = NoteFolder.of("");
 
 describe("GitHubNoteRepo on an empty repository", () => {
-  let api: FakeGitHubApi;
-  let repository: GitHubNoteRepo;
+    let api: FakeGitHubApi;
+    let repository: GitHubNoteRepo;
 
-  beforeEach(() => {
-    api = buildEmptyNotesRepo();
-    repository = connectRepo(api);
-  });
+    beforeEach(() => {
+        api = buildEmptyNotesRepo();
+        repository = connectRepo(api);
+    });
 
-  it("lists no notes", async () => {
-    const paths = await repository.list(ROOT);
+    it("lists no notes", async () => {
+        const paths = await repository.list(ROOT);
 
-    expect(paths).toEqual([]);
-  });
+        expect(paths).toEqual([]);
+    });
 
-  it("creates the first note", async () => {
-    await repository.create(INBOX, CONTENT);
+    it("creates the first note", async () => {
+        await repository.create(INBOX, CONTENT);
 
-    expect(api.filesOn(NOTES_BRANCH)).toEqual({ [INBOX.value]: CONTENT });
-  });
+        expect(api.filesOn(NOTES_BRANCH)).toEqual({ [INBOX.value]: CONTENT });
+    });
 
-  it("creates the first note when GitHub answers that the repository is empty", async () => {
-    api.rejectBranchWritesAsEmpty();
+    it("creates the first note when GitHub answers that the repository is empty", async () => {
+        api.rejectBranchWritesAsEmpty();
 
-    await repository.create(INBOX, CONTENT);
+        await repository.create(INBOX, CONTENT);
 
-    expect(api.filesOn(NOTES_BRANCH)).toEqual({ [INBOX.value]: CONTENT });
-  });
+        expect(api.filesOn(NOTES_BRANCH)).toEqual({ [INBOX.value]: CONTENT });
+    });
 
-  it("reads back the first note from the configured branch", async () => {
-    await repository.create(INBOX, CONTENT);
+    it("reads back the first note from the configured branch", async () => {
+        await repository.create(INBOX, CONTENT);
 
-    const note = await repository.read(INBOX);
+        const note = await repository.read(INBOX);
 
-    expect(note.content).toBe(CONTENT);
-  });
+        expect(note.content).toBe(CONTENT);
+    });
 
-  it("reports a note it reads as missing", async () => {
-    const read = repository.read(INBOX);
+    it("reports a note it reads as missing", async () => {
+        const read = repository.read(INBOX);
 
-    await expect(read).rejects.toThrow(NoteNotFound);
-  });
+        await expect(read).rejects.toThrow(NoteNotFound);
+    });
 
-  it("reports a note it moves as missing", async () => {
-    const move = repository.move(INBOX, PLAN);
+    it("reports a note it moves as missing", async () => {
+        const move = repository.move(INBOX, PLAN);
 
-    await expect(move).rejects.toThrow(NoteNotFound);
-  });
+        await expect(move).rejects.toThrow(NoteNotFound);
+    });
 });

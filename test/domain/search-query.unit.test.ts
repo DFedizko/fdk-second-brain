@@ -2,35 +2,35 @@ import { MAX_QUERY_TERMS, SearchQuery } from "../../src/domain/search-query";
 import { EmptySearchQuery } from "../../src/domain/errors/empty-search-query";
 
 describe("SearchQuery", () => {
-  it("keeps the words of the query, accents included", () => {
-    const query = SearchQuery.of("Decisão sobre o banco");
+    it("keeps the words of the query, accents included", () => {
+        const query = SearchQuery.of("Decisão sobre o banco");
 
-    expect(query.terms).toEqual(["Decisão", "sobre", "o", "banco"]);
-  });
+        expect(query.terms).toEqual(["Decisão", "sobre", "o", "banco"]);
+    });
 
-  it("drops punctuation and operators between words", () => {
-    const query = SearchQuery.of('  "deploy" AND (cloud-flare)* ^queue: ');
+    it("drops punctuation and operators between words", () => {
+        const query = SearchQuery.of('  "deploy" AND (cloud-flare)* ^queue: ');
 
-    expect(query.terms).toEqual(["deploy", "AND", "cloud", "flare", "queue"]);
-  });
+        expect(query.terms).toEqual(["deploy", "AND", "cloud", "flare", "queue"]);
+    });
 
-  it("keeps numbers as words", () => {
-    const query = SearchQuery.of("plan 2026");
+    it("keeps numbers as words", () => {
+        const query = SearchQuery.of("plan 2026");
 
-    expect(query.terms).toEqual(["plan", "2026"]);
-  });
+        expect(query.terms).toEqual(["plan", "2026"]);
+    });
 
-  it("rejects a query with no words", () => {
-    const parse = () => SearchQuery.of(" -- ?! ");
+    it("rejects a query with no words", () => {
+        const parse = () => SearchQuery.of(" -- ?! ");
 
-    expect(parse).toThrow(EmptySearchQuery);
-  });
+        expect(parse).toThrow(EmptySearchQuery);
+    });
 
-  it("keeps no more than the maximum number of words", () => {
-    const words = Array.from({ length: MAX_QUERY_TERMS + 1 }, (_, n) => `word${n}`);
+    it("keeps no more than the maximum number of words", () => {
+        const words = Array.from({ length: MAX_QUERY_TERMS + 1 }, (_, n) => `word${n}`);
 
-    const query = SearchQuery.of(words.join(" "));
+        const query = SearchQuery.of(words.join(" "));
 
-    expect(query.terms).toEqual(words.slice(0, MAX_QUERY_TERMS));
-  });
+        expect(query.terms).toEqual(words.slice(0, MAX_QUERY_TERMS));
+    });
 });

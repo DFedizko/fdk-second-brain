@@ -3,17 +3,17 @@ import { SystemClock } from "../../../../src/adapters/outbound/clock/system-cloc
 const NOW = new Date("2026-11-19T10:30:00.000Z");
 
 describe("SystemClock", () => {
-  afterEach(() => {
-    jest.useRealTimers();
-  });
+    afterEach(() => {
+        jest.useRealTimers();
+    });
 
-  it("tells the current time", () => {
-    jest.useFakeTimers();
-    jest.setSystemTime(NOW);
-    const clock = new SystemClock();
+    it("tells the current time", () => {
+        jest.useFakeTimers();
+        jest.setSystemTime(NOW);
+        const clock = new SystemClock();
 
-    const now = clock.now();
+        const now = clock.now();
 
-    expect(now).toEqual(NOW);
-  });
+        expect(now).toEqual(NOW);
+    });
 });

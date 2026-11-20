@@ -4,11 +4,11 @@ import type { NoteIndexer } from "../../../../src/application/use-cases/index-no
 import { SpyNoteIndexer } from "./spy-note-indexer";
 
 export class SpyIndexerFactory implements IndexerFactory {
-  readonly lookups: NoteLookup[] = [];
-  readonly indexer = new SpyNoteIndexer();
+    readonly lookups: NoteLookup[] = [];
+    readonly indexer = new SpyNoteIndexer();
 
-  over(notes: NoteLookup): NoteIndexer {
-    this.lookups.push(notes);
-    return this.indexer;
-  }
+    over(notes: NoteLookup): NoteIndexer {
+        this.lookups.push(notes);
+        return this.indexer;
+    }
 }
