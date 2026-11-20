@@ -12,6 +12,8 @@ const OK = 200;
 const HTML_PAGE = "<html>Unicorn!</html>";
 const SCHEMA_ERROR = "ZodError";
 const PARSE_ERROR = "SyntaxError";
+const UNAVAILABLE = 503;
+const OUTAGE_PAGE = "Service Unavailable";
 
 async function failureOf(action: Promise<unknown>): Promise<unknown> {
   return action.then(
@@ -67,6 +69,15 @@ describe("GitHubIdentity with unexpected GitHub replies", () => {
     const error = await failureOf(identity.identify("code", VERIFIER));
 
     expect(error).toMatchObject({ cause: { name: PARSE_ERROR } });
+  });
+
+  it("keeps GitHub's status and reply as the cause of a refused request", async () => {
+    const outage = () => Promise.resolve(new Response(OUTAGE_PAGE, { status: UNAVAILABLE }));
+    const identity = new GitHubIdentity(SETTINGS, outage);
+
+    const error = await failureOf(identity.identify("code", VERIFIER));
+
+    expect(error).toMatchObject({ cause: { status: UNAVAILABLE, body: OUTAGE_PAGE } });
   });
 
   it("identifies the user from well-formed replies", async () => {
