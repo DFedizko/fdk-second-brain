@@ -1,4 +1,4 @@
-import type { components } from "@octokit/openapi-types";
+import type { z } from "zod";
 import type {
   IdentityProvider,
   SignInChallenge,
@@ -6,15 +6,11 @@ import type {
 } from "../../../shared/contracts/identity-provider";
 import type { OAuthSettings } from "../../../shared/contracts/oauth-settings";
 import { SignInFailedError } from "../../../shared/contracts/sign-in-failed-error";
+import { TOKEN_REPLY, USER_REPLY } from "./github-replies";
 
 export type HttpFetch = (input: string, init?: RequestInit) => Promise<Response>;
 
-type GitHubUser = components["schemas"]["private-user"];
-
-interface TokenReply {
-  readonly access_token?: string;
-  readonly error?: string;
-}
+type GitHubUser = z.infer<typeof USER_REPLY>;
 
 const AUTHORIZE_PATH = "/login/oauth/authorize";
 const TOKEN_PATH = "/login/oauth/access_token";
@@ -67,8 +63,7 @@ export class GitHubIdentity implements IdentityProvider {
         code_verifier: codeVerifier,
       }),
     });
-    const reply = await this.readJson<TokenReply>(response, EXCHANGE_FAILED);
-    if (!reply.access_token) throw new SignInFailedError(EXCHANGE_FAILED);
+    const reply = await this.readJson(response, TOKEN_REPLY, EXCHANGE_FAILED);
     return reply.access_token;
   }
 
@@ -81,16 +76,15 @@ export class GitHubIdentity implements IdentityProvider {
         "x-github-api-version": API_VERSION,
       },
     });
-    return this.readJson<GitHubUser>(response, USER_FAILED);
+    return this.readJson(response, USER_REPLY, USER_FAILED);
   }
 
-  private async readJson<T>(response: Response, failure: string): Promise<T> {
+  private async readJson<T>(response: Response, shape: z.ZodType<T>, failure: string): Promise<T> {
     if (!response.ok) throw new SignInFailedError(failure);
-    try {
-      return (await response.json()) as T;
-    } catch (cause) {
-      throw new SignInFailedError(failure, { cause });
-    }
+    const body: unknown = await response.json().catch(() => undefined);
+    const parsed = shape.safeParse(body);
+    if (!parsed.success) throw new SignInFailedError(failure);
+    return parsed.data;
   }
 
   private async send(url: URL, init: RequestInit): Promise<Response> {
