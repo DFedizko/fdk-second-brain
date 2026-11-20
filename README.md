@@ -84,12 +84,13 @@ The webhook secret goes to the Worker and to GitHub in one step, without being p
 ```sh
 SECRET="$(openssl rand -hex 32)"
 printf '%s' "$SECRET" | bunx wrangler secret put GITHUB_WEBHOOK_SECRET
-gh api repos/<your-login>/second-brain-notes/hooks --method POST --silent \
-  -f name=web -F active=true -f 'events[]=push' \
-  -f "config[url]=<PUBLIC_URL>/webhooks/github" -f 'config[content_type]=json' \
-  -f "config[secret]=$SECRET" -f 'config[insecure_ssl]=0'
+jq -n --arg s "$SECRET" --arg u "<PUBLIC_URL>/webhooks/github" \
+  '{name:"web",active:true,events:["push"],config:{url:$u,content_type:"json",secret:$s,insecure_ssl:"0"}}' |
+  gh api repos/<your-login>/second-brain-notes/hooks --method POST --silent --input -
 unset SECRET
 ```
+
+The secret travels on standard input, so it never shows in the process list. Run this once: a second run would add a second webhook and leave the first one failing its signature checks. To rotate the secret, delete the old webhook first (notes repository → Settings → Webhooks).
 
 Secrets take effect right away; no new deploy is needed. A missing or invalid one makes every request fail, and the Worker logs (`bunx wrangler tail`) name exactly which one is wrong.
 
@@ -106,7 +107,16 @@ The MCP endpoint is `<PUBLIC_URL>/mcp`. Each client registers itself, opens a co
 - Edit notes anywhere: through the AI, on GitHub, or in a local clone (Obsidian works). Search catches up within seconds of a push.
 - To see what the server does: `bunx wrangler tail`.
 - Failed indexing messages wait in the `second-brain-index-dlq` queue for 24 hours (Cloudflare dashboard → Queues); the daily reconciliation at 04:17 UTC repairs the index anyway.
-- To revoke every client: delete the OAuth App's authorizations on GitHub, or rotate `GITHUB_CLIENT_SECRET`. To cut off note access, revoke the fine-grained token.
+- To sign out every connected client, delete the server's grants and tokens from `OAUTH_KV`. Clients then have to sign in again:
+
+  ```sh
+  for p in grant: token:; do
+    bunx wrangler kv key list --binding OAUTH_KV --remote --prefix "$p" | jq -r '.[].name' |
+      xargs -n1 bunx wrangler kv key delete --binding OAUTH_KV --remote
+  done
+  ```
+
+  The OAuth App's authorizations on GitHub and `GITHUB_CLIENT_SECRET` only guard new sign-ins; GitHub's token is used once and never kept. To cut off note access, revoke the fine-grained token.
 
 ## Free-plan limits
 
