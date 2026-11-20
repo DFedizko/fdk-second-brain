@@ -72,7 +72,14 @@ export class GitHubWebhookRoute {
   }
 
   private async queueChanges(push: PushEvent): Promise<void> {
-    await this.changes.execute({ paths: push.changedPaths(), commit: push.headCommit });
+    await this.changes
+      .execute({ paths: push.changedPaths(), commit: push.headCommit })
+      .catch((error: unknown) => this.reconcileInstead(push, error));
+  }
+
+  private reconcileInstead(push: PushEvent, error: unknown): void {
+    this.fallback.log.report({ path: QUEUE_LABEL, error });
+    this.fallback.background.runInBackground(() => this.reconcile(push.headCommit));
   }
 
   private async reconcile(after: string): Promise<void> {
