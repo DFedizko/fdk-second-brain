@@ -167,6 +167,15 @@ describe("GitHubWebhookRoute", () => {
     expect({ runs: reconciler.runs, calls: changes.calls }).toEqual({ runs: 1, calls: [] });
   });
 
+  it("reconciles at a head that includes the force push", async () => {
+    const spec = { branch: BRANCH, forced: true, commits: [] };
+    await route.fetch(github.push(spec));
+
+    await background.runQueued();
+
+    expect(reconciler.afters).toEqual([buildPushPayload(spec).after]);
+  });
+
   it("tags the queued paths with the push's head commit", async () => {
     const payload = buildPushPayload({ branch: BRANCH, commits: [{ added: [PLAN] }] });
 

@@ -1,8 +1,12 @@
+import { CommitCompare } from "../../../../src/adapters/outbound/github/commit-compare";
 import { GitHubErrorTranslator } from "../../../../src/adapters/outbound/github/github-error-translator";
 import { GitHubGateway } from "../../../../src/adapters/outbound/github/github-gateway";
 import { GitHubNoteCatalog } from "../../../../src/adapters/outbound/github/github-note-catalog";
 import { GitHubNoteReader } from "../../../../src/adapters/outbound/github/github-note-reader";
+import type { RetryPause } from "../../../../src/adapters/outbound/github/retry-pause";
+import { BranchBehind } from "../../../../src/domain/errors/branch-behind";
 import { NotesUnavailable } from "../../../../src/domain/errors/notes-unavailable";
+import { ActionPause, NO_PAUSE } from "./__fake__/action-pause";
 import { FixedClock } from "../../../__stub__/fixed-clock";
 import type { FakeGitHubApi } from "./__fake__/fake-github-api";
 import {
@@ -20,10 +24,11 @@ const FILE_MODE = "100644";
 const PLAN_CONTENT = "# Plan\n";
 const TREES = `/repos/${NOTES_OWNER}/${NOTES_REPO}/git/trees/`;
 
-function connectCatalog(api: FakeGitHubApi): GitHubNoteCatalog {
+function connectCatalog(api: FakeGitHubApi, pause: RetryPause = NO_PAUSE): GitHubNoteCatalog {
   const errors = new GitHubErrorTranslator(new FixedClock(FIXED_NOW));
   const github = new GitHubGateway(api.octokit(GITHUB_CONFIG.token), GITHUB_CONFIG, errors);
-  return new GitHubNoteCatalog(github, new GitHubNoteReader(github));
+  const reader = new GitHubNoteReader(github);
+  return new GitHubNoteCatalog(github, reader, new CommitCompare(github), pause);
 }
 
 function treeReads(api: FakeGitHubApi): string[] {
@@ -67,6 +72,31 @@ describe("GitHubNoteCatalog", () => {
     const snapshot = await connectCatalog(api).snapshot();
 
     expect(snapshot.commit).toBe(head);
+  });
+
+  it("waits for a head that includes the pushed commit before reading", async () => {
+    const api = buildFakeNotesRepo();
+    const shown = api.store.headOf(NOTES_BRANCH) ?? "";
+    api.addEntry(NOTES_BRANCH, PLAN, FILE_MODE, PLAN_CONTENT);
+    const pushed = api.store.headOf(NOTES_BRANCH) ?? "";
+    api.store.setRef(NOTES_BRANCH, shown);
+    const catchUp = new ActionPause(() => api.store.setRef(NOTES_BRANCH, pushed));
+
+    const snapshot = await connectCatalog(api, catchUp).snapshot(pushed);
+
+    expect(snapshot.commit).toBe(pushed);
+  });
+
+  it("gives up when the branch never reaches the pushed commit", async () => {
+    const api = buildFakeNotesRepo();
+    const shown = api.store.headOf(NOTES_BRANCH) ?? "";
+    api.addEntry(NOTES_BRANCH, PLAN, FILE_MODE, PLAN_CONTENT);
+    const pushed = api.store.headOf(NOTES_BRANCH) ?? "";
+    api.store.setRef(NOTES_BRANCH, shown);
+
+    const snapshot = connectCatalog(api).snapshot(pushed);
+
+    await expect(snapshot).rejects.toThrow(BranchBehind);
   });
 
   it("lists nothing in an empty repository", async () => {

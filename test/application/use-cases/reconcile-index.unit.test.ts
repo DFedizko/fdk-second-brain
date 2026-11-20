@@ -12,12 +12,9 @@ const HEAD = "0d1a26e67d8f5eaf1f6ba5c57fc3c7d91ac0fd1c";
 
 function reconcile(repo: Record<string, string>, index: Record<string, string>) {
   const queue = new SpyPathQueue();
-  const useCase = new ReconcileIndex(
-    new FixedNoteTree(repo, HEAD),
-    new FixedNoteCatalog(index),
-    queue,
-  );
-  return { queue, useCase };
+  const tree = new FixedNoteTree(repo, HEAD);
+  const useCase = new ReconcileIndex(tree, new FixedNoteCatalog(index), queue);
+  return { queue, tree, useCase };
 }
 
 describe("ReconcileIndex", () => {
@@ -81,5 +78,13 @@ describe("ReconcileIndex", () => {
     await useCase.execute();
 
     expect(queue.commits).toEqual([HEAD]);
+  });
+
+  it("reads the notes at a head that includes the pushed commit it was given", async () => {
+    const { tree, useCase } = reconcile({}, {});
+
+    await useCase.execute(HEAD);
+
+    expect(tree.asked).toEqual([HEAD]);
   });
 });
