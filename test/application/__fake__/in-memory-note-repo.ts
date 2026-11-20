@@ -66,7 +66,6 @@ export class InMemoryNoteRepo implements NoteRepository {
     return new Note(path, content, this.hash(content));
   }
 
-  // Same as a git blob SHA, which the GitHub adapter will use as the version.
   private hash(content: string): NoteVersion {
     const bytes = new TextEncoder().encode(content);
     const hasher = new Bun.CryptoHasher(HASH_ALGORITHM);

@@ -11,8 +11,6 @@ export interface IndexSync {
   apply(change: PathChange): Promise<void>;
 }
 
-// The note is already saved when this runs, so an index failure is only logged:
-// the daily reconciliation repairs the index later.
 export class NoteIndexSync implements IndexSync {
   constructor(
     private readonly indexer: NoteIndexer,

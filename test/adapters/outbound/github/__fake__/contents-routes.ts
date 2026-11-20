@@ -70,9 +70,6 @@ export class ContentsRoutes {
     );
   }
 
-  // Checked 2026-11-19: the docs say only that `branch` defaults to the default branch, and
-  // that refs can't be created in an empty repository. So the first commit is accepted only
-  // without `branch`; naming a branch that doesn't exist yet answers 404 as on any repository.
   private firstCommitFiles(call: FakeCall): FileTable | undefined {
     const firstCommit = !this.parts.store.hasRefs() && call.body.branch === undefined;
     return firstCommit ? new Map() : undefined;
@@ -102,7 +99,6 @@ export class ContentsRoutes {
     return this.fileReply(call, path, sha, ref);
   }
 
-  // The docs: a symlink to a file in the repository answers with that file's content.
   private symlinkReply(call: FakeCall, files: FileTable, path: string, sha: string, ref: string) {
     const target = this.parts.store.blob(sha) ?? "";
     const targetSha = files.get(target);

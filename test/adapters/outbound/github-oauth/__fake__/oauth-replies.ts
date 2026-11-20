@@ -1,8 +1,3 @@
-// Built from https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps,
-// /maintaining-oauth-apps/troubleshooting-oauth-app-access-token-request-errors and
-// /maintaining-oauth-apps/troubleshooting-authorization-request-errors, checked 2026-11-19.
-// The docs give no status for token errors; GitHub answers them with 200, as modelled here.
-
 const TOKEN_ERRORS_DOCS =
   "/apps/managing-oauth-apps/troubleshooting-oauth-app-access-token-request-errors/";
 const AUTHORIZE_ERRORS_DOCS =
