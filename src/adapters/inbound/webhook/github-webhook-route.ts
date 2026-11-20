@@ -1,0 +1,86 @@
+import type {
+  QueueNoteChangesInput,
+  QueueNoteChangesResult,
+} from "../../../application/use-cases/queue-note-changes";
+import type { ReconcileResult } from "../../../application/use-cases/reconcile-index";
+import { PUSH_SCHEMA, PushEvent } from "./push-event";
+import type { SignatureCheck } from "./webhook-signature";
+
+export { MAX_PUSH_COMMITS } from "./push-event";
+
+export const WEBHOOK_PATH = "/webhooks/github";
+
+const POST = "POST";
+const PUSH = "push";
+const JSON_TYPE = "application/json";
+const EVENT_HEADER = "X-GitHub-Event";
+const SIGNATURE_HEADER = "X-Hub-Signature-256";
+const CONTENT_TYPE = "Content-Type";
+const ALLOW = "Allow";
+const STATUS = {
+  accepted: 202,
+  ignored: 204,
+  badRequest: 400,
+  unauthorized: 401,
+  notAllowed: 405,
+  unsupported: 415,
+} as const;
+
+export interface ChangeQueue {
+  execute(input: QueueNoteChangesInput): Promise<QueueNoteChangesResult>;
+}
+
+export interface Reconciler {
+  execute(): Promise<ReconcileResult>;
+}
+
+// Only paths go to the queue: the consumer re-reads each note at the branch head,
+// so a late or repeated delivery can't put an old version back in the index.
+export class GitHubWebhookRoute {
+  constructor(
+    private readonly signature: SignatureCheck,
+    private readonly changes: ChangeQueue,
+    private readonly reconciler: Reconciler,
+    private readonly branch: string,
+  ) {}
+
+  async fetch(request: Request): Promise<Response> {
+    if (request.method !== POST) return this.reply(STATUS.notAllowed, { [ALLOW]: POST });
+    if (!this.isJson(request)) return this.reply(STATUS.unsupported);
+    const body = await request.text();
+    const signed = await this.signature.verify(body, request.headers.get(SIGNATURE_HEADER));
+    if (!signed) return this.reply(STATUS.unauthorized);
+    if (request.headers.get(EVENT_HEADER) !== PUSH) return this.reply(STATUS.ignored);
+    const push = this.readPush(body);
+    if (push === null) return this.reply(STATUS.badRequest);
+    return this.handlePush(push);
+  }
+
+  private async handlePush(push: PushEvent): Promise<Response> {
+    if (!push.isTo(this.branch) || push.deletesBranch) return this.reply(STATUS.ignored);
+    if (push.listsEveryChange) await this.changes.execute({ paths: push.changedPaths() });
+    else await this.reconciler.execute();
+    return this.reply(STATUS.accepted);
+  }
+
+  private isJson(request: Request): boolean {
+    return (request.headers.get(CONTENT_TYPE) ?? "").startsWith(JSON_TYPE);
+  }
+
+  private readPush(body: string): PushEvent | null {
+    const parsed = PUSH_SCHEMA.safeParse(this.parseJson(body));
+    return parsed.success ? new PushEvent(parsed.data) : null;
+  }
+
+  private parseJson(body: string): unknown {
+    try {
+      return JSON.parse(body);
+    } catch {
+      return null;
+    }
+  }
+
+  private reply(status: number, headers: Record<string, string> = {}): Response {
+    return new Response(null, { status, headers });
+  }
+}
