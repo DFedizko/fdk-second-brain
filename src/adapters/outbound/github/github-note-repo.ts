@@ -4,6 +4,7 @@ import { InvalidPath } from "../../../domain/errors/invalid-path";
 import { NoteNotFound } from "../../../domain/errors/note-not-found";
 import { NotesUnavailable } from "../../../domain/errors/notes-unavailable";
 import { VersionConflict } from "../../../domain/errors/version-conflict";
+import type { MovedNote } from "../../../domain/moved-note";
 import { Note } from "../../../domain/note";
 import type { NoteFolder } from "../../../domain/note-folder";
 import { NotePath } from "../../../domain/note-path";
@@ -127,7 +128,7 @@ export class GitHubNoteRepo implements NoteRepository {
       .catch((error: unknown) => this.confirmBranchThenThrow(error));
   }
 
-  async move(from: NotePath, to: NotePath): Promise<Note> {
+  async move(from: NotePath, to: NotePath): Promise<MovedNote> {
     return this.mover.move(from, to);
   }
 

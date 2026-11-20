@@ -1,5 +1,5 @@
 import type { CallToolResult, TextContent } from "@modelcontextprotocol/server";
-import type { NoteView } from "../../../application/use-cases/note-view";
+import type { MovedNoteView, NoteView } from "../../../application/use-cases/note-view";
 import type { SearchResult } from "../../../application/use-cases/search-notes";
 
 const NO_NOTES = "No notes found.";
@@ -14,7 +14,7 @@ const DELETED_LABEL = "Deleted ";
 export interface ToolReplies {
   paths(paths: readonly string[]): CallToolResult;
   note(view: NoteView): CallToolResult;
-  saved(view: NoteView): CallToolResult;
+  saved(view: MovedNoteView): CallToolResult;
   deleted(path: string): CallToolResult;
   hits(results: readonly SearchResult[]): CallToolResult;
 }
@@ -28,7 +28,7 @@ export class ToolResults implements ToolReplies {
     return this.reply(view.content, this.versionLine(view));
   }
 
-  saved(view: NoteView): CallToolResult {
+  saved(view: MovedNoteView): CallToolResult {
     return this.reply(`${SAVED_LABEL}${view.path}${LINE_BREAK}${this.versionLine(view)}`);
   }
 
@@ -47,7 +47,7 @@ export class ToolResults implements ToolReplies {
     return `${place}${LINE_BREAK}${hit.snippet}`;
   }
 
-  private versionLine(view: NoteView): string {
+  private versionLine(view: MovedNoteView): string {
     return `${VERSION_LABEL}${view.version}`;
   }
 

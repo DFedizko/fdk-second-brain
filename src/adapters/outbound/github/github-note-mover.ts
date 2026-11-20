@@ -2,14 +2,15 @@ import { ConcurrentChange } from "../../../domain/errors/concurrent-change";
 import { NoteAlreadyExists } from "../../../domain/errors/note-already-exists";
 import { NoteNotFound } from "../../../domain/errors/note-not-found";
 import { NotesUnavailable } from "../../../domain/errors/notes-unavailable";
-import { Note } from "../../../domain/note";
+import { UnreadableNote } from "../../../domain/errors/unreadable-note";
+import { MovedNote } from "../../../domain/moved-note";
 import type { NotePath } from "../../../domain/note-path";
 import type { NoteVersion } from "../../../domain/note-version";
 import { BranchMoved } from "./branch-moved";
 import { EmptyRepository } from "./empty-repository";
 import type { FailureContext } from "./github-error-translator";
 import type { GitHubAccess } from "./github-gateway";
-import type { NoteReader, TextDecoding } from "./github-note-reader";
+import type { NoteReader } from "./github-note-reader";
 
 const BLOB = "blob";
 const FILE_MODE = "100644";
@@ -19,12 +20,16 @@ const MOVE = "Move";
 const MOVE_TO = "to";
 const MOVE_ATTEMPTS = 2;
 const BRANCH_LEVEL: FailureContext = {};
-const LOSSY: TextDecoding = "lossy";
 
 type GitFileMode = typeof FILE_MODE | typeof EXECUTABLE_MODE;
 
+interface MoveSource {
+  readonly version: NoteVersion;
+  readonly content?: string;
+}
+
 export interface NoteMover {
-  move(from: NotePath, to: NotePath): Promise<Note>;
+  move(from: NotePath, to: NotePath): Promise<MovedNote>;
 }
 
 export class GitHubNoteMover implements NoteMover {
@@ -33,11 +38,11 @@ export class GitHubNoteMover implements NoteMover {
     private readonly reader: NoteReader,
   ) {}
 
-  async move(from: NotePath, to: NotePath): Promise<Note> {
+  async move(from: NotePath, to: NotePath): Promise<MovedNote> {
     return this.moveWithRetry(from, to, MOVE_ATTEMPTS);
   }
 
-  private async moveWithRetry(from: NotePath, to: NotePath, attempts: number): Promise<Note> {
+  private async moveWithRetry(from: NotePath, to: NotePath, attempts: number): Promise<MovedNote> {
     return this.moveOnce(from, to).catch((error: unknown) => {
       if (!(error instanceof BranchMoved)) throw error;
       if (attempts <= 1) throw new ConcurrentChange(from.value);
@@ -45,17 +50,24 @@ export class GitHubNoteMover implements NoteMover {
     });
   }
 
-  private async moveOnce(from: NotePath, to: NotePath): Promise<Note> {
+  private async moveOnce(from: NotePath, to: NotePath): Promise<MovedNote> {
     const head = await this.reader.headCommit().catch((error: unknown) => {
       throw error instanceof EmptyRepository ? new NoteNotFound(from.value) : error;
     });
-    const note = await this.reader.read(from, head, LOSSY);
+    const source = await this.sourceOf(from, head);
     if (await this.reader.exists(to, head)) throw new NoteAlreadyExists(to.value);
-    const tree = await this.movedTree(from, to, note.version, head);
+    const tree = await this.movedTree(from, to, source.version, head);
     const message = `${MOVE} ${from.value} ${MOVE_TO} ${to.value}`;
     const commit = await this.commitTree(tree, head, message);
     await this.updateBranch(commit);
-    return new Note(to, note.content, note.version);
+    return new MovedNote(to, source.version, source.content);
+  }
+
+  private async sourceOf(from: NotePath, head: string): Promise<MoveSource> {
+    return this.reader.read(from, head).catch(async (error: unknown) => {
+      if (!(error instanceof UnreadableNote)) throw error;
+      return { version: await this.reader.versionOf(from, head) };
+    });
   }
 
   private async updateBranch(commit: string): Promise<void> {
