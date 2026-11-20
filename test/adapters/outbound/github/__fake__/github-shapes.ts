@@ -9,6 +9,10 @@ export type GitCommit = components["schemas"]["git-commit"];
 export type ContentSymlink = components["schemas"]["content-symlink"];
 export type ContentSubmodule = components["schemas"]["content-submodule"];
 export type GitBlob = components["schemas"]["blob"];
+export type RepoSummary = Pick<
+  components["schemas"]["full-repository"],
+  "name" | "full_name" | "private" | "default_branch" | "url" | "html_url"
+>;
 type TreeEntry = GitTree["tree"][number];
 type DirectoryItem = components["schemas"]["content-directory"][number];
 
@@ -89,6 +93,17 @@ export class GitHubShapes {
     return {
       content: file ? this.fileSummary(file, branch) : null,
       commit: this.gitCommit(commit),
+    };
+  }
+
+  repository(defaultBranch: string): RepoSummary {
+    return {
+      name: this.repo,
+      full_name: `${this.owner}${SEPARATOR}${this.repo}`,
+      private: true,
+      default_branch: defaultBranch,
+      url: this.api(),
+      html_url: this.web(),
     };
   }
 

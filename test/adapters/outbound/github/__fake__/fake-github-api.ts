@@ -1,15 +1,15 @@
 import { Octokit } from "@octokit/rest";
 import { SILENT_LOG } from "../../../../../src/adapters/outbound/github/silent-log";
 import { CompareRoutes } from "./compare-routes";
+import { EmptyRepoReplies } from "./empty-repo-replies";
 import { ContentsRoutes } from "./contents-routes";
 import { FakeGitStore } from "./fake-git-store";
 import { FirstCommitRaces, type FakeFiles } from "./first-commit-races";
 import type { FakeLimits, FakeRepoParts, FakeRoute } from "./fake-route";
 import { GitDataRoutes } from "./git-data-routes";
+import { RepoRoutes } from "./repo-routes";
 import { DOCS_PAGE, GitHubReplies, MESSAGE, STATUS } from "./github-replies";
 import { GitHubShapes } from "./github-shapes";
-
-// Built from https://docs.github.com/en/rest/repos/contents, /git/refs, /git/trees,
 
 export interface FakeRepoSetup {
   readonly owner: string;
@@ -37,9 +37,9 @@ const AUTHORIZATION = "authorization";
 const SUBMODULE_MODE = "160000";
 const PUT = "PUT";
 const FILE_WRITES = [PUT, "DELETE"];
-const GIT_DATA = /^git\//;
 const CONTENTS = /^contents\//;
 const ADD_MESSAGE = "Add";
+const ROOT_ROUTE = "";
 
 type HttpOutage = "secondary" | "secondaryForbidden" | "forbidden" | "server";
 type Outage = HttpOutage | "network";
@@ -55,7 +55,7 @@ export class FakeGitHubApi {
   private contentRaces = 0;
   private refDrops = false;
   private readonly races = new FirstCommitRaces(this.store);
-  private emptyBranchConflict = false;
+  private readonly empty: EmptyRepoReplies;
   private readonly limits: FakeLimits = { truncateTrees: false };
   readonly served: number[] = [];
 
@@ -70,7 +70,9 @@ export class FakeGitHubApi {
       limits: this.limits,
     };
     const repoPath = `${setup.owner}${SEPARATOR}${setup.repo}`;
+    this.empty = new EmptyRepoReplies(this.store, this.replies);
     this.routes = [
+      ...new RepoRoutes(parts).all(),
       ...new ContentsRoutes(parts).all(),
       ...new GitDataRoutes(parts).all(),
       ...new CompareRoutes(parts, repoPath).all(),
@@ -146,7 +148,15 @@ export class FakeGitHubApi {
   }
 
   rejectBranchWritesAsEmpty(): void {
-    this.emptyBranchConflict = true;
+    this.empty.rejectBranchWrites();
+  }
+
+  lagRefReadsAsEmpty(times: number): void {
+    this.empty.lagRefReads(times);
+  }
+
+  endOutage(): void {
+    this.outage = undefined;
   }
 
   truncateTrees(): void {
@@ -161,7 +171,9 @@ export class FakeGitHubApi {
     this.remaining -= 1;
     if (this.outage && this.outage !== "network") return this.outageReply(this.outage, headers);
     if (route === undefined) return this.notFound(headers);
-    if (!this.store.hasRefs()) return this.emptyRepoReply(request, route, body, headers);
+    const call = { method: request.method, route, body, headers };
+    const empty = this.empty.answer(call, () => this.dispatch(request, route, body, headers));
+    if (empty) return empty;
     this.raceRefUpdate(request.method, route);
     const raced = this.raceFileWrite(request.method, route, body, headers);
     return raced ?? this.dispatch(request, route, body, headers);
@@ -213,30 +225,11 @@ export class FakeGitHubApi {
     return this.replies.error(STATUS.conflict, message, DOCS_PAGE.contents, headers);
   }
 
-  // Checked 2026-11-19: Git data endpoints answer 409 on an empty repository, reading
-  // contents answers 404, and creating a file through the contents API makes the first commit.
-  // Checked 2026-11-20: the contents PUT documents both 404 and 409, so a write naming a
-  // branch that the empty repository lacks can answer either.
-  private emptyRepoReply(
-    request: Request,
-    route: string,
-    body: Record<string, unknown>,
-    headers: Headers,
-  ): Response {
-    if (GIT_DATA.test(route)) {
-      return this.replies.error(STATUS.conflict, MESSAGE.emptyRepo, DOCS_PAGE.root, headers);
-    }
-    if (request.method === PUT && body.branch !== undefined && this.emptyBranchConflict) {
-      return this.replies.error(STATUS.conflict, MESSAGE.emptyRepo, DOCS_PAGE.contents, headers);
-    }
-    if (request.method === PUT) return this.dispatch(request, route, body, headers);
-    return this.replies.error(STATUS.notFound, MESSAGE.emptyContents, DOCS_PAGE.contents, headers);
-  }
-
   private routeOf(url: URL): string | undefined {
-    const repoPrefix = `${API_PREFIX}${this.setup.owner}${SEPARATOR}${this.setup.repo}${SEPARATOR}`;
-    if (!url.pathname.startsWith(repoPrefix)) return undefined;
-    return decodeURIComponent(url.pathname.slice(repoPrefix.length));
+    const repoPath = `${API_PREFIX}${this.setup.owner}${SEPARATOR}${this.setup.repo}`;
+    if (url.pathname === repoPath) return ROOT_ROUTE;
+    if (!url.pathname.startsWith(repoPath + SEPARATOR)) return undefined;
+    return decodeURIComponent(url.pathname.slice(repoPath.length + SEPARATOR.length));
   }
 
   private isAuthorized(request: Request): boolean {
