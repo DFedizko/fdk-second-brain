@@ -2,38 +2,61 @@ import type { FakeGitStore } from "./fake-git-store";
 import { STATUS } from "./github-replies";
 
 const PUT = "PUT";
+const POST = "POST";
+const REFS = /\/git\/refs$/;
 
 export type FakeFiles = Readonly<Record<string, string>>;
-type SeedFiles = (files: FakeFiles) => void;
+export type RaceAction = () => void;
+
+interface RaceStep {
+  readonly method: string;
+  readonly path: string;
+  readonly body: Record<string, unknown>;
+  readonly status?: number;
+}
+
+type RaceTrigger = (step: RaceStep) => boolean;
 
 export class FirstCommitRaces {
-  private afterBranchMiss?: FakeFiles;
-  private beforeFirstCommit?: FakeFiles;
+  private readonly before = new Map<RaceTrigger, RaceAction>();
+  private readonly after = new Map<RaceTrigger, RaceAction>();
 
-  constructor(
-    private readonly store: FakeGitStore,
-    private readonly seed: SeedFiles,
-  ) {}
+  constructor(private readonly store: FakeGitStore) {}
 
-  landAfterBranchMiss(files: FakeFiles): void {
-    this.afterBranchMiss = files;
+  beforeFirstCommit(action: RaceAction): void {
+    this.before.set((step) => this.isUnbranchedPut(step) && !this.store.hasRefs(), action);
   }
 
-  landBeforeFirstCommit(files: FakeFiles): void {
-    this.beforeFirstCommit = files;
+  beforeRefCreate(action: RaceAction): void {
+    this.before.set((step) => step.method === POST && REFS.test(step.path), action);
   }
 
-  beforeRequest(method: string, body: Record<string, unknown>): void {
-    const files = this.beforeFirstCommit;
-    if (!files || method !== PUT || body.branch !== undefined || this.store.hasRefs()) return;
-    this.beforeFirstCommit = undefined;
-    this.seed(files);
+  afterUnbranchedPut(action: RaceAction): void {
+    this.after.set((step) => this.isUnbranchedPut(step) && step.status === STATUS.created, action);
   }
 
-  afterReply(method: string, status: number): void {
-    const files = this.afterBranchMiss;
-    if (!files || method !== PUT || status !== STATUS.notFound) return;
-    this.afterBranchMiss = undefined;
-    this.seed(files);
+  afterBranchMiss(action: RaceAction): void {
+    this.after.set((step) => step.method === PUT && step.status === STATUS.notFound, action);
+  }
+
+  beforeRequest(step: RaceStep): void {
+    this.runMatching(this.before, step);
+  }
+
+  afterReply(step: RaceStep): void {
+    this.runMatching(this.after, step);
+  }
+
+  private runMatching(actions: Map<RaceTrigger, RaceAction>, step: RaceStep): void {
+    [...actions]
+      .filter(([trigger]) => trigger(step))
+      .forEach(([trigger, action]) => {
+        actions.delete(trigger);
+        action();
+      });
+  }
+
+  private isUnbranchedPut(step: RaceStep): boolean {
+    return step.method === PUT && step.body.branch === undefined;
   }
 }

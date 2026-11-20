@@ -54,9 +54,7 @@ export class FakeGitHubApi {
   private refRaces = 0;
   private contentRaces = 0;
   private refDrops = false;
-  private readonly firstCommits = new FirstCommitRaces(this.store, (files) =>
-    this.seedFiles(files),
-  );
+  private readonly races = new FirstCommitRaces(this.store);
   private emptyBranchConflict = false;
   private readonly limits: FakeLimits = { truncateTrees: false };
   readonly served: number[] = [];
@@ -78,10 +76,11 @@ export class FakeGitHubApi {
   readonly fetch = async (input: string | URL | Request, init?: RequestInit) => {
     const request = new Request(input, init);
     if (this.outage === "network") throw new TypeError(NETWORK_FAILURE);
-    const body = request.body ? await request.json() : {};
-    this.firstCommits.beforeRequest(request.method, body as Record<string, unknown>);
-    const response = this.answer(request, body as Record<string, unknown>);
-    this.firstCommits.afterReply(request.method, response.status);
+    const body: Record<string, unknown> = request.body ? await request.json() : {};
+    const step = { method: request.method, path: new URL(request.url).pathname, body };
+    this.races.beforeRequest(step);
+    const response = this.answer(request, body);
+    this.races.afterReply({ ...step, status: response.status });
     this.served.push(response.status);
     return response;
   };
@@ -127,12 +126,18 @@ export class FakeGitHubApi {
     this.contentRaces = times;
   }
 
-  createFirstNoteAfterBranchMiss(files: FakeFiles): void {
-    this.firstCommits.landAfterBranchMiss(files);
+  get raceOnce(): FirstCommitRaces {
+    return this.races;
   }
 
-  createFirstNoteBeforeFirstCommit(files: FakeFiles): void {
-    this.firstCommits.landBeforeFirstCommit(files);
+  seedAllBranches(seed: FakeFiles): void {
+    const commit = this.store.addCommit(this.store.addTree(this.blobsOf(seed)), [], SEED_MESSAGE);
+    this.setup.branches.forEach((branch) => this.store.setRef(branch, commit.sha));
+  }
+
+  commitFiles(branch: string, added: FakeFiles): void {
+    const files = new Map([...(this.store.filesAt(branch) ?? []), ...this.blobsOf(added)]);
+    this.store.advance(branch, files, `${ADD_MESSAGE} ${Object.keys(added).join(" ")}`);
   }
 
   rejectBranchWritesAsEmpty(): void {
@@ -277,14 +282,12 @@ export class FakeGitHubApi {
 
   private seedBranches(): void {
     if (this.setup.empty) return;
-    this.seedFiles(this.setup.seed);
+    this.seedAllBranches(this.setup.seed);
   }
 
-  private seedFiles(seed: FakeFiles): void {
-    const files = new Map(
-      Object.entries(seed).map(([path, content]) => [path, this.store.addBlob(content)]),
+  private blobsOf(files: FakeFiles): Map<string, string> {
+    return new Map(
+      Object.entries(files).map(([path, content]) => [path, this.store.addBlob(content)]),
     );
-    const commit = this.store.addCommit(this.store.addTree(files), [], SEED_MESSAGE);
-    this.setup.branches.forEach((branch) => this.store.setRef(branch, commit.sha));
   }
 }
