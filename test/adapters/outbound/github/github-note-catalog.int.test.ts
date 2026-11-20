@@ -35,7 +35,7 @@ function shaOf(api: FakeGitHubApi, path: string): string {
 }
 
 async function listed(catalog: GitHubNoteCatalog) {
-  const stamps = await catalog.stamps();
+  const { stamps } = await catalog.snapshot();
   return stamps.map((stamp) => ({ path: stamp.path.value, version: stamp.version.value }));
 }
 
@@ -54,7 +54,7 @@ describe("GitHubNoteCatalog", () => {
     api.addEntry(NOTES_BRANCH, PLAN, FILE_MODE, PLAN_CONTENT);
     const head = api.store.headOf(NOTES_BRANCH) ?? "";
 
-    await connectCatalog(api).stamps();
+    await connectCatalog(api).snapshot();
 
     expect(treeReads(api)).toEqual([`GET ${TREES}${head}`]);
   });
@@ -81,7 +81,7 @@ describe("GitHubNoteCatalog", () => {
     const api = buildFakeNotesRepo();
     api.truncateTrees();
 
-    const stamps = connectCatalog(api).stamps();
+    const stamps = connectCatalog(api).snapshot();
 
     await expect(stamps).rejects.toThrow(NotesUnavailable);
   });

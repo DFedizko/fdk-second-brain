@@ -1,6 +1,6 @@
 import type { ServiceIdentifier } from "inversify";
 import type { BranchHead } from "../../../application/ports/branch-head";
-import type { NoteCatalog } from "../../../application/ports/note-catalog";
+import type { NoteTree } from "../../../application/ports/note-tree";
 import type { NoteRepository } from "../../../application/ports/note-repository";
 import type { Octokit } from "@octokit/rest";
 import type { BranchRestorer } from "./github-branch-restorer";
@@ -23,6 +23,6 @@ export const GITHUB = {
   restorer: Symbol.for("GitHubBranchRestorer") as ServiceIdentifier<BranchRestorer>,
   pause: Symbol.for("GitHubRetryPause") as ServiceIdentifier<RetryPause>,
   noteRepository: Symbol.for("NoteRepository") as ServiceIdentifier<NoteRepository>,
-  noteCatalog: Symbol.for("GitHubNoteCatalog") as ServiceIdentifier<NoteCatalog>,
+  noteCatalog: Symbol.for("GitHubNoteCatalog") as ServiceIdentifier<NoteTree>,
   branchHead: Symbol.for("GitHubBranchHead") as ServiceIdentifier<BranchHead>,
 } as const;
