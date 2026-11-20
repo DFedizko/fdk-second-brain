@@ -1,6 +1,6 @@
 import { NotePath } from "../../../../src/domain/note-path";
 import type { GitHubNoteRepo } from "../../../../src/adapters/outbound/github/github-note-repo";
-import { ActionPause } from "./__stub__/action-pause";
+import { ActionPause } from "./__fake__/action-pause";
 import type { FakeGitHubApi } from "./__fake__/fake-github-api";
 import { DEFAULT_BRANCH, NOTES_BRANCH, buildEmptyNotesRepo } from "./__fake__/fake-notes-repo";
 import { connectRepo } from "./__fake__/github-note-repo-on-fake";

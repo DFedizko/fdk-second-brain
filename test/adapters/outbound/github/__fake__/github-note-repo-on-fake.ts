@@ -6,7 +6,7 @@ import { GitHubNoteMover } from "../../../../../src/adapters/outbound/github/git
 import { GitHubNoteReader } from "../../../../../src/adapters/outbound/github/github-note-reader";
 import { GitHubNoteRepo } from "../../../../../src/adapters/outbound/github/github-note-repo";
 import type { RetryPause } from "../../../../../src/adapters/outbound/github/retry-pause";
-import { NO_PAUSE } from "../__stub__/action-pause";
+import { NO_PAUSE } from "./action-pause";
 import { GITHUB_CONFIG } from "../__stub__/github-config";
 import { FixedClock } from "../../../../__stub__/fixed-clock";
 import type { FakeGitHubApi } from "./fake-github-api";
