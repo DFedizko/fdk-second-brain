@@ -108,8 +108,10 @@ export class GitHubNoteRepo implements NoteRepository {
   }
 
   async write(path: NotePath, content: string, expected: NoteVersion): Promise<Note> {
-    const current = await this.read(path);
-    current.ensureVersion(expected);
+    const current = await this.currentVersion(path);
+    if (!current.equals(expected)) {
+      throw new VersionConflict(path.value, expected.value, current.value);
+    }
     return this.retryFileWrite(
       path,
       () => this.putFile(path, content, `${UPDATE} ${path.value}`, expected),
