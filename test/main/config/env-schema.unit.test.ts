@@ -31,8 +31,6 @@ const MISSING_MESSAGES: Record<RequiredName, string> = {
     "GITHUB_WEBHOOK_SECRET is missing: set it to the secret of the notes repository's push webhook.",
   PUBLIC_URL:
     "PUBLIC_URL is missing: set it to the Worker's public https origin, such as https://second-brain.example.workers.dev.",
-  COOKIE_ENCRYPTION_KEY:
-    "COOKIE_ENCRYPTION_KEY is missing: set it to 64 hexadecimal characters (openssl rand -hex 32).",
 };
 
 const INVALID_CASES: ReadonlyArray<[EnvName, unknown, string]> = [
@@ -90,11 +88,6 @@ const INVALID_CASES: ReadonlyArray<[EnvName, unknown, string]> = [
     "GITHUB_OAUTH_URL",
     "ftp://github.com",
     "GITHUB_OAUTH_URL is invalid: expected an https origin with no path or trailing slash, such as https://github.com (http is allowed only for localhost, 127.0.0.1 or [::1]).",
-  ],
-  [
-    "COOKIE_ENCRYPTION_KEY",
-    "abc123",
-    "COOKIE_ENCRYPTION_KEY is invalid: expected 64 hexadecimal characters (openssl rand -hex 32).",
   ],
 ];
 

@@ -10,7 +10,6 @@ export const VALID_ENV = {
   GITHUB_WEBHOOK_SECRET: "webhook-secret-of-at-least-32-chars",
   PUBLIC_URL: "https://second-brain.example",
   GITHUB_OAUTH_URL: "https://github.com",
-  COOKIE_ENCRYPTION_KEY: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
 } as const;
 
 export type EnvName = keyof typeof VALID_ENV;
