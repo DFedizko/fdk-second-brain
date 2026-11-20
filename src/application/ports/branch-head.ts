@@ -1,3 +1,5 @@
+import type { NoteLookup } from "./note-lookup";
+
 export interface BranchHead {
-  hasReached(commit: string): Promise<boolean>;
+  readerAt(commit: string): Promise<NoteLookup | null>;
 }

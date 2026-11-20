@@ -3,7 +3,9 @@ import { D1SearchIndex } from "../../../src/adapters/outbound/d1-search/d1-searc
 import { GitHubBranchHead } from "../../../src/adapters/outbound/github/github-branch-head";
 import { GitHubErrorTranslator } from "../../../src/adapters/outbound/github/github-error-translator";
 import { GitHubGateway } from "../../../src/adapters/outbound/github/github-gateway";
+import { GitHubNoteReader } from "../../../src/adapters/outbound/github/github-note-reader";
 import { IndexNote } from "../../../src/application/use-cases/index-note";
+import { IndexNoteFactory } from "../../../src/application/use-cases/index-note-factory";
 import { IndexPushedNote } from "../../../src/application/use-cases/index-pushed-note";
 import { SearchNotes } from "../../../src/application/use-cases/search-notes";
 import { MarkdownChunker } from "../../../src/domain/markdown-chunker";
@@ -24,6 +26,7 @@ import { LocalRuntime } from "../../shared/adapters/local-runtime";
 
 const PLAN = "projects/plan.md";
 const FILE_MODE = "100644";
+const SECOND_ATTEMPT = 2;
 const PLAN_CONTENT = "# Plan\n\nShip the nebula release.\n";
 
 describe("IndexPushedNote on D1 with a branch that lags behind the push", () => {
@@ -42,11 +45,11 @@ describe("IndexPushedNote on D1 with a branch that lags behind the push", () => 
     const index = new D1SearchIndex(await runtime.database(), log);
     const errors = new GitHubErrorTranslator(new FixedClock(FIXED_NOW));
     const github = new GitHubGateway(api.octokit(GITHUB_CONFIG.token), GITHUB_CONFIG, errors);
-    const indexNote = new IndexNote(index, connectRepo(api), new MarkdownChunker());
-    consumer = new IndexQueueConsumer(
-      new IndexPushedNote(new GitHubBranchHead(github), indexNote),
-      log,
-    );
+    const chunker = new MarkdownChunker();
+    const indexNote = new IndexNote(index, connectRepo(api), chunker);
+    const head = new GitHubBranchHead(github, new GitHubNoteReader(github));
+    const pushed = new IndexPushedNote(head, new IndexNoteFactory(index, chunker), indexNote);
+    consumer = new IndexQueueConsumer(pushed, log);
     searchNotes = new SearchNotes(index);
     api.addEntry(NOTES_BRANCH, PLAN, FILE_MODE, PLAN_CONTENT);
     await indexNote.execute({ path: PLAN });
@@ -78,7 +81,7 @@ describe("IndexPushedNote on D1 with a branch that lags behind the push", () => 
     await consumer.handle(FakeMessageBatch.of([{ path: PLAN, commit: deleted }]));
     api.store.setRef(NOTES_BRANCH, deleted);
 
-    await consumer.handle(FakeMessageBatch.of([{ path: PLAN, commit: deleted }], 2));
+    await consumer.handle(FakeMessageBatch.of([{ path: PLAN, commit: deleted }], SECOND_ATTEMPT));
 
     expect(await searchPaths()).toEqual([]);
   });

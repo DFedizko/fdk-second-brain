@@ -4,7 +4,7 @@ import type { MarkdownChunker } from "../../domain/markdown-chunker";
 import { Note } from "../../domain/note";
 import { NotePath } from "../../domain/note-path";
 import { NoteVersion } from "../../domain/note-version";
-import type { NoteRepository } from "../ports/note-repository";
+import type { NoteLookup } from "../ports/note-lookup";
 import type { SearchIndex } from "../ports/search-index";
 
 export const MAX_INDEX_ATTEMPTS = 5;
@@ -52,7 +52,7 @@ export interface NoteIndexer {
 export class IndexNote implements NoteIndexer {
   constructor(
     private readonly index: SearchIndex,
-    private readonly notes: NoteRepository,
+    private readonly notes: NoteLookup,
     private readonly chunker: MarkdownChunker,
   ) {}
 

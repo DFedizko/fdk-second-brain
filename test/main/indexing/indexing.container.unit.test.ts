@@ -26,7 +26,9 @@ function buildContainer(): Container {
   container.bind(GITHUB.noteCatalog).toConstantValue(new FixedNoteCatalog({ [PLAN]: VERSION }));
   container.bind(D1_SEARCH_SYMBOLS.IndexManifest).toConstantValue(new FixedNoteCatalog({}));
   container.bind(QUEUE.pathQueue).toConstantValue(queue);
-  container.bind(GITHUB.branchHead).toConstantValue(new FixedBranchHead(true));
+  container.bind(GITHUB.branchHead).toConstantValue(new FixedBranchHead(new InMemoryNoteRepo()));
+  container.bind(D1_SEARCH_SYMBOLS.SearchIndex).toConstantValue(new InMemorySearchIndex());
+  container.bind(SEARCH.chunker).toConstantValue(new MarkdownChunker());
   container
     .bind(SEARCH.indexNote)
     .toConstantValue(
