@@ -70,6 +70,10 @@ export class McpE2eStack {
     return new McpTestClient(new BearerEndpoint(this.worker, token));
   }
 
+  fetch(request: Request): Promise<Response> {
+    return this.worker.fetch(request);
+  }
+
   fetchPath(path: string): Promise<Response> {
     return this.worker.fetch(new Request(new URL(path, WORKER_ORIGIN)));
   }

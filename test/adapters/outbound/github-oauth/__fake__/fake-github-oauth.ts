@@ -1,6 +1,12 @@
 import { DOCS_PAGE, GitHubReplies, MESSAGE, STATUS } from "../../github/__fake__/github-replies";
 import { publicUserShape, type FakeGitHubUser } from "./github-user-shape";
-import { ACCESS_DENIED, OAuthReplies, TOKEN_ERROR, type TokenReply } from "./oauth-replies";
+import {
+  ACCESS_DENIED,
+  APP_SUSPENDED,
+  OAuthReplies,
+  TOKEN_ERROR,
+  type TokenReply,
+} from "./oauth-replies";
 
 export interface FakeOAuthApp {
   readonly clientId: string;
@@ -34,6 +40,7 @@ export class FakeGitHubOAuth {
   private signedIn?: FakeGitHubUser;
   private denying = false;
   private refusingCodes = false;
+  private suspended = false;
   private issued = 0;
 
   constructor(private readonly app: FakeOAuthApp) {}
@@ -42,10 +49,15 @@ export class FakeGitHubOAuth {
     this.signedIn = user;
     this.denying = false;
     this.refusingCodes = false;
+    this.suspended = false;
   }
 
   denyAccess(): void {
     this.denying = true;
+  }
+
+  suspendApp(): void {
+    this.suspended = true;
   }
 
   refuseCodes(): void {
@@ -75,6 +87,9 @@ export class FakeGitHubOAuth {
         ...TOKEN_ERROR.redirectMismatch,
         ...state,
       });
+    }
+    if (this.suspended) {
+      return this.replies.redirect(redirectUri, { ...APP_SUSPENDED, ...state });
     }
     if (this.denying || !this.signedIn) {
       return this.replies.redirect(redirectUri, { ...ACCESS_DENIED, ...state });

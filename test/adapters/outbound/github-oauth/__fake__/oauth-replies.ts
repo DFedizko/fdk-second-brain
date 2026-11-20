@@ -39,6 +39,12 @@ export const ACCESS_DENIED = {
   error_uri: `${AUTHORIZE_ERRORS_DOCS}#access-denied`,
 } as const;
 
+export const APP_SUSPENDED = {
+  error: "application_suspended",
+  error_description: "Your application has been suspended. Contact support@github.com.",
+  error_uri: `${AUTHORIZE_ERRORS_DOCS}#application-suspended`,
+} as const;
+
 export type TokenReply = Readonly<Record<string, string>>;
 
 export class OAuthReplies {

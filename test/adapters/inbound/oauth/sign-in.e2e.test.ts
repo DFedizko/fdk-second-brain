@@ -6,6 +6,8 @@ const UNAUTHORIZED = 401;
 const FORBIDDEN = 403;
 const FOUND = 302;
 const OK = 200;
+const BAD_REQUEST = 400;
+const NOT_FOUND = 404;
 const SERVER_NAME = "second-brain";
 const STRANGER = { login: "octo-dog", id: 777 };
 const LOGIN_SQUATTER = { login: OWNER.login, id: 999 };
@@ -133,5 +135,39 @@ describe("signing in to the MCP server", () => {
       CLIENT_REDIRECT,
       "server_error",
     ]);
+  });
+
+  it("returns server_error to the client when GitHub reports a broken OAuth app", async () => {
+    stack.oauth.suspendApp();
+
+    const response = await stack.signInClient().signIn();
+
+    expect(new URL(response.headers.get("location") ?? "").searchParams.get("error")).toBe(
+      "server_error",
+    );
+  });
+
+  it("answers a consent post that is not a form with a bad request page", async () => {
+    const request = new Request(`${WORKER_ORIGIN}/authorize`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ decision: "approve" }),
+    });
+
+    const response = await stack.fetch(request);
+
+    expect(response.status).toBe(BAD_REQUEST);
+  });
+
+  it("does not serve MCP below /mcp/", async () => {
+    const token = await stack.signInClient().accessToken();
+    const request = new Request(`${WORKER_ORIGIN}/mcp/anything`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${token}` },
+    });
+
+    const response = await stack.fetch(request);
+
+    expect(response.status).toBe(NOT_FOUND);
   });
 });
