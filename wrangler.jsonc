@@ -11,6 +11,7 @@
       "migrations_dir": "migrations",
     },
   ],
+  "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "00000000000000000000000000000000" }],
   "queues": {
     "producers": [{ "binding": "INDEX_QUEUE", "queue": "second-brain-index" }],
   },

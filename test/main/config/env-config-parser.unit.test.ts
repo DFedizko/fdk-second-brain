@@ -5,10 +5,10 @@ import { VALID_ENV } from "../__stub__/valid-env";
 const BROKEN_ENV = {
   ...VALID_ENV,
   GITHUB_TOKEN: undefined,
-  COOKIE_ENCRYPTION_KEY: "short",
+  GITHUB_WEBHOOK_SECRET: "short",
 };
 const TOKEN_MISSING = "GITHUB_TOKEN is missing";
-const KEY_INVALID = "COOKIE_ENCRYPTION_KEY is invalid";
+const KEY_INVALID = "GITHUB_WEBHOOK_SECRET is invalid";
 
 function captureError(action: () => unknown): unknown {
   try {
