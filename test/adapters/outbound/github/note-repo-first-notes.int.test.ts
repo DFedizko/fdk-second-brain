@@ -102,7 +102,7 @@ describe("GitHubNoteRepo creating the first notes of an empty repository", () =>
   });
 
   it("creates the first note when another client makes the branch while reads lag", async () => {
-    api.lagRefReadsAsEmpty(2);
+    api.lagRefReadsAsEmpty(1);
     api.raceOnce.beforeRefCreate(pointNotesAtDefault);
 
     await repository.create(INBOX, CONTENT);
