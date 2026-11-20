@@ -10,8 +10,9 @@ export type BatchSender = Pick<Queue<IndexMessage>, "sendBatch">;
 export class CloudflarePathQueue implements PathQueue {
   constructor(private readonly queue: BatchSender) {}
 
-  async enqueue(paths: readonly NotePath[]): Promise<void> {
-    await Promise.all(this.splitIntoBatches(paths).map((batch) => this.send(batch)));
+  async enqueue(paths: readonly NotePath[], commit?: string): Promise<void> {
+    const batches = this.splitIntoBatches(paths);
+    await Promise.all(batches.map((batch) => this.send(batch, commit)));
   }
 
   private splitIntoBatches(paths: readonly NotePath[]): NotePath[][] {
@@ -21,7 +22,11 @@ export class CloudflarePathQueue implements PathQueue {
     );
   }
 
-  private async send(batch: readonly NotePath[]): Promise<void> {
-    await this.queue.sendBatch(batch.map((path) => ({ body: { path: path.value } })));
+  private async send(batch: readonly NotePath[], commit?: string): Promise<void> {
+    await this.queue.sendBatch(batch.map((path) => ({ body: this.toMessage(path, commit) })));
+  }
+
+  private toMessage(path: NotePath, commit?: string): IndexMessage {
+    return commit === undefined ? { path: path.value } : { path: path.value, commit };
   }
 }

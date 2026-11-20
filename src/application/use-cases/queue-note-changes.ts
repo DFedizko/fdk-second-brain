@@ -4,6 +4,7 @@ import type { PathQueue } from "../ports/path-queue";
 
 export interface QueueNoteChangesInput {
   readonly paths: readonly string[];
+  readonly commit?: string;
 }
 
 export interface QueueNoteChangesResult {
@@ -15,7 +16,7 @@ export class QueueNoteChanges {
 
   async execute(input: QueueNoteChangesInput): Promise<QueueNoteChangesResult> {
     const notes = [...new Set(input.paths)].flatMap((raw) => this.toNotePath(raw));
-    if (notes.length > 0) await this.queue.enqueue(notes);
+    if (notes.length > 0) await this.queue.enqueue(notes, input.commit);
     return { queued: notes.length };
   }
 

@@ -4,6 +4,8 @@ import {
 } from "../../../../src/adapters/inbound/webhook/github-webhook-route";
 import { WebhookSignature } from "../../../../src/adapters/inbound/webhook/webhook-signature";
 import { FakeGitHubWebhook, WEBHOOK_URL } from "./__fake__/fake-github-webhook";
+import { buildPushPayload } from "./__fake__/push-payload";
+import { ManualBackgroundTasks } from "../../../application/use-cases/__fake__/manual-background-tasks";
 import { SpyChangeQueue } from "./__spy__/spy-change-queue";
 import { SpyReconciler } from "./__spy__/spy-reconciler";
 
@@ -24,16 +26,19 @@ const FORM_TYPE = "application/x-www-form-urlencoded";
 describe("GitHubWebhookRoute", () => {
   let changes: SpyChangeQueue;
   let reconciler: SpyReconciler;
+  let background: ManualBackgroundTasks;
   let route: GitHubWebhookRoute;
   const github = new FakeGitHubWebhook(SECRET);
 
   beforeEach(() => {
     changes = new SpyChangeQueue();
     reconciler = new SpyReconciler();
+    background = new ManualBackgroundTasks();
     route = new GitHubWebhookRoute(
       new WebhookSignature({ secret: SECRET }),
       changes,
       reconciler,
+      background,
       BRANCH,
     );
   });
@@ -141,17 +146,38 @@ describe("GitHubWebhookRoute", () => {
 
   it("reconciles the whole index after a force push", async () => {
     const request = github.push({ branch: BRANCH, forced: true, commits: [{ added: [PLAN] }] });
-
     await route.fetch(request);
+
+    await background.runQueued();
 
     expect({ runs: reconciler.runs, calls: changes.calls }).toEqual({ runs: 1, calls: [] });
   });
 
   it("reconciles the whole index when GitHub left commits out of the payload", async () => {
     const commits = Array.from({ length: MAX_PUSH_COMMITS }, () => ({ modified: [PLAN] }));
-
     await route.fetch(github.push({ branch: BRANCH, commits }));
 
+    await background.runQueued();
+
     expect({ runs: reconciler.runs, calls: changes.calls }).toEqual({ runs: 1, calls: [] });
+  });
+
+  it("tags the queued paths with the push's head commit", async () => {
+    const payload = buildPushPayload({ branch: BRANCH, commits: [{ added: [PLAN] }] });
+
+    await route.fetch(github.push({ branch: BRANCH, commits: [{ added: [PLAN] }] }));
+
+    expect(changes.commits).toEqual([payload.after]);
+  });
+
+  it("answers a force push before the reconciliation runs", async () => {
+    const request = github.push({ branch: BRANCH, forced: true, commits: [] });
+
+    const response = await route.fetch(request);
+
+    expect({ status: response.status, runs: reconciler.runs }).toEqual({
+      status: ACCEPTED,
+      runs: 0,
+    });
   });
 });

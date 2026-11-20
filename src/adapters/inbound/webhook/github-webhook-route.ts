@@ -2,6 +2,7 @@ import type {
   QueueNoteChangesInput,
   QueueNoteChangesResult,
 } from "../../../application/use-cases/queue-note-changes";
+import type { BackgroundTasks } from "../../../application/ports/background-tasks";
 import type { ReconcileResult } from "../../../application/use-cases/reconcile-index";
 import { PUSH_SCHEMA, PushEvent } from "./push-event";
 import type { SignatureCheck } from "./webhook-signature";
@@ -41,6 +42,7 @@ export class GitHubWebhookRoute {
     private readonly signature: SignatureCheck,
     private readonly changes: ChangeQueue,
     private readonly reconciler: Reconciler,
+    private readonly background: BackgroundTasks,
     private readonly branch: string,
   ) {}
 
@@ -58,9 +60,17 @@ export class GitHubWebhookRoute {
 
   private async handlePush(push: PushEvent): Promise<Response> {
     if (!push.isTo(this.branch) || push.deletesBranch) return this.reply(STATUS.ignored);
-    if (push.listsEveryChange) await this.changes.execute({ paths: push.changedPaths() });
-    else await this.reconciler.execute();
+    if (push.listsEveryChange) await this.queueChanges(push);
+    else this.background.runInBackground(() => this.reconcile());
     return this.reply(STATUS.accepted);
+  }
+
+  private async queueChanges(push: PushEvent): Promise<void> {
+    await this.changes.execute({ paths: push.changedPaths(), commit: push.headCommit });
+  }
+
+  private async reconcile(): Promise<void> {
+    await this.reconciler.execute();
   }
 
   private isJson(request: Request): boolean {

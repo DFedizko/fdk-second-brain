@@ -12,6 +12,7 @@ const COMMIT = z.object({ added: FILES, modified: FILES, removed: FILES });
 
 export const PUSH_SCHEMA = z.object({
   ref: z.string(),
+  after: z.string(),
   deleted: z.boolean(),
   forced: z.boolean(),
   commits: z.array(COMMIT),
@@ -25,6 +26,10 @@ export class PushEvent {
 
   isTo(branch: string): boolean {
     return this.body.ref === BRANCH_REF_PREFIX + branch;
+  }
+
+  get headCommit(): string {
+    return this.body.after;
   }
 
   get deletesBranch(): boolean {

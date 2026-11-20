@@ -5,6 +5,7 @@ const PLAN = "projects/plan.md";
 const IDEA = "ideas/idea.md";
 const IMAGE = "assets/photo.png";
 const HIDDEN = ".obsidian/workspace.md";
+const COMMIT = "0d1a26e67d8f5eaf1f6ba5c57fc3c7d91ac0fd1c";
 
 describe("QueueNoteChanges", () => {
   let queue: SpyPathQueue;
@@ -43,5 +44,11 @@ describe("QueueNoteChanges", () => {
     const result = await queueChanges.execute({ paths: [PLAN, IMAGE, IDEA] });
 
     expect(result).toEqual({ queued: 2 });
+  });
+
+  it("tags the queued paths with the commit they were pushed in", async () => {
+    await queueChanges.execute({ paths: [PLAN], commit: COMMIT });
+
+    expect(queue.commits).toEqual([COMMIT]);
   });
 });

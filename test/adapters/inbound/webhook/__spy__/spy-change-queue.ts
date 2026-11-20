@@ -6,9 +6,11 @@ import type {
 
 export class SpyChangeQueue implements ChangeQueue {
   readonly calls: string[][] = [];
+  readonly commits: (string | undefined)[] = [];
 
   async execute(input: QueueNoteChangesInput): Promise<QueueNoteChangesResult> {
     this.calls.push([...input.paths]);
+    this.commits.push(input.commit);
     return { queued: input.paths.length };
   }
 }

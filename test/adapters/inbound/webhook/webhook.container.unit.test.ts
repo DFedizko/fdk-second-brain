@@ -3,6 +3,8 @@ import { GitHubWebhookRoute } from "../../../../src/adapters/inbound/webhook/git
 import { createWebhookModule } from "../../../../src/adapters/inbound/webhook/webhook.container";
 import { WEBHOOK } from "../../../../src/adapters/inbound/webhook/webhook.symbols";
 import { FakeGitHubWebhook } from "./__fake__/fake-github-webhook";
+import { BACKGROUND } from "../../../../src/adapters/outbound/background/background.symbols";
+import { ManualBackgroundTasks } from "../../../application/use-cases/__fake__/manual-background-tasks";
 import { SpyChangeQueue } from "./__spy__/spy-change-queue";
 import { SpyReconciler } from "./__spy__/spy-reconciler";
 
@@ -18,6 +20,7 @@ function buildContainer(): Container {
   const container = new Container();
   container.bind(CHANGES).toConstantValue(changes);
   container.bind(RECONCILER).toConstantValue(new SpyReconciler());
+  container.bind(BACKGROUND.tasks).toConstantValue(new ManualBackgroundTasks());
   container.load(
     createWebhookModule({
       secret: SECRET,
