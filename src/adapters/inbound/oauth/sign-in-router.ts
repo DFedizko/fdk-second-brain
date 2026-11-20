@@ -3,7 +3,6 @@ import {
   CimdFetchError,
   type OAuthHelpers,
 } from "@cloudflare/workers-oauth-provider";
-import { SignInFailedError } from "../../../shared/contracts/sign-in-failed-error";
 import type { CallbackRoute } from "./callback-route";
 import type { ConsentRoute } from "./consent-route";
 import type { HtmlReplies } from "./html-replies";
@@ -16,9 +15,7 @@ const GET = "GET";
 const POST = "POST";
 const BAD_REQUEST = 400;
 const NOT_FOUND = 404;
-const BAD_GATEWAY = 502;
 const UNVERIFIED_CLIENT = "This app could not be verified.";
-const GITHUB_FAILED = "GitHub could not confirm who you are.";
 
 type Route = (request: Request, oauth: OAuthHelpers) => Promise<Response>;
 
@@ -54,7 +51,6 @@ export class SignInRouter {
     }
     if (error instanceof AuthorizationError) return this.failure(error.description, BAD_REQUEST);
     if (error instanceof CimdFetchError) return this.failure(UNVERIFIED_CLIENT, BAD_REQUEST);
-    if (error instanceof SignInFailedError) return this.failure(GITHUB_FAILED, BAD_GATEWAY);
     throw error;
   }
 

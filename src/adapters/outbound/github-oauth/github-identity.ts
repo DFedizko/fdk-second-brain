@@ -9,7 +9,7 @@ import { SignInFailedError } from "../../../shared/contracts/sign-in-failed-erro
 
 export type HttpFetch = (input: string, init?: RequestInit) => Promise<Response>;
 
-type GitHubUser = components["schemas"]["public-user"];
+type GitHubUser = components["schemas"]["private-user"];
 
 interface TokenReply {
   readonly access_token?: string;
