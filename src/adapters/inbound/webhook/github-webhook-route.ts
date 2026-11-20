@@ -34,7 +34,7 @@ export interface ChangeQueue {
 }
 
 export interface Reconciler {
-  execute(): Promise<ReconcileResult>;
+  execute(after?: string): Promise<ReconcileResult>;
 }
 
 export interface FullReconcile {
@@ -66,7 +66,7 @@ export class GitHubWebhookRoute {
   private async handlePush(push: PushEvent): Promise<Response> {
     if (!push.isTo(this.branch) || push.deletesBranch) return this.reply(STATUS.ignored);
     if (push.listsEveryChange) await this.queueChanges(push);
-    else this.fallback.background.runInBackground(() => this.reconcile());
+    else this.fallback.background.runInBackground(() => this.reconcile(push.headCommit));
     return this.reply(STATUS.accepted);
   }
 
@@ -74,8 +74,8 @@ export class GitHubWebhookRoute {
     await this.changes.execute({ paths: push.changedPaths(), commit: push.headCommit });
   }
 
-  private async reconcile(): Promise<void> {
-    await this.fallback.reconciler.execute().then(
+  private async reconcile(after: string): Promise<void> {
+    await this.fallback.reconciler.execute(after).then(
       () => undefined,
       (error: unknown) => this.fallback.log.report({ path: RECONCILE_LABEL, error }),
     );

@@ -18,8 +18,11 @@ export class ReconcileIndex {
     private readonly queue: PathQueue,
   ) {}
 
-  async execute(): Promise<ReconcileResult> {
-    const [snapshot, indexed] = await Promise.all([this.notes.snapshot(), this.index.stamps()]);
+  async execute(after?: string): Promise<ReconcileResult> {
+    const [snapshot, indexed] = await Promise.all([
+      this.notes.snapshot(after),
+      this.index.stamps(),
+    ]);
     const notes = snapshot.stamps;
     const indexedVersions = this.byPath(indexed);
     const notePaths = this.byPath(notes);

@@ -70,8 +70,9 @@ export function githubContainer(config: GitHubConfig): ContainerModule {
       [GITHUB.access, GITHUB.reader],
     );
     bind(GITHUB.noteCatalog).toResolvedValue(
-      (github: GitHubAccess, reader: NoteReader) => new GitHubNoteCatalog(github, reader),
-      [GITHUB.access, GITHUB.reader],
+      (github: GitHubAccess, reader: NoteReader, pause: RetryPause) =>
+        new GitHubNoteCatalog(github, reader, new CommitCompare(github), pause),
+      [GITHUB.access, GITHUB.reader, GITHUB.pause],
     );
   });
 }
