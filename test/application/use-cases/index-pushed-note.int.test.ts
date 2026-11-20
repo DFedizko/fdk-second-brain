@@ -1,11 +1,13 @@
 import { DropNoteIndex } from "../../../src/application/use-cases/drop-note-index";
 import { IndexQueueConsumer } from "../../../src/adapters/inbound/queue/index-queue-consumer";
 import { D1SearchIndex } from "../../../src/adapters/outbound/d1-search/d1-search-index";
-import { CommitCompare } from "../../../src/adapters/outbound/github/commit-compare";
+import {
+  BudgetedHeadNotes,
+  REQUESTS_PER_MESSAGE,
+} from "../../../src/adapters/outbound/github/budgeted-head-notes";
 import { GitHubBranchHead } from "../../../src/adapters/outbound/github/github-branch-head";
 import { GitHubErrorTranslator } from "../../../src/adapters/outbound/github/github-error-translator";
 import { GitHubGateway } from "../../../src/adapters/outbound/github/github-gateway";
-import { GitHubNoteReader } from "../../../src/adapters/outbound/github/github-note-reader";
 import { IndexNote } from "../../../src/application/use-cases/index-note";
 import { IndexNoteFactory } from "../../../src/application/use-cases/index-note-factory";
 import { IndexPushedNote } from "../../../src/application/use-cases/index-pushed-note";
@@ -50,8 +52,8 @@ describe("IndexPushedNote on D1 with a branch that lags behind the push", () => 
     const github = new GitHubGateway(api.octokit(GITHUB_CONFIG.token), GITHUB_CONFIG, errors);
     const chunker = new MarkdownChunker();
     const indexNote = new IndexNote(index, connectRepo(api), chunker);
-    const head = new GitHubBranchHead(new GitHubNoteReader(github), new CommitCompare(github));
-    const pushed = new IndexPushedNote(head, new IndexNoteFactory(index, chunker), indexNote);
+    const head = new GitHubBranchHead(new BudgetedHeadNotes(github, REQUESTS_PER_MESSAGE));
+    const pushed = new IndexPushedNote(head, new IndexNoteFactory(index, chunker));
     consumer = new IndexQueueConsumer(
       pushed,
       new DropNoteIndex(index),
