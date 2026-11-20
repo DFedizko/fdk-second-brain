@@ -33,6 +33,7 @@ export class FakeGitHubOAuth {
   private readonly apiReplies = new GitHubReplies();
   private signedIn?: FakeGitHubUser;
   private denying = false;
+  private refusingCodes = false;
   private issued = 0;
 
   constructor(private readonly app: FakeOAuthApp) {}
@@ -40,10 +41,15 @@ export class FakeGitHubOAuth {
   signInAs(user: FakeGitHubUser): void {
     this.signedIn = user;
     this.denying = false;
+    this.refusingCodes = false;
   }
 
   denyAccess(): void {
     this.denying = true;
+  }
+
+  refuseCodes(): void {
+    this.refusingCodes = true;
   }
 
   handles(url: URL): boolean {
@@ -90,7 +96,7 @@ export class FakeGitHubOAuth {
       form.get("client_id") === this.app.clientId &&
       form.get("client_secret") === this.app.clientSecret;
     if (!knownClient) return TOKEN_ERROR.badClient;
-    if (!issued) return TOKEN_ERROR.badCode;
+    if (!issued || this.refusingCodes) return TOKEN_ERROR.badCode;
     const redirectUri = form.get("redirect_uri");
     if (redirectUri !== null && redirectUri !== issued.redirectUri) {
       return TOKEN_ERROR.redirectMismatch;

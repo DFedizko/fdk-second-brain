@@ -105,4 +105,16 @@ describe("signing in to the MCP server", () => {
       "access_denied",
     );
   });
+
+  it("returns server_error to the client when GitHub refuses the sign-in code", async () => {
+    stack.oauth.refuseCodes();
+
+    const response = await stack.signInClient().signIn();
+
+    const location = new URL(response.headers.get("location") ?? "");
+    expect([location.origin + location.pathname, location.searchParams.get("error")]).toEqual([
+      CLIENT_REDIRECT,
+      "server_error",
+    ]);
+  });
 });
