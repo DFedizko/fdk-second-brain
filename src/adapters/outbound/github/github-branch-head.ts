@@ -1,16 +1,8 @@
 import type { BranchHead } from "../../../application/ports/branch-head";
 import type { NoteLookup } from "../../../application/ports/note-lookup";
-import type { Note } from "../../../domain/note";
-import { NoteNotFound } from "../../../domain/errors/note-not-found";
-import type { NotePath } from "../../../domain/note-path";
 import type { HeadNotesFactory } from "./head-notes-factory";
 import { EmptyRepository } from "./empty-repository";
-
-class NoNotes implements NoteLookup {
-  async read(path: NotePath): Promise<Note> {
-    throw new NoteNotFound(path.value);
-  }
-}
+import { NoNotes } from "./no-notes";
 
 const NO_NOTES = new NoNotes();
 
