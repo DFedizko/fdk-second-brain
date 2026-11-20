@@ -42,14 +42,6 @@ export interface NoteIndexer {
   execute(input: IndexNoteInput): Promise<IndexNoteResult>;
 }
 
-// Messages can arrive late or twice, so the note is re-read at the head and the
-// index is written only over the version seen before that read (compare-and-set).
-// Blob SHAs repeat when an edit is reverted, so after every write it checks again
-// until a pass finds the index already matching the head. Only passes that lose
-// the compare-and-set use up an attempt, so a burst of saves can't exhaust them;
-// a larger cap on all passes still ends a loop when saves never stop. Right after
-// a save the saved note is used as is, since a read then can still be stale; once
-// another indexer wins the compare-and-set, the head is read, as it may be newer.
 export class IndexNote implements NoteIndexer {
   constructor(
     private readonly index: SearchIndex,
