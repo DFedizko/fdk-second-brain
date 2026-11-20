@@ -47,7 +47,8 @@ export interface NoteIndexer {
 // until a pass finds the index already matching the head. Only passes that lose
 // the compare-and-set use up an attempt, so a burst of saves can't exhaust them;
 // a larger cap on all passes still ends a loop when saves never stop. Right after
-// a save the saved note is used as is, since a read then can still be stale.
+// a save the saved note is used as is, since a read then can still be stale; once
+// another indexer wins the compare-and-set, the head is read, as it may be newer.
 export class IndexNote implements NoteIndexer {
   constructor(
     private readonly index: SearchIndex,
@@ -62,9 +63,13 @@ export class IndexNote implements NoteIndexer {
   }
 
   private chooseSource(path: NotePath, saved?: SavedNote): NoteSource {
-    if (saved === undefined) return () => this.readCurrent(path);
+    if (saved === undefined) return this.headOf(path);
     const note = new Note(path, saved.content, NoteVersion.of(saved.version));
     return async () => note;
+  }
+
+  private headOf(path: NotePath): NoteSource {
+    return () => this.readCurrent(path);
   }
 
   private async syncWithRetry(
@@ -78,7 +83,12 @@ export class IndexNote implements NoteIndexer {
     if (outcome === UNCHANGED) return applied ?? outcome;
     const passes = budget.passes - 1;
     if (outcome === undefined) {
-      return this.syncWithRetry(path, source, { attempts: budget.attempts - 1, passes }, applied);
+      return this.syncWithRetry(
+        path,
+        this.headOf(path),
+        { attempts: budget.attempts - 1, passes },
+        applied,
+      );
     }
     return this.syncWithRetry(path, source, { attempts: budget.attempts, passes }, outcome);
   }

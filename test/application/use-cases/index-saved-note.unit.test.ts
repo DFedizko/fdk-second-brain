@@ -11,14 +11,17 @@ const SAVED = { content: "# Plan\nship the search", version: "ccc333" };
 const SAVED_CHUNKS = [{ heading: "Plan", seq: 0, text: "ship the search" }];
 const STALE_VERSION = NoteVersion.of("aaa111");
 const STALE_CHUNKS = [{ heading: "Plan", seq: 0, text: "stale words" }];
+const HEAD_CONTENT = "# Plan\nship the head";
 
 describe("IndexNote given the saved note", () => {
   let index: InMemorySearchIndex;
+  let notes: InMemoryNoteRepo;
   let indexNote: IndexNote;
 
   beforeEach(() => {
     index = new InMemorySearchIndex();
-    indexNote = new IndexNote(index, new InMemoryNoteRepo(), new MarkdownChunker());
+    notes = new InMemoryNoteRepo();
+    indexNote = new IndexNote(index, notes, new MarkdownChunker());
   });
 
   it("indexes the saved content without reading the repository", async () => {
@@ -46,13 +49,14 @@ describe("IndexNote given the saved note", () => {
     expect(result).toEqual({ path: PATH, status: "unchanged" });
   });
 
-  it("writes again when another indexer changed the index first", async () => {
+  it("reads the repository head after another indexer changed the index first", async () => {
+    await notes.create(NOTE, HEAD_CONTENT);
     index.beforeNextWrites(async () => {
       await index.replace(NOTE, STALE_VERSION, STALE_CHUNKS, null);
     });
 
     await indexNote.execute({ path: PATH, saved: SAVED });
 
-    expect(index.chunksOf(PATH)).toEqual(SAVED_CHUNKS);
+    expect(index.chunksOf(PATH)).toEqual([{ heading: "Plan", seq: 0, text: "ship the head" }]);
   });
 });
