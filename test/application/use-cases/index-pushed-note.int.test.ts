@@ -28,6 +28,7 @@ import { LocalRuntime } from "../../shared/adapters/local-runtime";
 const PLAN = "projects/plan.md";
 const FILE_MODE = "100644";
 const SECOND_ATTEMPT = 2;
+const REQUESTS_PER_PATH = 4;
 const PLAN_CONTENT = "# Plan\n\nShip the nebula release.\n";
 
 describe("IndexPushedNote on D1 with a branch that lags behind the push", () => {
@@ -85,5 +86,14 @@ describe("IndexPushedNote on D1 with a branch that lags behind the push", () => 
     await consumer.handle(FakeMessageBatch.of([{ path: PLAN, commit: deleted }], SECOND_ATTEMPT));
 
     expect(await searchPaths()).toEqual([]);
+  });
+
+  it("indexes a pushed path within its share of the free plan's request budget", async () => {
+    api.store.setRef(NOTES_BRANCH, deleted);
+    const before = api.served.length;
+
+    await consumer.handle(FakeMessageBatch.of([{ path: PLAN, commit: deleted }]));
+
+    expect(api.served.length - before).toBe(REQUESTS_PER_PATH);
   });
 });
