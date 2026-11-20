@@ -7,7 +7,7 @@ import type { NoteVersion } from "../../domain/note-version";
 import type { NoteRepository } from "../ports/note-repository";
 import type { SearchIndex } from "../ports/search-index";
 
-const MAX_INDEX_ATTEMPTS = 3;
+export const MAX_INDEX_ATTEMPTS = 3;
 
 export interface IndexNoteInput {
   readonly path: string;

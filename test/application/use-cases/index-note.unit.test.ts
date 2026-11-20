@@ -1,4 +1,4 @@
-import { IndexNote } from "../../../src/application/use-cases/index-note";
+import { IndexNote, MAX_INDEX_ATTEMPTS } from "../../../src/application/use-cases/index-note";
 import { IndexWriteConflict } from "../../../src/domain/errors/index-write-conflict";
 import { InvalidPath } from "../../../src/domain/errors/invalid-path";
 import { MarkdownChunker } from "../../../src/domain/markdown-chunker";
@@ -13,7 +13,6 @@ const FIRST_CONTENT = "# Plan\nship the search";
 const SECOND_CONTENT = "# Plan\nship the sync";
 const STALE_VERSION = NoteVersion.of("aaa111");
 const STALE_CHUNKS = [{ heading: "Plan", seq: 0, text: "stale words" }];
-const MAX_ATTEMPTS = 3;
 const RACER_PREFIX = "bbb00";
 
 describe("IndexNote", () => {
@@ -102,9 +101,22 @@ describe("IndexNote", () => {
     expect(index.chunksOf(PATH)).toEqual([{ heading: "Plan", seq: 0, text: "ship the sync" }]);
   });
 
+  it("ends at the reverted content when an edit is undone while it writes", async () => {
+    const created = await notes.create(NOTE, FIRST_CONTENT);
+    await indexNote.execute({ path: PATH });
+    const edited = await notes.write(NOTE, SECOND_CONTENT, created.version);
+    index.beforeNextWrites(async () => {
+      await notes.write(NOTE, FIRST_CONTENT, edited.version);
+    });
+
+    await indexNote.execute({ path: PATH });
+
+    expect(index.chunksOf(PATH)).toEqual([{ heading: "Plan", seq: 0, text: "ship the search" }]);
+  });
+
   it("gives up with IndexWriteConflict when every write loses a race", async () => {
     await notes.create(NOTE, SECOND_CONTENT);
-    index.beforeNextWrites(...Array.from({ length: MAX_ATTEMPTS }, (_, n) => overwrite(n)));
+    index.beforeNextWrites(...Array.from({ length: MAX_INDEX_ATTEMPTS }, (_, n) => overwrite(n)));
 
     const run = indexNote.execute({ path: PATH });
 
