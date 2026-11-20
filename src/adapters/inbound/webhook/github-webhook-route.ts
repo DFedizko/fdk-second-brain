@@ -12,6 +12,7 @@ export { MAX_PUSH_COMMITS } from "./push-event";
 
 export const WEBHOOK_PATH = "/webhooks/github";
 export const RECONCILE_LABEL = "full reconciliation after a push";
+export const QUEUE_LABEL = "queueing the paths of a push";
 
 const POST = "POST";
 const PUSH = "push";

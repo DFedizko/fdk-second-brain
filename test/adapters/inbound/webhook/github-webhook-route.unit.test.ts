@@ -1,6 +1,7 @@
 import {
   GitHubWebhookRoute,
   MAX_PUSH_COMMITS,
+  QUEUE_LABEL,
   RECONCILE_LABEL,
 } from "../../../../src/adapters/inbound/webhook/github-webhook-route";
 import { WebhookSignature } from "../../../../src/adapters/inbound/webhook/webhook-signature";
@@ -9,6 +10,7 @@ import { buildPushPayload } from "./__fake__/push-payload";
 import { ManualBackgroundTasks } from "../../../application/use-cases/__fake__/manual-background-tasks";
 import { NotesUnavailable } from "../../../../src/domain/errors/notes-unavailable";
 import { SpyIndexFailureLog } from "../../../__spy__/spy-index-failure-log";
+import { FailingChangeQueue } from "./__stub__/failing-change-queue";
 import { FailingReconciler } from "./__stub__/failing-reconciler";
 import { SpyChangeQueue } from "./__spy__/spy-change-queue";
 import { SpyReconciler } from "./__spy__/spy-reconciler";
@@ -208,5 +210,40 @@ describe("GitHubWebhookRoute", () => {
     await background.runQueued();
 
     expect(log.reported).toEqual([{ path: RECONCILE_LABEL, error }]);
+  });
+
+  describe("when the queue refuses the push", () => {
+    const spec = { branch: BRANCH, commits: [{ added: [PLAN] }] };
+    const error = new Error("queue unavailable");
+    let failing: GitHubWebhookRoute;
+
+    beforeEach(() => {
+      failing = new GitHubWebhookRoute(
+        new WebhookSignature({ secret: SECRET }),
+        new FailingChangeQueue(error),
+        { reconciler, background, log },
+        BRANCH,
+      );
+    });
+
+    it("still accepts the push", async () => {
+      const response = await failing.fetch(github.push(spec));
+
+      expect(response.status).toBe(ACCEPTED);
+    });
+
+    it("logs the refused push", async () => {
+      await failing.fetch(github.push(spec));
+
+      expect(log.reported).toEqual([{ path: QUEUE_LABEL, error }]);
+    });
+
+    it("reconciles at a head that includes the push instead", async () => {
+      await failing.fetch(github.push(spec));
+
+      await background.runQueued();
+
+      expect(reconciler.afters).toEqual([buildPushPayload(spec).after]);
+    });
   });
 });
