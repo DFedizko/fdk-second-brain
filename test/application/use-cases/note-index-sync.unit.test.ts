@@ -1,5 +1,5 @@
 import { NoteIndexSync } from "../../../src/application/use-cases/note-index-sync";
-import { SpyIndexFailureLog } from "./__spy__/spy-index-failure-log";
+import { SpyIndexFailureLog } from "../../__spy__/spy-index-failure-log";
 import { SpyNoteIndexer } from "./__spy__/spy-note-indexer";
 import { FailingNoteIndexer } from "./__stub__/failing-note-indexer";
 

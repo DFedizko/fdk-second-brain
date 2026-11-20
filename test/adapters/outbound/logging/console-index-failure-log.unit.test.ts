@@ -1,7 +1,7 @@
 import type { Mock } from "bun:test";
 import { ConsoleIndexFailureLog } from "../../../../src/adapters/outbound/logging/console-index-failure-log";
 
-const LABEL = "Search index update failed:";
+const LABEL = "Search index problem:";
 const PATH = "projects/plan.md";
 
 let printError: Mock<typeof console.error>;

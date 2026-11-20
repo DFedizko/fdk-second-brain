@@ -1,3 +1,4 @@
+import { SpyIndexFailureLog } from "../../../__spy__/spy-index-failure-log";
 import { D1SearchIndex } from "../../../../src/adapters/outbound/d1-search/d1-search-index";
 import type { MarkdownChunk } from "../../../../src/domain/markdown-chunk";
 import { NotePath } from "../../../../src/domain/note-path";
@@ -22,7 +23,7 @@ describe("D1SearchIndex", () => {
   beforeEach(async () => {
     runtime = await LocalRuntime.start();
     await runtime.migrate();
-    index = new D1SearchIndex(await runtime.database());
+    index = new D1SearchIndex(await runtime.database(), new SpyIndexFailureLog());
   });
 
   afterEach(async () => {

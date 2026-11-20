@@ -11,7 +11,7 @@ import { searchModule } from "../../../src/main/search/search.container";
 import { SEARCH } from "../../../src/main/search/search.symbols";
 import { InMemoryNoteRepo } from "../../application/__fake__/in-memory-note-repo";
 import { InMemorySearchIndex } from "../../application/use-cases/__fake__/in-memory-search-index";
-import { SpyIndexFailureLog } from "../../application/use-cases/__spy__/spy-index-failure-log";
+import { SpyIndexFailureLog } from "../../__spy__/spy-index-failure-log";
 
 type UseCaseClass = new (...args: never[]) => object;
 

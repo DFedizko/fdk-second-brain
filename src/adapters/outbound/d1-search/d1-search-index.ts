@@ -1,3 +1,4 @@
+import type { IndexFailureLog } from "../../../application/ports/index-failure-log";
 import type { SearchHit, SearchIndex } from "../../../application/ports/search-index";
 import type { MarkdownChunk } from "../../../domain/markdown-chunk";
 import { NotePath } from "../../../domain/note-path";
@@ -28,12 +29,15 @@ interface VersionRow {
 }
 
 export class D1SearchIndex implements SearchIndex {
-  constructor(private readonly database: D1Database) {}
+  constructor(
+    private readonly database: D1Database,
+    private readonly log: IndexFailureLog,
+  ) {}
 
   async search(query: SearchQuery, limit: number): Promise<SearchHit[]> {
     const statement = this.database.prepare(SEARCH_CHUNKS);
     const { results } = await statement.bind(this.buildMatch(query), limit).all<HitRow>();
-    return results.map((row) => this.toHit(row));
+    return results.flatMap((row) => this.readHit(row));
   }
 
   async versionOf(path: NotePath): Promise<NoteVersion | null> {
@@ -83,7 +87,12 @@ export class D1SearchIndex implements SearchIndex {
     return (results.at(-1)?.meta.changes ?? 0) > 0;
   }
 
-  private toHit(row: HitRow): SearchHit {
-    return { path: NotePath.of(row.path), heading: row.heading, snippet: row.snippet };
+  private readHit(row: HitRow): SearchHit[] {
+    try {
+      return [{ path: NotePath.of(row.path), heading: row.heading, snippet: row.snippet }];
+    } catch (error) {
+      this.log.report({ path: row.path, error });
+      return [];
+    }
   }
 }

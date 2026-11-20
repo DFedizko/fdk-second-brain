@@ -6,7 +6,7 @@ import { WriteNote, type WriteNoteInput } from "../../../src/application/use-cas
 import { NoteAlreadyExists } from "../../../src/domain/errors/note-already-exists";
 import { NotePath } from "../../../src/domain/note-path";
 import { InMemoryNoteRepo } from "../__fake__/in-memory-note-repo";
-import { SpyIndexFailureLog } from "./__spy__/spy-index-failure-log";
+import { SpyIndexFailureLog } from "../../__spy__/spy-index-failure-log";
 import { SpyIndexSync } from "./__spy__/spy-index-sync";
 import { SpyNoteIndexer } from "./__spy__/spy-note-indexer";
 import { FailingNoteIndexer } from "./__stub__/failing-note-indexer";
