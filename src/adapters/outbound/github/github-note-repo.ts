@@ -117,8 +117,14 @@ export class GitHubNoteRepo implements NoteRepository {
   private async isEmptyRepository(): Promise<boolean> {
     return this.reader.headCommit().then(
       () => false,
-      (error: unknown) => error instanceof EmptyRepository,
+      (error: unknown) => this.treatEmptyAsTrue(error),
     );
+  }
+
+  private treatEmptyAsTrue(error: unknown): boolean {
+    if (error instanceof EmptyRepository) return true;
+    if (this.isMissingBranch(error)) return false;
+    throw error;
   }
 
   async write(path: NotePath, content: string, expected: NoteVersion): Promise<Note> {
