@@ -85,6 +85,22 @@ describe("GitHubNoteRepo decoding note text", () => {
     expect(api.store.bytesOf(moved)).toEqual(INVALID_UTF8);
   });
 
+  it("moves a note that is not valid UTF-8 without returning garbled text", async () => {
+    api.addEntry(NOTES_BRANCH, INBOX.value, FILE_MODE, INVALID_UTF8);
+
+    const moved = await repository.move(INBOX, PLAN);
+
+    expect(moved.content).toBeUndefined();
+  });
+
+  it("returns the text of a moved note", async () => {
+    await repository.create(INBOX, WITH_BOM);
+
+    const moved = await repository.move(INBOX, PLAN);
+
+    expect(moved.content).toBe(WITH_BOM);
+  });
+
   it("refuses a note that is not valid UTF-8 instead of corrupting it", async () => {
     api.addEntry(NOTES_BRANCH, INBOX.value, FILE_MODE, INVALID_UTF8);
 
