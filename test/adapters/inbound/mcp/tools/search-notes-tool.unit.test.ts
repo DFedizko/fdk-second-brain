@@ -10,6 +10,9 @@ import { EMPTY, newReplies, newRunner, NOT_A_STRING, PATH, textOfLength } from "
 
 const NAME = "search_notes";
 const QUERY = "ship plan";
+const WANTED_LIMIT = 3;
+const BELOW_MIN_LIMIT = 0;
+const FRACTIONAL_LIMIT = 2.5;
 const MAX_QUERY_LENGTH = 500;
 const HIT: SearchResult = { path: PATH, heading: "Plan", snippet: "Ship it." };
 
@@ -23,9 +26,9 @@ beforeEach(async () => {
 
 describe("search_notes tool", () => {
   it("passes the query and limit to the use case", async () => {
-    await tool.call({ query: QUERY, limit: 3 });
+    await tool.call({ query: QUERY, limit: WANTED_LIMIT });
 
-    expect(useCase.inputs).toEqual([{ query: QUERY, limit: 3 }]);
+    expect(useCase.inputs).toEqual([{ query: QUERY, limit: WANTED_LIMIT }]);
   });
 
   it("shows each hit with its path, heading and snippet", async () => {
@@ -50,9 +53,9 @@ describe("search_notes tool", () => {
     ["an empty query", { query: EMPTY }],
     ["a query that is not a string", { query: NOT_A_STRING }],
     ["a query longer than allowed", { query: textOfLength(MAX_QUERY_LENGTH + 1) }],
-    ["a limit below one", { query: QUERY, limit: 0 }],
+    ["a limit below one", { query: QUERY, limit: BELOW_MIN_LIMIT }],
     ["a limit above the maximum", { query: QUERY, limit: MAX_SEARCH_LIMIT + 1 }],
-    ["a limit that is not whole", { query: QUERY, limit: 2.5 }],
+    ["a limit that is not whole", { query: QUERY, limit: FRACTIONAL_LIMIT }],
   ])("rejects %s", async (_case, input) => {
     const result = await tool.call(input);
 
