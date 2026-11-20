@@ -1,3 +1,4 @@
+import { CALLBACK_PATH } from "../../../../src/shared/contracts/sign-in-paths";
 import { FakeGitHubOAuth } from "../../outbound/github-oauth/__fake__/fake-github-oauth";
 import { FakeGitHubApi } from "../../outbound/github/__fake__/fake-github-api";
 import { FakeGitHubServer } from "../../outbound/github/__fake__/fake-github-server";
@@ -7,7 +8,6 @@ import { BearerEndpoint } from "../oauth/bearer-endpoint";
 import { SignInClient, WORKER_ORIGIN } from "../oauth/sign-in-client";
 import { McpTestClient } from "./mcp-test-client";
 
-const CALLBACK_PATH = "/callback";
 export const OWNER = { login: "octo-cat", id: Number(VALID_ENV.OWNER_GITHUB_ID) };
 
 export type NoteSeed = Readonly<Record<string, string>>;
