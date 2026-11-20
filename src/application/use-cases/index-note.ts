@@ -7,7 +7,8 @@ import type { NoteVersion } from "../../domain/note-version";
 import type { NoteRepository } from "../ports/note-repository";
 import type { SearchIndex } from "../ports/search-index";
 
-export const MAX_INDEX_ATTEMPTS = 3;
+export const MAX_INDEX_ATTEMPTS = 5;
+const UNCHANGED: IndexStatus = "unchanged";
 
 export interface IndexNoteInput {
   readonly path: string;
@@ -26,6 +27,8 @@ export interface NoteIndexer {
 
 // Messages can arrive late or twice, so the note is re-read at the head and the
 // index is written only over the version seen before that read (compare-and-set).
+// Blob SHAs repeat when an edit is reverted, so after every write it checks again
+// until a pass finds the index already matching the head.
 export class IndexNote implements NoteIndexer {
   constructor(
     private readonly index: SearchIndex,
@@ -38,11 +41,15 @@ export class IndexNote implements NoteIndexer {
     return { path: path.value, status: await this.syncWithRetry(path, MAX_INDEX_ATTEMPTS) };
   }
 
-  private async syncWithRetry(path: NotePath, attempts: number): Promise<IndexStatus> {
-    const status = await this.syncOnce(path);
-    if (status !== undefined) return status;
-    if (attempts <= 1) throw new IndexWriteConflict(path.value);
-    return this.syncWithRetry(path, attempts - 1);
+  private async syncWithRetry(
+    path: NotePath,
+    attemptsLeft: number,
+    applied?: IndexStatus,
+  ): Promise<IndexStatus> {
+    if (attemptsLeft <= 0) throw new IndexWriteConflict(path.value);
+    const outcome = await this.syncOnce(path);
+    if (outcome === UNCHANGED) return applied ?? outcome;
+    return this.syncWithRetry(path, attemptsLeft - 1, outcome ?? applied);
   }
 
   private async syncOnce(path: NotePath): Promise<IndexStatus | undefined> {
