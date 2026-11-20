@@ -3,15 +3,17 @@
   "name": "second-brain-mcp",
   "main": "src/main/worker.ts",
   "compatibility_date": "2026-11-19",
+  "workers_dev": true,
+  "preview_urls": false,
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "second-brain",
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "ec2efe47-3c0f-4aa5-8284-6fae38b8083b",
       "migrations_dir": "migrations",
     },
   ],
-  "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "00000000000000000000000000000000" }],
+  "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "5251c49999cd4f8eb6ed0654a510ddd5" }],
   "queues": {
     "producers": [{ "binding": "INDEX_QUEUE", "queue": "second-brain-index" }],
     "consumers": [
