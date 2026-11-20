@@ -28,7 +28,8 @@ export interface NoteIndexer {
 // Messages can arrive late or twice, so the note is re-read at the head and the
 // index is written only over the version seen before that read (compare-and-set).
 // Blob SHAs repeat when an edit is reverted, so after every write it checks again
-// until a pass finds the index already matching the head.
+// until a pass finds the index already matching the head. Only passes that lose
+// the compare-and-set use up an attempt, so a burst of saves can't exhaust them.
 export class IndexNote implements NoteIndexer {
   constructor(
     private readonly index: SearchIndex,
@@ -49,7 +50,8 @@ export class IndexNote implements NoteIndexer {
     if (attemptsLeft <= 0) throw new IndexWriteConflict(path.value);
     const outcome = await this.syncOnce(path);
     if (outcome === UNCHANGED) return applied ?? outcome;
-    return this.syncWithRetry(path, attemptsLeft - 1, outcome ?? applied);
+    if (outcome === undefined) return this.syncWithRetry(path, attemptsLeft - 1, applied);
+    return this.syncWithRetry(path, attemptsLeft, outcome);
   }
 
   private async syncOnce(path: NotePath): Promise<IndexStatus | undefined> {

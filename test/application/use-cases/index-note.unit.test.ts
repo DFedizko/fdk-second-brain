@@ -14,6 +14,8 @@ const SECOND_CONTENT = "# Plan\nship the sync";
 const STALE_VERSION = NoteVersion.of("aaa111");
 const STALE_CHUNKS = [{ heading: "Plan", seq: 0, text: "stale words" }];
 const RACER_PREFIX = "bbb00";
+const QUICK_SAVES = 5;
+const LATEST_TEXT = `ship save ${QUICK_SAVES}`;
 
 describe("IndexNote", () => {
   let index: InMemorySearchIndex;
@@ -112,6 +114,18 @@ describe("IndexNote", () => {
     await indexNote.execute({ path: PATH });
 
     expect(index.chunksOf(PATH)).toEqual([{ heading: "Plan", seq: 0, text: "ship the search" }]);
+  });
+
+  it("ends at the latest version after five quick saves while it writes", async () => {
+    let current = await notes.create(NOTE, FIRST_CONTENT);
+    const save = (n: number) => async () => {
+      current = await notes.write(NOTE, `# Plan\nship save ${n}`, current.version);
+    };
+    index.beforeNextWrites(...Array.from({ length: QUICK_SAVES }, (_, n) => save(n + 1)));
+
+    await indexNote.execute({ path: PATH });
+
+    expect(index.chunksOf(PATH)).toEqual([{ heading: "Plan", seq: 0, text: LATEST_TEXT }]);
   });
 
   it("gives up with IndexWriteConflict when every write loses a race", async () => {
