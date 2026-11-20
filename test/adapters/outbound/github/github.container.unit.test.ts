@@ -3,6 +3,7 @@ import type { NoteRepository } from "../../../../src/application/ports/note-repo
 import { githubContainer } from "../../../../src/adapters/outbound/github/github.container";
 import { GITHUB } from "../../../../src/adapters/outbound/github/github.symbols";
 import { GitHubNoteRepo } from "../../../../src/adapters/outbound/github/github-note-repo";
+import { BudgetedHeadNotes } from "../../../../src/adapters/outbound/github/budgeted-head-notes";
 import { GitHubBranchHead } from "../../../../src/adapters/outbound/github/github-branch-head";
 import { GitHubNoteCatalog } from "../../../../src/adapters/outbound/github/github-note-catalog";
 import { SILENT_LOG } from "../../../../src/adapters/outbound/github/silent-log";
@@ -37,6 +38,15 @@ describe("githubContainer", () => {
     const head = container.get(GITHUB.branchHead);
 
     expect(head).toBeInstanceOf(GitHubBranchHead);
+  });
+
+  it("binds the factory of budgeted head readers", () => {
+    const container = new Container();
+    container.load(githubContainer(GITHUB_CONFIG), clockModule);
+
+    const factory = container.get(GITHUB.headNotes);
+
+    expect(factory).toBeInstanceOf(BudgetedHeadNotes);
   });
 
   it("builds a GitHub client that logs nothing, as request URLs hold note paths", () => {

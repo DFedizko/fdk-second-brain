@@ -20,13 +20,17 @@ export class IndexPushedNote implements PushedNoteIndexer {
   constructor(
     private readonly head: BranchHead,
     private readonly indexers: IndexerFactory,
-    private readonly atBranch: NoteIndexer,
   ) {}
 
   async execute(input: PushedNoteInput): Promise<IndexNoteResult> {
-    if (input.commit === undefined) return this.atBranch.execute({ path: input.path });
-    const pinned = await this.head.readerAt(input.commit);
-    if (pinned === null) throw new BranchBehind(input.commit);
+    const pinned = await this.pinnedNotes(input.commit);
     return this.indexers.over(pinned).execute({ path: input.path });
+  }
+
+  private async pinnedNotes(commit?: string): Promise<NoteLookup> {
+    if (commit === undefined) return this.head.readerAtHead();
+    const pinned = await this.head.readerAt(commit);
+    if (pinned === null) throw new BranchBehind(commit);
+    return pinned;
   }
 }

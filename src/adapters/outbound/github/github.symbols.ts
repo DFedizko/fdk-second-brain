@@ -4,6 +4,7 @@ import type { NoteTree } from "../../../application/ports/note-tree";
 import type { NoteRepository } from "../../../application/ports/note-repository";
 import type { Octokit } from "@octokit/rest";
 import type { BranchRestorer } from "./github-branch-restorer";
+import type { HeadNotesFactory } from "./head-notes-factory";
 import type { GitHubConfig } from "./github-config";
 import type { GitHubErrorMapper } from "./github-error-translator";
 import type { FirstNoteWriter } from "./github-first-note";
@@ -24,5 +25,6 @@ export const GITHUB = {
   pause: Symbol.for("GitHubRetryPause") as ServiceIdentifier<RetryPause>,
   noteRepository: Symbol.for("NoteRepository") as ServiceIdentifier<NoteRepository>,
   noteCatalog: Symbol.for("GitHubNoteCatalog") as ServiceIdentifier<NoteTree>,
+  headNotes: Symbol.for("GitHubHeadNotes") as ServiceIdentifier<HeadNotesFactory>,
   branchHead: Symbol.for("GitHubBranchHead") as ServiceIdentifier<BranchHead>,
 } as const;
