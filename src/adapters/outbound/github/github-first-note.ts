@@ -5,9 +5,11 @@ import type { NotePath } from "../../../domain/note-path";
 import { NoteVersion } from "../../../domain/note-version";
 import { encodeBase64 } from "./base64-text";
 import { BranchMoved } from "./branch-moved";
+import { EmptyRepository } from "./empty-repository";
 import type { FailureContext } from "./github-error-translator";
 import type { GitHubAccess } from "./github-gateway";
 import type { NoteReader } from "./github-note-reader";
+import { RefAlreadyExists } from "./ref-already-exists";
 
 const CREATE = "Create";
 const NOT_FOUND = 404;
@@ -89,6 +91,7 @@ export class GitHubFirstNote implements FirstNoteWriter {
   }
 
   private async treatRacedRefAsTaken(error: unknown): Promise<boolean> {
+    if (error instanceof RefAlreadyExists) return false;
     if (await this.branchExists()) return false;
     throw error;
   }
@@ -104,6 +107,7 @@ export class GitHubFirstNote implements FirstNoteWriter {
   }
 
   private treatMissingBranch(error: unknown): boolean {
+    if (error instanceof EmptyRepository) return false;
     if (error instanceof NotesUnavailable && error.status === NOT_FOUND) return false;
     throw error;
   }

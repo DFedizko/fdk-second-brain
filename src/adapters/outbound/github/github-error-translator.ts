@@ -7,6 +7,7 @@ import { NotesUnavailable } from "../../../domain/errors/notes-unavailable";
 import { VersionConflict } from "../../../domain/errors/version-conflict";
 import { BranchMoved } from "./branch-moved";
 import { EmptyRepository } from "./empty-repository";
+import { RefAlreadyExists } from "./ref-already-exists";
 
 const UNAUTHORIZED = 401;
 const FORBIDDEN = 403;
@@ -19,6 +20,7 @@ const MILLIS_PER_SECOND = 1000;
 const RATE_LIMIT_MESSAGE = /rate limit/i;
 const SHA_MISSING = /"sha" wasn't supplied/;
 const NOT_FAST_FORWARD = /not a fast forward/i;
+const REF_EXISTS = /Reference already exists/i;
 const EMPTY_REPOSITORY = /Git Repository is empty/i;
 const NEWER_VERSION = "a newer version";
 const REMAINING_HEADER = "x-ratelimit-remaining";
@@ -74,6 +76,7 @@ export class GitHubErrorTranslator implements GitHubErrorMapper {
       return new NoteAlreadyExists(context.path);
     }
     if (NOT_FAST_FORWARD.test(failure.message)) return new BranchMoved();
+    if (REF_EXISTS.test(failure.message)) return new RefAlreadyExists();
     return new NotesUnavailable(failure.status, failure.cause);
   }
 
