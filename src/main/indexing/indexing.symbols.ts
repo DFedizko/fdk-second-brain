@@ -1,4 +1,5 @@
 import type { ServiceIdentifier } from "inversify";
+import type { IndexDropper } from "../../application/use-cases/drop-note-index";
 import type {
   IndexerFactory,
   PushedNoteIndexer,
@@ -11,4 +12,5 @@ export const INDEXING = {
   indexerFactory: Symbol.for("IndexerFactory") as ServiceIdentifier<IndexerFactory>,
   indexPushed: Symbol.for("IndexPushedNote") as ServiceIdentifier<PushedNoteIndexer>,
   reconcile: Symbol.for("ReconcileIndex") as ServiceIdentifier<ReconcileIndex>,
+  dropIndex: Symbol.for("DropNoteIndex") as ServiceIdentifier<IndexDropper>,
 } as const;

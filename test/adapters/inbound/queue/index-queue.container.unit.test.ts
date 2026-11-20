@@ -8,8 +8,10 @@ import { FixedClock } from "../../../__stub__/fixed-clock";
 import { SpyIndexFailureLog } from "../../../__spy__/spy-index-failure-log";
 import { SpyNoteIndexer } from "../../../application/use-cases/__spy__/spy-note-indexer";
 import { FakeMessageBatch } from "./__fake__/fake-message-batch";
+import { SpyIndexDropper } from "./__spy__/spy-index-dropper";
 
 const INDEXER = Symbol.for("TestNoteIndexer");
+const DROPPER = Symbol.for("TestIndexDropper");
 const PLAN = "projects/plan.md";
 const NOW = new Date("2026-11-20T12:00:00Z");
 
@@ -23,7 +25,8 @@ describe("createIndexQueueModule", () => {
     container.bind(INDEXER).toConstantValue(indexer);
     container.bind(LOGGING.indexFailureLog).toConstantValue(new SpyIndexFailureLog());
     container.bind(CLOCK.clock).toConstantValue(new FixedClock(NOW));
-    container.load(createIndexQueueModule(INDEXER));
+    container.bind(DROPPER).toConstantValue(new SpyIndexDropper());
+    container.load(createIndexQueueModule({ indexer: INDEXER, dropper: DROPPER }));
   });
 
   it("binds the index queue consumer", () => {

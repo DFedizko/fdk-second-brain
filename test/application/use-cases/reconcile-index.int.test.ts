@@ -1,3 +1,4 @@
+import { DropNoteIndex } from "../../../src/application/use-cases/drop-note-index";
 import { FixedClock } from "../../__stub__/fixed-clock";
 import { IndexQueueConsumer } from "../../../src/adapters/inbound/queue/index-queue-consumer";
 import { ReconcileIndex } from "../../../src/application/use-cases/reconcile-index";
@@ -35,9 +36,12 @@ describe("ReconcileIndex on D1", () => {
 
   async function consumeQueued(): Promise<void> {
     const bodies = queue.paths.map((path) => ({ path }));
-    await new IndexQueueConsumer(race.indexer, race.log, new FixedClock(NOW)).handle(
-      FakeMessageBatch.of(bodies),
-    );
+    await new IndexQueueConsumer(
+      race.indexer,
+      new DropNoteIndex(race.index),
+      race.log,
+      new FixedClock(NOW),
+    ).handle(FakeMessageBatch.of(bodies));
   }
 
   it("queues a note written then deleted within moments that stayed in search", async () => {

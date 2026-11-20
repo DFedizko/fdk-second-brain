@@ -39,7 +39,7 @@ export const appModules: ModulesFactory = (config, bindings) => [
   createOAuthModule(toOAuthSettings(config)),
   createQueueModule(bindings.INDEX_QUEUE),
   indexingModule,
-  createIndexQueueModule(INDEXING.indexPushed),
+  createIndexQueueModule({ indexer: INDEXING.indexPushed, dropper: INDEXING.dropIndex }),
   createWebhookModule({
     ...toWebhookSettings(config),
     branch: config.NOTES_BRANCH,
