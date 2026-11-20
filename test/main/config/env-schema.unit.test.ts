@@ -6,12 +6,15 @@ const NOT_A_STRING = 42;
 const OPTIONAL_NAME = "NOTES_BRANCH";
 const API_URL_NAME = "GITHUB_API_URL";
 const DEFAULT_API_URL = "https://api.github.com";
+const OAUTH_URL_NAME = "GITHUB_OAUTH_URL";
+const DEFAULT_OAUTH_URL = "https://github.com";
 const SECRET_LENGTH = 32;
 const NOT_AN_OBJECT_MESSAGE =
   "The Worker's env bindings are missing: expected an object holding the environment variables.";
 const EMPTY = "";
 
-type RequiredName = Exclude<EnvName, typeof OPTIONAL_NAME | typeof API_URL_NAME>;
+type OptionalName = typeof OPTIONAL_NAME | typeof API_URL_NAME | typeof OAUTH_URL_NAME;
+type RequiredName = Exclude<EnvName, OptionalName>;
 
 const MISSING_MESSAGES: Record<RequiredName, string> = {
   GITHUB_TOKEN:
@@ -22,12 +25,12 @@ const MISSING_MESSAGES: Record<RequiredName, string> = {
   GITHUB_CLIENT_ID: "GITHUB_CLIENT_ID is missing: set it to the Client ID of the GitHub OAuth app.",
   GITHUB_CLIENT_SECRET:
     "GITHUB_CLIENT_SECRET is missing: set it to a client secret of the GitHub OAuth app.",
-  OWNER_GITHUB_LOGIN:
-    "OWNER_GITHUB_LOGIN is missing: set it to the GitHub login of the only account allowed to sign in.",
+  OWNER_GITHUB_ID:
+    "OWNER_GITHUB_ID is missing: set it to the numeric GitHub user ID of the only account allowed to sign in (see https://api.github.com/users/<login>).",
   GITHUB_WEBHOOK_SECRET:
     "GITHUB_WEBHOOK_SECRET is missing: set it to the secret of the notes repository's push webhook.",
-  COOKIE_ENCRYPTION_KEY:
-    "COOKIE_ENCRYPTION_KEY is missing: set it to 64 hexadecimal characters (openssl rand -hex 32).",
+  PUBLIC_URL:
+    "PUBLIC_URL is missing: set it to the Worker's public https origin, such as https://second-brain.example.workers.dev.",
 };
 
 const INVALID_CASES: ReadonlyArray<[EnvName, unknown, string]> = [
@@ -67,9 +70,9 @@ const INVALID_CASES: ReadonlyArray<[EnvName, unknown, string]> = [
     "GITHUB_CLIENT_SECRET is invalid: expected a GitHub OAuth app client secret (40 hexadecimal characters).",
   ],
   [
-    "OWNER_GITHUB_LOGIN",
-    "-leading-hyphen",
-    "OWNER_GITHUB_LOGIN is invalid: expected a GitHub login (letters, digits and hyphens, not starting with a hyphen, at most 39 characters).",
+    "OWNER_GITHUB_ID",
+    "octo-cat",
+    "OWNER_GITHUB_ID is invalid: expected a numeric GitHub user ID such as 583231, not a login (see https://api.github.com/users/<login>).",
   ],
   [
     "GITHUB_WEBHOOK_SECRET",
@@ -77,9 +80,14 @@ const INVALID_CASES: ReadonlyArray<[EnvName, unknown, string]> = [
     "GITHUB_WEBHOOK_SECRET is invalid: expected at least 32 characters with no spaces or line breaks (openssl rand -hex 32).",
   ],
   [
-    "COOKIE_ENCRYPTION_KEY",
-    "abc123",
-    "COOKIE_ENCRYPTION_KEY is invalid: expected 64 hexadecimal characters (openssl rand -hex 32).",
+    "PUBLIC_URL",
+    "ftp://second-brain.example",
+    "PUBLIC_URL is invalid: expected an https origin with no path or trailing slash, such as https://second-brain.example.workers.dev (http is allowed only for localhost, 127.0.0.1 or [::1]).",
+  ],
+  [
+    "GITHUB_OAUTH_URL",
+    "ftp://github.com",
+    "GITHUB_OAUTH_URL is invalid: expected an https origin with no path or trailing slash, such as https://github.com (http is allowed only for localhost, 127.0.0.1 or [::1]).",
   ],
 ];
 
@@ -105,14 +113,27 @@ const MORE_INVALID_VALUES: ReadonlyArray<[EnvName, string]> = [
   ["GITHUB_API_URL", "http://localhost.attacker.example"],
   ["GITHUB_API_URL", "http://127.0.0.1.attacker.example"],
   ["GITHUB_API_URL", "http://10.0.0.5:8787"],
+  ["OWNER_GITHUB_ID", "0"],
+  ["OWNER_GITHUB_ID", "0583231"],
+  ["OWNER_GITHUB_ID", "-583231"],
+  ["OWNER_GITHUB_ID", "583231.5"],
+  ["OWNER_GITHUB_ID", " 583231"],
+  ["PUBLIC_URL", "https://second-brain.example/"],
+  ["PUBLIC_URL", "https://second-brain.example/mcp"],
+  ["PUBLIC_URL", "http://second-brain.example"],
+  ["PUBLIC_URL", "https://second-brain.example?x=1"],
+  ["PUBLIC_URL", "https://second-brain.example#top"],
+  ["PUBLIC_URL", "https://user:pass@second-brain.example"],
+  ["GITHUB_OAUTH_URL", "https://github.com?x=1"],
+  ["GITHUB_OAUTH_URL", "https://github.com/login"],
   ["GITHUB_WEBHOOK_SECRET", " ".repeat(SECRET_LENGTH)],
   ["GITHUB_WEBHOOK_SECRET", "a".repeat(SECRET_LENGTH - 1) + "\n"],
   ["GITHUB_WEBHOOK_SECRET", "a".repeat(SECRET_LENGTH) + "\n"],
 ];
 
 const ACCEPTED_VALUES: ReadonlyArray<[EnvName, string]> = [
-  ["OWNER_GITHUB_LOGIN", "legacy--login"],
-  ["OWNER_GITHUB_LOGIN", "legacy-"],
+  ["OWNER_GITHUB_ID", "1"],
+  ["OWNER_GITHUB_ID", "1234567890123"],
   ["NOTES_REPO_OWNER", "legacy--org"],
   ["NOTES_BRANCH", "notes/v1.2-draft"],
   ["GITHUB_API_URL", "http://127.0.0.1:8787"],
@@ -120,6 +141,8 @@ const ACCEPTED_VALUES: ReadonlyArray<[EnvName, string]> = [
   ["GITHUB_API_URL", "http://[::1]:8787"],
   ["GITHUB_API_URL", "http://localhost"],
   ["GITHUB_API_URL", "https://github.example.com/api/v3"],
+  ["PUBLIC_URL", "http://localhost:8787"],
+  ["GITHUB_OAUTH_URL", "http://127.0.0.1:9000"],
 ];
 
 const REQUIRED_NAMES = Object.keys(MISSING_MESSAGES) as RequiredName[];
@@ -161,6 +184,12 @@ describe("ENV_SCHEMA", () => {
     const config = ENV_SCHEMA.parse(withoutVariable(API_URL_NAME));
 
     expect(config.GITHUB_API_URL).toBe(DEFAULT_API_URL);
+  });
+
+  it("defaults GITHUB_OAUTH_URL to github.com when it is unset", () => {
+    const config = ENV_SCHEMA.parse(withoutVariable(OAUTH_URL_NAME));
+
+    expect(config.GITHUB_OAUTH_URL).toBe(DEFAULT_OAUTH_URL);
   });
 
   it.each(REQUIRED_NAMES)("explains that %s is missing", (name) => {

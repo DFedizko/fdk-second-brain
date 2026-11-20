@@ -18,18 +18,22 @@ const BRANCH_RULES = [
 const BRANCH_NAME = new RegExp(`^${BRANCH_RULES.join("")}[\\w./-]+$`);
 const DEFAULT_API_URL = "https://api.github.com";
 const URL_ORIGIN =
-  "(?:https:\\/\\/[^\\s/]+|http:\\/\\/(?:localhost|127\\.0\\.0\\.1|\\[::1\\])(?::\\d+)?)";
+  "(?:https:\\/\\/[^\\s/?#@]+|http:\\/\\/(?:localhost|127\\.0\\.0\\.1|\\[::1\\])(?::\\d+)?)";
 const URL_PATH = "(?:\\/[^\\s]*[^\\s/])?";
 const API_URL = new RegExp(`^${URL_ORIGIN}${URL_PATH}$`);
+const ORIGIN_URL = new RegExp(`^${URL_ORIGIN}$`);
+const DEFAULT_OAUTH_URL = "https://github.com";
+const PUBLIC_URL_SAMPLE = "https://second-brain.example.workers.dev";
+const LOOPBACK_RULE = "(http is allowed only for localhost, 127.0.0.1 or [::1]).";
+const USER_ID = /^[1-9]\d*$/;
+const FIND_USER_ID = "see https://api.github.com/users/<login>";
 const CLIENT_ID = /^[A-Za-z0-9]+$/;
 const CLIENT_SECRET = /^[0-9a-fA-F]{40}$/;
 const LONG_SECRET = /^\S{32,}$/;
-const HEX_KEY = /^[0-9a-fA-F]{64}$/;
 const LOGIN_RULES =
   "letters, digits and hyphens, not starting with a hyphen, at most 39 characters";
 const NOT_AN_OBJECT =
   "The Worker's env bindings are missing: expected an object holding the environment variables.";
-const HEX_KEY_RULES = "64 hexadecimal characters (openssl rand -hex 32).";
 
 export const ENV_SCHEMA = z.object(
   {
@@ -64,11 +68,25 @@ export const ENV_SCHEMA = z.object(
     GITHUB_API_URL: optionalEnvField(
       {
         name: "GITHUB_API_URL",
-        expected: `an https URL with no trailing slash, such as ${DEFAULT_API_URL} (http is allowed only for localhost, 127.0.0.1 or [::1]).`,
+        expected: `an https URL with no trailing slash, such as ${DEFAULT_API_URL} ${LOOPBACK_RULE}`,
         pattern: API_URL,
       },
       DEFAULT_API_URL,
     ),
+    GITHUB_OAUTH_URL: optionalEnvField(
+      {
+        name: "GITHUB_OAUTH_URL",
+        expected: `an https origin with no path or trailing slash, such as ${DEFAULT_OAUTH_URL} ${LOOPBACK_RULE}`,
+        pattern: ORIGIN_URL,
+      },
+      DEFAULT_OAUTH_URL,
+    ),
+    PUBLIC_URL: requiredEnvField({
+      name: "PUBLIC_URL",
+      whenMissing: `set it to the Worker's public https origin, such as ${PUBLIC_URL_SAMPLE}.`,
+      expected: `an https origin with no path or trailing slash, such as ${PUBLIC_URL_SAMPLE} ${LOOPBACK_RULE}`,
+      pattern: ORIGIN_URL,
+    }),
     GITHUB_CLIENT_ID: requiredEnvField({
       name: "GITHUB_CLIENT_ID",
       whenMissing: "set it to the Client ID of the GitHub OAuth app.",
@@ -81,23 +99,17 @@ export const ENV_SCHEMA = z.object(
       expected: "a GitHub OAuth app client secret (40 hexadecimal characters).",
       pattern: CLIENT_SECRET,
     }),
-    OWNER_GITHUB_LOGIN: requiredEnvField({
-      name: "OWNER_GITHUB_LOGIN",
-      whenMissing: "set it to the GitHub login of the only account allowed to sign in.",
-      expected: `a GitHub login (${LOGIN_RULES}).`,
-      pattern: GITHUB_LOGIN,
+    OWNER_GITHUB_ID: requiredEnvField({
+      name: "OWNER_GITHUB_ID",
+      whenMissing: `set it to the numeric GitHub user ID of the only account allowed to sign in (${FIND_USER_ID}).`,
+      expected: `a numeric GitHub user ID such as 583231, not a login (${FIND_USER_ID}).`,
+      pattern: USER_ID,
     }),
     GITHUB_WEBHOOK_SECRET: requiredEnvField({
       name: "GITHUB_WEBHOOK_SECRET",
       whenMissing: "set it to the secret of the notes repository's push webhook.",
       expected: "at least 32 characters with no spaces or line breaks (openssl rand -hex 32).",
       pattern: LONG_SECRET,
-    }),
-    COOKIE_ENCRYPTION_KEY: requiredEnvField({
-      name: "COOKIE_ENCRYPTION_KEY",
-      whenMissing: `set it to ${HEX_KEY_RULES}`,
-      expected: HEX_KEY_RULES,
-      pattern: HEX_KEY,
     }),
   },
   { error: NOT_AN_OBJECT },
