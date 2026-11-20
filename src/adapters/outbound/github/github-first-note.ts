@@ -20,10 +20,6 @@ export interface FirstNoteWriter {
   create(path: NotePath, content: string): Promise<Note | undefined>;
 }
 
-// Refs can't be created in an empty repository, so the first commit goes to the
-// default branch and the configured branch is then made to contain it. When two
-// first notes race, the branch may already hold another commit; undefined then
-// tells the caller to create the note on the branch the normal way.
 export class GitHubFirstNote implements FirstNoteWriter {
   constructor(
     private readonly github: GitHubAccess,
