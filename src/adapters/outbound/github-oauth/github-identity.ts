@@ -25,6 +25,8 @@ const USER_AGENT = "second-brain-mcp";
 const EXCHANGE_FAILED = "GitHub refused the sign-in code";
 const USER_FAILED = "GitHub did not return the signed-in user";
 const UNREACHABLE = "GitHub could not be reached";
+const MAX_REPLY_CHARS = 1000;
+const UNREADABLE_REPLY = "";
 
 export class GitHubIdentity implements IdentityProvider {
   constructor(
@@ -80,13 +82,18 @@ export class GitHubIdentity implements IdentityProvider {
   }
 
   private async readJson<T>(response: Response, shape: z.ZodType<T>, failure: string): Promise<T> {
-    if (!response.ok) throw new SignInFailedError(failure);
+    if (!response.ok) throw new SignInFailedError(failure, { cause: await this.refusal(response) });
     const body: unknown = await response.json().catch((cause: unknown) => {
       throw new SignInFailedError(failure, { cause });
     });
     const parsed = shape.safeParse(body);
     if (!parsed.success) throw new SignInFailedError(failure, { cause: parsed.error });
     return parsed.data;
+  }
+
+  private async refusal(response: Response): Promise<{ status: number; body: string }> {
+    const body = await response.text().catch(() => UNREADABLE_REPLY);
+    return { status: response.status, body: body.slice(0, MAX_REPLY_CHARS) };
   }
 
   private async send(url: URL, init: RequestInit): Promise<Response> {

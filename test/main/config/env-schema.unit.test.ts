@@ -57,7 +57,7 @@ const INVALID_CASES: ReadonlyArray<[EnvName, unknown, string]> = [
   [
     "GITHUB_API_URL",
     "ftp://api.github.com",
-    "GITHUB_API_URL is invalid: expected an https URL with no trailing slash, such as https://api.github.com (http is allowed only for localhost, 127.0.0.1 or [::1]).",
+    "GITHUB_API_URL is invalid: expected an https URL with no trailing slash, such as https://api.github.com (http is allowed only for localhost, 127.0.0.1 or [::1]). The host must be lowercase, with no default port (:443 for https, :80 for http).",
   ],
   [
     "GITHUB_CLIENT_ID",
@@ -82,12 +82,12 @@ const INVALID_CASES: ReadonlyArray<[EnvName, unknown, string]> = [
   [
     "PUBLIC_URL",
     "ftp://second-brain.example",
-    "PUBLIC_URL is invalid: expected an https origin with no path or trailing slash, such as https://second-brain.example.workers.dev (http is allowed only for localhost, 127.0.0.1 or [::1]).",
+    "PUBLIC_URL is invalid: expected an https origin with no path or trailing slash, such as https://second-brain.example.workers.dev (http is allowed only for localhost, 127.0.0.1 or [::1]). The host must be lowercase, with no default port (:443 for https, :80 for http).",
   ],
   [
     "GITHUB_OAUTH_URL",
     "ftp://github.com",
-    "GITHUB_OAUTH_URL is invalid: expected an https origin with no path or trailing slash, such as https://github.com (http is allowed only for localhost, 127.0.0.1 or [::1]).",
+    "GITHUB_OAUTH_URL is invalid: expected an https origin with no path or trailing slash, such as https://github.com (http is allowed only for localhost, 127.0.0.1 or [::1]). The host must be lowercase, with no default port (:443 for https, :80 for http).",
   ],
 ];
 
@@ -136,6 +136,11 @@ const MORE_INVALID_VALUES: ReadonlyArray<[EnvName, string]> = [
   ["GITHUB_OAUTH_URL", "https://github.com\\login"],
   ["GITHUB_OAUTH_URL", "https://github.com:70000"],
   ["GITHUB_OAUTH_URL", "https://GitHub.com"],
+  ["PUBLIC_URL", "https://second-brain.example:443"],
+  ["PUBLIC_URL", "http://localhost:80"],
+  ["GITHUB_OAUTH_URL", "https://github.com:443"],
+  ["GITHUB_API_URL", "https://api.github.com:443"],
+  ["GITHUB_API_URL", "http://127.0.0.1:80/api"],
   ["GITHUB_WEBHOOK_SECRET", " ".repeat(SECRET_LENGTH)],
   ["GITHUB_WEBHOOK_SECRET", "a".repeat(SECRET_LENGTH - 1) + "\n"],
   ["GITHUB_WEBHOOK_SECRET", "a".repeat(SECRET_LENGTH) + "\n"],
@@ -156,6 +161,9 @@ const ACCEPTED_VALUES: ReadonlyArray<[EnvName, string]> = [
   ["PUBLIC_URL", "https://second-brain.example:8443"],
   ["PUBLIC_URL", "https://second-brain.example:65535"],
   ["GITHUB_OAUTH_URL", "https://github.example.com:1"],
+  ["PUBLIC_URL", "https://second-brain.example:4430"],
+  ["PUBLIC_URL", "http://localhost:443"],
+  ["GITHUB_API_URL", "https://github.example.com:80/api/v3"],
 ];
 
 const REQUIRED_NAMES = Object.keys(MISSING_MESSAGES) as RequiredName[];

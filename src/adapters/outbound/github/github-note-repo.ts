@@ -11,6 +11,7 @@ import { NotePath } from "../../../domain/note-path";
 import { NoteVersion } from "../../../domain/note-version";
 import { encodeBase64 } from "./base64-text";
 import { EmptyRepository } from "./empty-repository";
+import type { BranchRestorer } from "./github-branch-restorer";
 import type { FailureContext } from "./github-error-translator";
 import type { FirstNoteWriter } from "./github-first-note";
 import type { GitHubAccess } from "./github-gateway";
@@ -40,6 +41,7 @@ export class GitHubNoteRepo implements NoteRepository {
     private readonly mover: NoteMover,
     private readonly firstNote: FirstNoteWriter,
     private readonly pause: RetryPause,
+    private readonly restorer: BranchRestorer,
   ) {}
 
   async list(folder: NoteFolder): Promise<NotePath[]> {
@@ -89,14 +91,22 @@ export class GitHubNoteRepo implements NoteRepository {
     content: string,
     attemptsLeft: number,
   ): Promise<Note> {
-    if (!this.isMissingBranch(error) || attemptsLeft <= 1) throw error;
-    if (!(await this.isEmptyRepository())) {
-      await this.pause.wait(FIRST_NOTE_RETRY_MILLIS);
-      return this.createOnBranch(path, content).catch((failure: unknown) =>
-        this.createFirstNote(failure, path, content, attemptsLeft - 1),
-      );
-    }
+    if (!this.isMissingBranch(error)) throw error;
+    if (await this.isEmptyRepository()) return this.writeFirstNote(path, content);
+    if (attemptsLeft <= 1) return this.createOnRestoredBranch(path, content);
+    await this.pause.wait(FIRST_NOTE_RETRY_MILLIS);
+    return this.createOnBranch(path, content).catch((failure: unknown) =>
+      this.createFirstNote(failure, path, content, attemptsLeft - 1),
+    );
+  }
+
+  private async writeFirstNote(path: NotePath, content: string): Promise<Note> {
     return (await this.firstNote.create(path, content)) ?? this.createOnBranch(path, content);
+  }
+
+  private async createOnRestoredBranch(path: NotePath, content: string): Promise<Note> {
+    await this.restorer.restore();
+    return this.createOnBranch(path, content);
   }
 
   private isMissingBranch(error: unknown): boolean {
@@ -107,8 +117,14 @@ export class GitHubNoteRepo implements NoteRepository {
   private async isEmptyRepository(): Promise<boolean> {
     return this.reader.headCommit().then(
       () => false,
-      (error: unknown) => error instanceof EmptyRepository,
+      (error: unknown) => this.treatEmptyAsTrue(error),
     );
+  }
+
+  private treatEmptyAsTrue(error: unknown): boolean {
+    if (error instanceof EmptyRepository) return true;
+    if (this.isMissingBranch(error)) return false;
+    throw error;
   }
 
   async write(path: NotePath, content: string, expected: NoteVersion): Promise<Note> {
