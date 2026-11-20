@@ -51,7 +51,7 @@ function settle(word: string, settled: HitsCheck): Promise<string[]> {
 }
 
 function push(...commits: FileChanges[]): Promise<Response> {
-  return stack.fetch(github.push({ branch: BRANCH, commits }));
+  return stack.fetch(github.push({ branch: BRANCH, commits, after: edits.head() }));
 }
 
 describe("POST /webhooks/github", () => {

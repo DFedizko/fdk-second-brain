@@ -13,6 +13,10 @@ export class OutsideEdits {
     this.repo.addEntry(this.branch, path, FILE_MODE, content);
   }
 
+  head(): string {
+    return this.repo.store.headOf(this.branch) ?? "";
+  }
+
   delete(path: string): void {
     const files = new Map(this.repo.store.filesAt(this.branch));
     files.delete(path);

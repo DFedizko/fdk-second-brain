@@ -17,6 +17,7 @@ export interface PushSpec {
   readonly commits: readonly FileChanges[];
   readonly forced?: boolean;
   readonly deleted?: boolean;
+  readonly after?: string;
 }
 
 const OWNER = "octo-cat";
@@ -44,7 +45,7 @@ export function buildPushPayload(spec: PushSpec): PushPayload {
   return {
     ref: `refs/heads/${spec.branch}`,
     before: BEFORE,
-    after: spec.deleted ? PAD.repeat(SHA_LENGTH) : AFTER,
+    after: spec.deleted ? PAD.repeat(SHA_LENGTH) : (spec.after ?? AFTER),
     base_ref: null,
     created: false,
     deleted: spec.deleted ?? false,
