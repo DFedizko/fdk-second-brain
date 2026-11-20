@@ -1,21 +1,33 @@
 import { GitHubErrorTranslator } from "../../../../src/adapters/outbound/github/github-error-translator";
 import { GitHubGateway } from "../../../../src/adapters/outbound/github/github-gateway";
 import { GitHubNoteCatalog } from "../../../../src/adapters/outbound/github/github-note-catalog";
+import { GitHubNoteReader } from "../../../../src/adapters/outbound/github/github-note-reader";
 import { NotesUnavailable } from "../../../../src/domain/errors/notes-unavailable";
 import { FixedClock } from "../../../__stub__/fixed-clock";
 import type { FakeGitHubApi } from "./__fake__/fake-github-api";
-import { buildEmptyNotesRepo, buildFakeNotesRepo, NOTES_BRANCH } from "./__fake__/fake-notes-repo";
+import {
+  buildEmptyNotesRepo,
+  buildFakeNotesRepo,
+  NOTES_BRANCH,
+  NOTES_OWNER,
+  NOTES_REPO,
+} from "./__fake__/fake-notes-repo";
 import { FIXED_NOW } from "./__fake__/github-note-repo-on-fake";
 import { GITHUB_CONFIG } from "./__stub__/github-config";
 
 const PLAN = "projects/plan.md";
 const FILE_MODE = "100644";
 const PLAN_CONTENT = "# Plan\n";
+const TREES = `/repos/${NOTES_OWNER}/${NOTES_REPO}/git/trees/`;
 
 function connectCatalog(api: FakeGitHubApi): GitHubNoteCatalog {
   const errors = new GitHubErrorTranslator(new FixedClock(FIXED_NOW));
   const github = new GitHubGateway(api.octokit(GITHUB_CONFIG.token), GITHUB_CONFIG, errors);
-  return new GitHubNoteCatalog(github);
+  return new GitHubNoteCatalog(github, new GitHubNoteReader(github));
+}
+
+function treeReads(api: FakeGitHubApi): string[] {
+  return api.requested.filter((request) => request.includes(TREES));
 }
 
 function shaOf(api: FakeGitHubApi, path: string): string {
@@ -35,6 +47,16 @@ describe("GitHubNoteCatalog", () => {
     const stamps = await listed(connectCatalog(api));
 
     expect(stamps).toEqual([{ path: PLAN, version: shaOf(api, PLAN) }]);
+  });
+
+  it("reads the tree at the head commit instead of by branch name", async () => {
+    const api = buildFakeNotesRepo();
+    api.addEntry(NOTES_BRANCH, PLAN, FILE_MODE, PLAN_CONTENT);
+    const head = api.store.headOf(NOTES_BRANCH) ?? "";
+
+    await connectCatalog(api).stamps();
+
+    expect(treeReads(api)).toEqual([`GET ${TREES}${head}`]);
   });
 
   it("lists nothing in an empty repository", async () => {

@@ -58,6 +58,7 @@ export class FakeGitHubApi {
   private readonly empty: EmptyRepoReplies;
   private readonly limits: FakeLimits = { truncateTrees: false };
   readonly served: number[] = [];
+  readonly requested: string[] = [];
 
   constructor(private readonly setup: FakeRepoSetup) {
     const shapes = new GitHubShapes(setup.owner, setup.repo);
@@ -89,6 +90,7 @@ export class FakeGitHubApi {
     const response = this.answer(request, body);
     this.races.afterReply({ ...step, status: response.status });
     this.served.push(response.status);
+    this.requested.push(`${step.method} ${step.path}`);
     return response;
   };
 
