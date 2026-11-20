@@ -2,6 +2,7 @@ import { Container } from "inversify";
 import { createD1SearchModule } from "../../../../src/adapters/outbound/d1-search/d1-search.container";
 import { D1_SEARCH_SYMBOLS } from "../../../../src/adapters/outbound/d1-search/d1-search.symbols";
 import { D1SearchIndex } from "../../../../src/adapters/outbound/d1-search/d1-search-index";
+import { D1IndexManifest } from "../../../../src/adapters/outbound/d1-search/d1-index-manifest";
 import type { SearchIndex } from "../../../../src/application/ports/search-index";
 import { LOGGING } from "../../../../src/adapters/outbound/logging/logging.symbols";
 import { SpyIndexFailureLog } from "../../../__spy__/spy-index-failure-log";
@@ -28,5 +29,11 @@ describe("createD1SearchModule", () => {
     const second = container.get<SearchIndex>(D1_SEARCH_SYMBOLS.SearchIndex);
 
     expect(second).toBe(first);
+  });
+
+  it("binds the index manifest to the D1 adapter", () => {
+    const manifest = container.get(D1_SEARCH_SYMBOLS.IndexManifest);
+
+    expect(manifest).toBeInstanceOf(D1IndexManifest);
   });
 });

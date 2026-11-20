@@ -3,6 +3,8 @@ import type { NoteRepository } from "../../../../src/application/ports/note-repo
 import { githubContainer } from "../../../../src/adapters/outbound/github/github.container";
 import { GITHUB } from "../../../../src/adapters/outbound/github/github.symbols";
 import { GitHubNoteRepo } from "../../../../src/adapters/outbound/github/github-note-repo";
+import { GitHubBranchHead } from "../../../../src/adapters/outbound/github/github-branch-head";
+import { GitHubNoteCatalog } from "../../../../src/adapters/outbound/github/github-note-catalog";
 import { SILENT_LOG } from "../../../../src/adapters/outbound/github/silent-log";
 import { clockModule } from "../../../../src/adapters/outbound/clock/clock.container";
 import { GITHUB_CONFIG } from "./__stub__/github-config";
@@ -17,6 +19,24 @@ describe("githubContainer", () => {
     const repository = container.get<NoteRepository>(GITHUB.noteRepository);
 
     expect(repository).toBeInstanceOf(GitHubNoteRepo);
+  });
+
+  it("binds the note catalog to the GitHub tree adapter", () => {
+    const container = new Container();
+    container.load(githubContainer(GITHUB_CONFIG), clockModule);
+
+    const catalog = container.get(GITHUB.noteCatalog);
+
+    expect(catalog).toBeInstanceOf(GitHubNoteCatalog);
+  });
+
+  it("binds the branch head to the GitHub compare adapter", () => {
+    const container = new Container();
+    container.load(githubContainer(GITHUB_CONFIG), clockModule);
+
+    const head = container.get(GITHUB.branchHead);
+
+    expect(head).toBeInstanceOf(GitHubBranchHead);
   });
 
   it("builds a GitHub client that logs nothing, as request URLs hold note paths", () => {

@@ -7,6 +7,9 @@ import { GitHubFirstNote, type FirstNoteWriter } from "./github-first-note";
 import { GitHubGateway, type GitHubAccess } from "./github-gateway";
 import { GitHubNoteMover, type NoteMover } from "./github-note-mover";
 import { GitHubNoteReader, type NoteReader } from "./github-note-reader";
+import { CommitCompare } from "./commit-compare";
+import { GitHubBranchHead } from "./github-branch-head";
+import { GitHubNoteCatalog } from "./github-note-catalog";
 import { GitHubNoteRepo } from "./github-note-repo";
 import { GITHUB } from "./github.symbols";
 import { TimerPause, type RetryPause } from "./retry-pause";
@@ -54,6 +57,15 @@ export function githubContainer(config: GitHubConfig): ContainerModule {
         pause: RetryPause,
       ) => new GitHubNoteRepo(github, reader, mover, first, pause),
       [GITHUB.access, GITHUB.reader, GITHUB.mover, GITHUB.firstNote, GITHUB.pause],
+    );
+    bind(GITHUB.branchHead).toResolvedValue(
+      (github: GitHubAccess, reader: NoteReader) =>
+        new GitHubBranchHead(reader, new CommitCompare(github)),
+      [GITHUB.access, GITHUB.reader],
+    );
+    bind(GITHUB.noteCatalog).toResolvedValue(
+      (github: GitHubAccess) => new GitHubNoteCatalog(github),
+      [GITHUB.access],
     );
   });
 }

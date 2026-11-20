@@ -78,6 +78,14 @@ export class McpE2eStack {
     return this.worker.fetch(new Request(new URL(path, WORKER_ORIGIN)));
   }
 
+  runDailyCron(): Promise<void> {
+    return this.worker.runDailyCron();
+  }
+
+  database(): Promise<D1Database> {
+    return this.worker.database();
+  }
+
   async stop(): Promise<void> {
     await this.worker.stop();
     await this.github.stop();

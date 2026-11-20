@@ -1,5 +1,12 @@
 import { Container } from "inversify";
 import { MCP } from "../../src/adapters/inbound/mcp/mcp.symbols";
+import { IndexQueueConsumer } from "../../src/adapters/inbound/queue/index-queue-consumer";
+import { INDEX_QUEUE } from "../../src/adapters/inbound/queue/index-queue.symbols";
+import { GitHubWebhookRoute } from "../../src/adapters/inbound/webhook/github-webhook-route";
+import { WEBHOOK } from "../../src/adapters/inbound/webhook/webhook.symbols";
+import { QUEUE } from "../../src/adapters/outbound/queue/queue.symbols";
+import { ReconcileIndex } from "../../src/application/use-cases/reconcile-index";
+import { INDEXING } from "../../src/main/indexing/indexing.symbols";
 import { D1_SEARCH_SYMBOLS } from "../../src/adapters/outbound/d1-search/d1-search.symbols";
 import { appModules } from "../../src/main/app-modules";
 import { CONFIG_SYMBOLS } from "../../src/main/config/config.symbols";
@@ -31,5 +38,37 @@ describe("appModules", () => {
     container.load(...appModules({ ...VALID_ENV }, WORKER_ENV));
 
     expect(container.get(D1_SEARCH_SYMBOLS.Database)).toBe(WORKER_ENV.DB);
+  });
+
+  it("wires the GitHub webhook route", () => {
+    const container = new Container();
+
+    container.load(...appModules({ ...VALID_ENV }, WORKER_ENV));
+
+    expect(container.get(WEBHOOK.route)).toBeInstanceOf(GitHubWebhookRoute);
+  });
+
+  it("wires the index queue consumer", () => {
+    const container = new Container();
+
+    container.load(...appModules({ ...VALID_ENV }, WORKER_ENV));
+
+    expect(container.get(INDEX_QUEUE.consumer)).toBeInstanceOf(IndexQueueConsumer);
+  });
+
+  it("wires the daily reconciliation", () => {
+    const container = new Container();
+
+    container.load(...appModules({ ...VALID_ENV }, WORKER_ENV));
+
+    expect(container.get(INDEXING.reconcile)).toBeInstanceOf(ReconcileIndex);
+  });
+
+  it("sends queued paths to the Worker's index queue", () => {
+    const container = new Container();
+
+    container.load(...appModules({ ...VALID_ENV }, WORKER_ENV));
+
+    expect(container.get(QUEUE.binding)).toBe(WORKER_ENV.INDEX_QUEUE);
   });
 });
