@@ -14,5 +14,16 @@
   "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "00000000000000000000000000000000" }],
   "queues": {
     "producers": [{ "binding": "INDEX_QUEUE", "queue": "second-brain-index" }],
+    "consumers": [
+      {
+        "queue": "second-brain-index",
+        "max_batch_size": 10,
+        "max_batch_timeout": 2,
+        "max_retries": 5,
+        "retry_delay": 30,
+        "dead_letter_queue": "second-brain-index-dlq",
+      },
+    ],
   },
+  "triggers": { "crons": ["17 4 * * *"] },
 }
