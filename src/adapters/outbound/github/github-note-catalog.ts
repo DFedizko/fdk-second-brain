@@ -6,6 +6,7 @@ import { NoteVersion } from "../../../domain/note-version";
 import { EmptyRepository } from "./empty-repository";
 import type { FailureContext } from "./github-error-translator";
 import type { GitHubAccess } from "./github-gateway";
+import type { NoteReader } from "./github-note-reader";
 
 const BLOB = "blob";
 const RECURSIVE = "1";
@@ -19,7 +20,10 @@ interface TreeEntry {
 }
 
 export class GitHubNoteCatalog implements NoteCatalog {
-  constructor(private readonly github: GitHubAccess) {}
+  constructor(
+    private readonly github: GitHubAccess,
+    private readonly reader: NoteReader,
+  ) {}
 
   async stamps(): Promise<NoteStamp[]> {
     const entries = await this.treeEntries().catch((error: unknown) => {
@@ -32,8 +36,9 @@ export class GitHubNoteCatalog implements NoteCatalog {
   }
 
   private async treeEntries(): Promise<TreeEntry[]> {
+    const head = await this.reader.headCommit();
     const { data } = await this.github.send(BRANCH_LEVEL, (client, repo) =>
-      client.rest.git.getTree({ ...repo, tree_sha: this.github.branch, recursive: RECURSIVE }),
+      client.rest.git.getTree({ ...repo, tree_sha: head, recursive: RECURSIVE }),
     );
     if (data.truncated) throw new NotesUnavailable();
     return data.tree.map((entry) => ({

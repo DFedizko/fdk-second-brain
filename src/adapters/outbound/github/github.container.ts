@@ -70,8 +70,8 @@ export function githubContainer(config: GitHubConfig): ContainerModule {
       [GITHUB.access, GITHUB.reader],
     );
     bind(GITHUB.noteCatalog).toResolvedValue(
-      (github: GitHubAccess) => new GitHubNoteCatalog(github),
-      [GITHUB.access],
+      (github: GitHubAccess, reader: NoteReader) => new GitHubNoteCatalog(github, reader),
+      [GITHUB.access, GITHUB.reader],
     );
   });
 }
