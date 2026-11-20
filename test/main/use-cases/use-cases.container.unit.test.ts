@@ -12,7 +12,7 @@ import { WriteNote } from "../../../src/application/use-cases/write-note";
 import { useCasesModule } from "../../../src/main/use-cases/use-cases.container";
 import { USE_CASES } from "../../../src/main/use-cases/use-cases.symbols";
 import { InMemoryNoteRepo } from "../../application/__fake__/in-memory-note-repo";
-import { FixedClock } from "../../application/use-cases/__stub__/fixed-clock";
+import { FixedClock } from "../../__stub__/fixed-clock";
 
 type UseCaseClass = new (...args: never[]) => object;
 

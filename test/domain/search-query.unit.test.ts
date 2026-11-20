@@ -1,4 +1,4 @@
-import { SearchQuery } from "../../src/domain/search-query";
+import { MAX_QUERY_TERMS, SearchQuery } from "../../src/domain/search-query";
 import { EmptySearchQuery } from "../../src/domain/errors/empty-search-query";
 
 describe("SearchQuery", () => {
@@ -24,5 +24,13 @@ describe("SearchQuery", () => {
     const parse = () => SearchQuery.of(" -- ?! ");
 
     expect(parse).toThrow(EmptySearchQuery);
+  });
+
+  it("keeps no more than the maximum number of words", () => {
+    const words = Array.from({ length: MAX_QUERY_TERMS + 1 }, (_, n) => `word${n}`);
+
+    const query = SearchQuery.of(words.join(" "));
+
+    expect(query.terms).toEqual(words.slice(0, MAX_QUERY_TERMS));
   });
 });

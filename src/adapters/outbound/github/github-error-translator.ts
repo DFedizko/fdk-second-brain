@@ -1,9 +1,12 @@
+import type { Clock } from "../../../application/ports/clock";
 import { NoteAlreadyExists } from "../../../domain/errors/note-already-exists";
 import { NoteNotFound } from "../../../domain/errors/note-not-found";
 import { NotesAccessDenied } from "../../../domain/errors/notes-access-denied";
 import { NotesRateLimited } from "../../../domain/errors/notes-rate-limited";
 import { NotesUnavailable } from "../../../domain/errors/notes-unavailable";
 import { VersionConflict } from "../../../domain/errors/version-conflict";
+import { BranchMoved } from "./branch-moved";
+import { EmptyRepository } from "./empty-repository";
 
 const UNAUTHORIZED = 401;
 const FORBIDDEN = 403;
@@ -16,6 +19,7 @@ const MILLIS_PER_SECOND = 1000;
 const RATE_LIMIT_MESSAGE = /rate limit/i;
 const SHA_MISSING = /"sha" wasn't supplied/;
 const NOT_FAST_FORWARD = /not a fast forward/i;
+const EMPTY_REPOSITORY = /Git Repository is empty/i;
 const NEWER_VERSION = "a newer version";
 const REMAINING_HEADER = "x-ratelimit-remaining";
 const RESET_HEADER = "x-ratelimit-reset";
@@ -39,6 +43,8 @@ interface HttpFailure {
 }
 
 export class GitHubErrorTranslator implements GitHubErrorMapper {
+  constructor(private readonly clock: Clock) {}
+
   toDomainError(error: unknown, context: FailureContext): Error {
     const failure = this.readFailure(error);
     if (!failure) return new NotesUnavailable(undefined, error);
@@ -54,6 +60,7 @@ export class GitHubErrorTranslator implements GitHubErrorMapper {
       case NOT_FOUND:
         return this.notFound(failure, context);
       case CONFLICT:
+        if (EMPTY_REPOSITORY.test(failure.message)) return new EmptyRepository();
         return this.conflict(failure, context);
       case UNPROCESSABLE:
         return this.unprocessable(failure, context);
@@ -66,7 +73,7 @@ export class GitHubErrorTranslator implements GitHubErrorMapper {
     if (context.path !== undefined && SHA_MISSING.test(failure.message)) {
       return new NoteAlreadyExists(context.path);
     }
-    if (NOT_FAST_FORWARD.test(failure.message)) return this.conflict(failure, context);
+    if (NOT_FAST_FORWARD.test(failure.message)) return new BranchMoved();
     return new NotesUnavailable(failure.status, failure.cause);
   }
 
@@ -95,10 +102,17 @@ export class GitHubErrorTranslator implements GitHubErrorMapper {
   }
 
   private rateLimited(failure: HttpFailure): NotesRateLimited {
-    const reset = this.numberHeader(failure, RESET_HEADER);
     const retryAfter = this.numberHeader(failure, RETRY_AFTER_HEADER);
-    const resetsAt = reset === undefined ? undefined : new Date(reset * MILLIS_PER_SECOND);
-    return new NotesRateLimited(resetsAt, retryAfter, failure.cause);
+    return new NotesRateLimited(this.resetTimeOf(failure, retryAfter), retryAfter, failure.cause);
+  }
+
+  private resetTimeOf(failure: HttpFailure, retryAfter?: number): Date | undefined {
+    if (retryAfter !== undefined) {
+      return new Date(this.clock.now().getTime() + retryAfter * MILLIS_PER_SECOND);
+    }
+    const reset = this.numberHeader(failure, RESET_HEADER);
+    const exhausted = String(failure.headers[REMAINING_HEADER]) === NO_REQUESTS_LEFT;
+    return exhausted && reset !== undefined ? new Date(reset * MILLIS_PER_SECOND) : undefined;
   }
 
   private numberHeader(failure: HttpFailure, name: string): number | undefined {

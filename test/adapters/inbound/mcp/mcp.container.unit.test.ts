@@ -8,7 +8,7 @@ import { GITHUB } from "../../../../src/adapters/outbound/github/github.symbols"
 import { useCasesModule } from "../../../../src/main/use-cases/use-cases.container";
 import { USE_CASES } from "../../../../src/main/use-cases/use-cases.symbols";
 import { InMemoryNoteRepo } from "../../../application/__fake__/in-memory-note-repo";
-import { FixedClock } from "../../../application/use-cases/__stub__/fixed-clock";
+import { FixedClock } from "../../../__stub__/fixed-clock";
 import { SpyErrorLog } from "./__spy__/spy-error-log";
 
 const NOW = new Date("2026-11-19T10:30:00.000Z");

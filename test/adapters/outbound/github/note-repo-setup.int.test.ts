@@ -15,8 +15,6 @@ const ROOT = NoteFolder.of("");
 const NOT_FOUND = 404;
 const MISSING_BRANCH = "gone";
 const MISSING_REPO = "lost";
-const OVER_ONE_MEGABYTE = 1024 * 1024 + 1;
-const FILLER = "a";
 
 type RepoAction = (repository: NoteRepository) => Promise<unknown>;
 
@@ -61,14 +59,5 @@ describe("GitHubNoteRepo with a broken setup or limits", () => {
     const list = connectRepo(api).list(ROOT);
 
     await expect(list).rejects.toThrow(NotesUnavailable);
-  });
-
-  it("refuses a note over 1 MB instead of reading it as empty", async () => {
-    const repository = connectRepo(api);
-    await repository.create(INBOX, FILLER.repeat(OVER_ONE_MEGABYTE));
-
-    const read = repository.read(INBOX);
-
-    await expect(read).rejects.toThrow(NotesUnavailable);
   });
 });

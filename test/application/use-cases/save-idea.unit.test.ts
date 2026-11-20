@@ -1,7 +1,7 @@
 import { SaveIdea } from "../../../src/application/use-cases/save-idea";
 import { NotePath } from "../../../src/domain/note-path";
 import { InMemoryNoteRepo } from "../__fake__/in-memory-note-repo";
-import { FixedClock } from "./__stub__/fixed-clock";
+import { FixedClock } from "../../__stub__/fixed-clock";
 
 const NOW = new Date("2026-11-19T15:30:00Z");
 const EARLY_UTC = new Date("2026-11-19T00:00:01Z");

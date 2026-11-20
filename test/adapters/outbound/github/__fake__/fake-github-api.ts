@@ -8,7 +8,7 @@ import { DOCS_PAGE, GitHubReplies, MESSAGE, STATUS } from "./github-replies";
 import { GitHubShapes } from "./github-shapes";
 
 // Built from https://docs.github.com/en/rest/repos/contents, /git/refs, /git/trees,
-// /git/commits and /using-the-rest-api/rate-limits-for-the-rest-api, checked 2026-11-19.
+// /git/commits, /git/blobs and /using-the-rest-api/rate-limits-for-the-rest-api, checked 2026-11-19.
 
 export interface FakeRepoSetup {
   readonly owner: string;
@@ -16,6 +16,7 @@ export interface FakeRepoSetup {
   readonly token: string;
   readonly branches: readonly string[];
   readonly seed: Readonly<Record<string, string>>;
+  readonly empty?: boolean;
 }
 
 const API_PREFIX = "/repos/";
@@ -32,6 +33,12 @@ const PATCH = "PATCH";
 const REF_UPDATE = /^git\/refs\/heads\/(.+)$/;
 const RACING_MESSAGE = "A concurrent commit";
 const AUTHORIZATION = "authorization";
+const SUBMODULE_MODE = "160000";
+const PUT = "PUT";
+const FILE_WRITES = [PUT, "DELETE"];
+const GIT_DATA = /^git\//;
+const CONTENTS = /^contents\//;
+const ADD_MESSAGE = "Add";
 
 type HttpOutage = "secondary" | "secondaryForbidden" | "forbidden" | "server";
 type Outage = HttpOutage | "network";
@@ -44,6 +51,8 @@ export class FakeGitHubApi {
   private outage?: Outage;
   private tokenRevoked = false;
   private refRaces = 0;
+  private contentRaces = 0;
+  private refDrops = false;
   private readonly limits: FakeLimits = { truncateTrees: false };
   readonly served: number[] = [];
 
@@ -95,6 +104,22 @@ export class FakeGitHubApi {
     this.refRaces = times;
   }
 
+  addEntry(branch: string, path: string, mode: string, target: string | Uint8Array): void {
+    const sha =
+      typeof target === "string" && mode === SUBMODULE_MODE ? target : this.store.addBlob(target);
+    const files = new Map(this.store.filesAt(branch)).set(path, sha);
+    const modes = new Map(this.store.modesAt(branch)).set(path, mode);
+    this.store.advance(branch, files, `${ADD_MESSAGE} ${path}`, modes);
+  }
+
+  dropBranchBeforeRefUpdates(): void {
+    this.refDrops = true;
+  }
+
+  commitDuringFileWrites(times: number): void {
+    this.contentRaces = times;
+  }
+
   truncateTrees(): void {
     this.limits.truncateTrees = true;
   }
@@ -107,8 +132,10 @@ export class FakeGitHubApi {
     this.remaining -= 1;
     if (this.outage && this.outage !== "network") return this.outageReply(this.outage, headers);
     if (route === undefined) return this.notFound(headers);
+    if (!this.store.hasRefs()) return this.emptyRepoReply(request, route, body, headers);
     this.raceRefUpdate(request.method, route);
-    return this.dispatch(request, route, body, headers);
+    const raced = this.raceFileWrite(request.method, route, body, headers);
+    return raced ?? this.dispatch(request, route, body, headers);
   }
 
   private dispatch(
@@ -129,9 +156,47 @@ export class FakeGitHubApi {
 
   private raceRefUpdate(method: string, route: string): void {
     const branch = REF_UPDATE.exec(route)?.[1];
-    if (method !== PATCH || !branch || this.refRaces <= 0) return;
+    if (method !== PATCH || !branch) return;
+    if (this.refDrops) this.store.dropRef(branch);
+    if (this.refRaces <= 0) return;
     this.refRaces -= 1;
     this.store.advance(branch, this.store.filesAt(branch) ?? new Map(), RACING_MESSAGE);
+  }
+
+  private raceFileWrite(
+    method: string,
+    route: string,
+    body: Record<string, unknown>,
+    headers: Headers,
+  ): Response | undefined {
+    if (!FILE_WRITES.includes(method) || !CONTENTS.test(route) || this.contentRaces <= 0) {
+      return undefined;
+    }
+    this.contentRaces -= 1;
+    const branch = typeof body.branch === "string" ? body.branch : (this.setup.branches[0] ?? "");
+    const before = this.store.headOf(branch) ?? "";
+    const after = this.store.advance(
+      branch,
+      this.store.filesAt(branch) ?? new Map(),
+      RACING_MESSAGE,
+    );
+    const message = `${branch} is at ${after.sha} but expected ${before}`;
+    return this.replies.error(STATUS.conflict, message, DOCS_PAGE.contents, headers);
+  }
+
+  // Checked 2026-11-19: Git data endpoints answer 409 on an empty repository, reading
+  // contents answers 404, and creating a file through the contents API makes the first commit.
+  private emptyRepoReply(
+    request: Request,
+    route: string,
+    body: Record<string, unknown>,
+    headers: Headers,
+  ): Response {
+    if (GIT_DATA.test(route)) {
+      return this.replies.error(STATUS.conflict, MESSAGE.emptyRepo, DOCS_PAGE.root, headers);
+    }
+    if (request.method === PUT) return this.dispatch(request, route, body, headers);
+    return this.replies.error(STATUS.notFound, MESSAGE.emptyContents, DOCS_PAGE.contents, headers);
   }
 
   private routeOf(url: URL): string | undefined {
@@ -187,6 +252,7 @@ export class FakeGitHubApi {
   }
 
   private seedBranches(): void {
+    if (this.setup.empty) return;
     const files = new Map(
       Object.entries(this.setup.seed).map(([path, content]) => [path, this.store.addBlob(content)]),
     );

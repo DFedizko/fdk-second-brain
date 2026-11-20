@@ -7,6 +7,8 @@ const SEPARATOR = "/";
 const BASE64 = "base64";
 const UTF8 = "utf8";
 const REF = "ref";
+const SYMLINK_MODE = "120000";
+const SUBMODULE_MODE = "160000";
 
 export class ContentsRoutes {
   constructor(private readonly parts: FakeRepoParts) {}
@@ -25,7 +27,7 @@ export class ContentsRoutes {
     const files = this.parts.store.filesAt(ref);
     const sha = files?.get(path);
     if (!files) return this.notFound(call, `No commit found for the ref ${ref}`);
-    if (sha) return this.fileReply(call, path, sha, ref);
+    if (sha) return this.entryReply(call, files, path, sha, ref);
     if (this.isFolder(files, path)) return this.folderReply(call, files, path, ref);
     return this.notFound(call, MESSAGE.notFound);
   }
@@ -33,7 +35,7 @@ export class ContentsRoutes {
   private putContent(call: FakeCall): Response {
     const path = this.pathOf(call);
     const branch = this.branchOf(call);
-    const files = this.parts.store.filesAt(branch);
+    const files = this.parts.store.filesAt(branch) ?? this.firstCommitFiles(call);
     if (!files) return this.notFound(call, `Branch ${branch} not found`);
     const current = files.get(path);
     const rejection = this.rejectWrongSha(call, path, current);
@@ -68,6 +70,14 @@ export class ContentsRoutes {
     );
   }
 
+  // Checked 2026-11-19: the docs say only that `branch` defaults to the default branch, and
+  // that refs can't be created in an empty repository. So the first commit is accepted only
+  // without `branch`; naming a branch that doesn't exist yet answers 404 as on any repository.
+  private firstCommitFiles(call: FakeCall): FileTable | undefined {
+    const firstCommit = !this.parts.store.hasRefs() && call.body.branch === undefined;
+    return firstCommit ? new Map() : undefined;
+  }
+
   private rejectWrongSha(call: FakeCall, path: string, current?: string): Response | undefined {
     const sha = call.body.sha;
     if (current && sha === undefined) return this.unprocessable(call, MESSAGE.shaMissing);
@@ -79,8 +89,30 @@ export class ContentsRoutes {
     return this.parts.store.advance(branch, files, String(call.body.message));
   }
 
+  private entryReply(call: FakeCall, files: FileTable, path: string, sha: string, ref: string) {
+    const mode = this.parts.store.modesAt(ref).get(path);
+    if (mode === SUBMODULE_MODE) {
+      return this.parts.replies.json(
+        STATUS.ok,
+        this.parts.shapes.submodule(path, sha, ref),
+        call.headers,
+      );
+    }
+    if (mode === SYMLINK_MODE) return this.symlinkReply(call, files, path, sha, ref);
+    return this.fileReply(call, path, sha, ref);
+  }
+
+  // The docs: a symlink to a file in the repository answers with that file's content.
+  private symlinkReply(call: FakeCall, files: FileTable, path: string, sha: string, ref: string) {
+    const target = this.parts.store.blob(sha) ?? "";
+    const targetSha = files.get(target);
+    if (targetSha) return this.fileReply(call, target, targetSha, ref);
+    const symlink = this.parts.shapes.symlink(path, sha, target, ref);
+    return this.parts.replies.json(STATUS.ok, symlink, call.headers);
+  }
+
   private fileReply(call: FakeCall, path: string, sha: string, ref: string): Response {
-    const content = this.parts.store.blob(sha) ?? "";
+    const content = this.parts.store.bytesOf(sha) ?? new Uint8Array();
     const file = this.parts.shapes.contentFile(path, sha, content, ref);
     return this.parts.replies.json(STATUS.ok, file, call.headers);
   }
@@ -91,7 +123,7 @@ export class ContentsRoutes {
   }
 
   private sizeOf(sha: string): number {
-    return Buffer.byteLength(this.parts.store.blob(sha) ?? "", UTF8);
+    return this.parts.store.bytesOf(sha)?.length ?? 0;
   }
 
   private isFolder(files: FileTable, path: string): boolean {

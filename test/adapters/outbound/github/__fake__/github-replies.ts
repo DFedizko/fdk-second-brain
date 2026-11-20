@@ -23,6 +23,7 @@ export const DOCS_PAGE = {
   refs: `${DOCS}/git/refs`,
   trees: `${DOCS}/git/trees`,
   commits: `${DOCS}/git/commits`,
+  blobs: `${DOCS}/git/blobs`,
   rateLimits: `${DOCS}/using-the-rest-api/rate-limits-for-the-rest-api`,
   root: DOCS,
 } as const;
@@ -42,6 +43,9 @@ export const MESSAGE = {
   noParent: "Parent SHA does not exist or is not a commit object",
   noReference: "Reference does not exist",
   noObject: "Object does not exist",
+  emptyRepo: "Git Repository is empty.",
+  refExists: "Reference already exists",
+  emptyContents: "This repository is empty.",
 } as const;
 
 export class GitHubReplies {

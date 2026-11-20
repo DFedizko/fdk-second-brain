@@ -17,3 +17,14 @@ export function buildFakeNotesRepo(): FakeGitHubApi {
     seed: { [HIDDEN_NOTE]: "# PR template\n", [IMAGE]: "PNG" },
   });
 }
+
+export function buildEmptyNotesRepo(): FakeGitHubApi {
+  return new FakeGitHubApi({
+    owner: NOTES_OWNER,
+    repo: NOTES_REPO,
+    token: NOTES_TOKEN,
+    branches: [DEFAULT_BRANCH, NOTES_BRANCH],
+    seed: {},
+    empty: true,
+  });
+}

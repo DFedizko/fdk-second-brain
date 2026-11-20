@@ -16,6 +16,8 @@ const LONG_TEXT_CHARS = 1000;
 const ASKED_LIMIT = 12;
 const TOO_MANY = 500;
 const BELOW_ONE = 0;
+const DEPLOY_PREFIX_CHARS = "deploy ".length;
+const EMOJI_OFFSET = SNIPPET_MAX_CHARS - ELLIPSIS.length - 1 - DEPLOY_PREFIX_CHARS;
 
 describe("SearchNotes", () => {
   let index: InMemorySearchIndex;
@@ -27,7 +29,7 @@ describe("SearchNotes", () => {
   });
 
   const indexNote = (path: string, heading: string, text: string) =>
-    index.replace(NotePath.of(path), VERSION, [{ heading, seq: 0, text }]);
+    index.replace(NotePath.of(path), VERSION, [{ heading, seq: 0, text }], null);
 
   const indexManyNotes = () =>
     Promise.all(
@@ -92,6 +94,15 @@ describe("SearchNotes", () => {
 
     expect(result!.snippet).toHaveLength(SNIPPET_MAX_CHARS);
     expect(result!.snippet.endsWith(ELLIPSIS)).toBe(true);
+  });
+
+  it("never cuts a snippet inside an emoji", async () => {
+    const emojiAtCut = `deploy ${"x".repeat(EMOJI_OFFSET)}😀 more text after the cut`;
+    await indexNote("work/emoji.md", "Log", emojiAtCut);
+
+    const [result] = await searchNotes.execute({ query: "deploy" });
+
+    expect(result!.snippet.isWellFormed()).toBe(true);
   });
 
   it("rejects a query with no words", async () => {

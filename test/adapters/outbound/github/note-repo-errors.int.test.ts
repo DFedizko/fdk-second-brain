@@ -8,7 +8,7 @@ import { NotesUnavailable } from "../../../../src/domain/errors/notes-unavailabl
 import { VersionConflict } from "../../../../src/domain/errors/version-conflict";
 import type { FakeGitHubApi } from "./__fake__/fake-github-api";
 import { NOTES_TOKEN, buildFakeNotesRepo } from "./__fake__/fake-notes-repo";
-import { connectRepo } from "./__fake__/github-note-repo-on-fake";
+import { FIXED_NOW, connectRepo } from "./__fake__/github-note-repo-on-fake";
 
 const INBOX = NotePath.of("inbox.md");
 const PLAN = NotePath.of("plan.md");
@@ -21,11 +21,12 @@ const SECOND_EDIT = "# Inbox\n\n- second\n";
 const WRONG_TOKEN = "ghp_wrongToken";
 const ROOT = NoteFolder.of("");
 const RETRY_AFTER_SECONDS = 60;
+const MILLIS_PER_SECOND = 1000;
+const RETRY_AT = new Date(FIXED_NOW.getTime() + RETRY_AFTER_SECONDS * MILLIS_PER_SECOND);
 const SERVER_ERROR = 500;
 const UNAUTHORIZED = 401;
 const FORBIDDEN = 403;
 const CONFLICT = 409;
-const ALWAYS = Number.POSITIVE_INFINITY;
 
 async function failureOf(action: Promise<unknown>): Promise<unknown> {
   return action.then(
@@ -106,16 +107,6 @@ describe("GitHubNoteRepo maps GitHub errors", () => {
     expect(moved.path).toEqual(PLAN);
   });
 
-  it("gives up with NotesUnavailable when the branch keeps moving", async () => {
-    const repository = connectRepo(api);
-    await repository.create(INBOX, CONTENT);
-    api.commitBeforeRefUpdates(ALWAYS);
-
-    const move = repository.move(INBOX, PLAN);
-
-    await expect(move).rejects.toThrow(NotesUnavailable);
-  });
-
   it("reports the winning version when a racing delete meets a 409", async () => {
     const repository = connectRepo(api);
     const created = await repository.create(INBOX, CONTENT);
@@ -175,6 +166,14 @@ describe("GitHubNoteRepo maps GitHub errors", () => {
     const error = await failureOf(connectRepo(api).read(INBOX));
 
     expect((error as NotesRateLimited).retryAfterSeconds).toBe(RETRY_AFTER_SECONDS);
+  });
+
+  it("derives the reset time of a secondary rate limit from retry-after", async () => {
+    api.startOutage("secondary");
+
+    const error = await failureOf(connectRepo(api).read(INBOX));
+
+    expect((error as NotesRateLimited).resetsAt).toEqual(RETRY_AT);
   });
 
   it("maps 403 secondary rate limit to NotesRateLimited with its retry-after", async () => {
