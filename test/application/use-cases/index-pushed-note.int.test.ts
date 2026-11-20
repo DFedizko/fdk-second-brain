@@ -32,6 +32,7 @@ const FILE_MODE = "100644";
 const SECOND_ATTEMPT = 2;
 const REQUESTS_PER_PATH = 4;
 const PLAN_CONTENT = "# Plan\n\nShip the nebula release.\n";
+const NOT_UTF8 = new Uint8Array([0x23, 0x20, 0xff, 0xfe]);
 
 describe("IndexPushedNote on D1 with a branch that lags behind the push", () => {
   let runtime: LocalRuntime | undefined;
@@ -97,5 +98,19 @@ describe("IndexPushedNote on D1 with a branch that lags behind the push", () => 
     await consumer.handle(FakeMessageBatch.of([{ path: PLAN, commit: deleted }]));
 
     expect(api.served.length - before).toBe(REQUESTS_PER_PATH);
+  });
+
+  it("removes a pushed note that is no longer valid text from search", async () => {
+    api.store.setRef(NOTES_BRANCH, beforeDelete);
+    api.addEntry(NOTES_BRANCH, PLAN, FILE_MODE, NOT_UTF8);
+    const commit = api.store.headOf(NOTES_BRANCH) ?? "";
+    const batch = FakeMessageBatch.of([{ path: PLAN, commit }]);
+
+    await consumer.handle(batch);
+
+    expect({ outcomes: batch.outcomes(), found: await searchPaths() }).toEqual({
+      outcomes: [{ acked: true }],
+      found: [],
+    });
   });
 });
