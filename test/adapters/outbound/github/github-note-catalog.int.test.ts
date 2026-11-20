@@ -18,8 +18,8 @@ function connectCatalog(api: FakeGitHubApi): GitHubNoteCatalog {
   return new GitHubNoteCatalog(github);
 }
 
-function shaOf(api: FakeGitHubApi, path: string): string | undefined {
-  return api.store.filesAt(NOTES_BRANCH)?.get(path);
+function shaOf(api: FakeGitHubApi, path: string): string {
+  return api.store.filesAt(NOTES_BRANCH)?.get(path) ?? "";
 }
 
 async function listed(catalog: GitHubNoteCatalog) {
