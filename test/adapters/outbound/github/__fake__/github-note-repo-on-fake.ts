@@ -1,4 +1,5 @@
 import type { GitHubConfig } from "../../../../../src/adapters/outbound/github/github-config";
+import { GitHubBranchRestorer } from "../../../../../src/adapters/outbound/github/github-branch-restorer";
 import { GitHubErrorTranslator } from "../../../../../src/adapters/outbound/github/github-error-translator";
 import { GitHubFirstNote } from "../../../../../src/adapters/outbound/github/github-first-note";
 import { GitHubGateway } from "../../../../../src/adapters/outbound/github/github-gateway";
@@ -24,5 +25,6 @@ export function connectRepo(
   const reader = new GitHubNoteReader(github);
   const mover = new GitHubNoteMover(github, reader);
   const firstNote = new GitHubFirstNote(github, reader);
-  return new GitHubNoteRepo(github, reader, mover, firstNote, pause);
+  const restorer = new GitHubBranchRestorer(github);
+  return new GitHubNoteRepo(github, reader, mover, firstNote, pause, restorer);
 }

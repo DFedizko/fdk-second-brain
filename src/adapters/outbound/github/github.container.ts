@@ -2,6 +2,7 @@ import { Octokit } from "@octokit/rest";
 import { ContainerModule } from "inversify";
 import type { Clock } from "../../../application/ports/clock";
 import type { GitHubConfig } from "./github-config";
+import { GitHubBranchRestorer, type BranchRestorer } from "./github-branch-restorer";
 import { GitHubErrorTranslator, type GitHubErrorMapper } from "./github-error-translator";
 import { GitHubFirstNote, type FirstNoteWriter } from "./github-first-note";
 import { GitHubGateway, type GitHubAccess } from "./github-gateway";
@@ -48,6 +49,10 @@ export function githubContainer(config: GitHubConfig): ContainerModule {
       [GITHUB.access, GITHUB.reader],
     );
     bind(GITHUB.pause).toConstantValue(new TimerPause());
+    bind(GITHUB.restorer).toResolvedValue(
+      (github: GitHubAccess) => new GitHubBranchRestorer(github),
+      [GITHUB.access],
+    );
     bind(GITHUB.noteRepository).toResolvedValue(
       (
         github: GitHubAccess,
@@ -55,8 +60,9 @@ export function githubContainer(config: GitHubConfig): ContainerModule {
         mover: NoteMover,
         first: FirstNoteWriter,
         pause: RetryPause,
-      ) => new GitHubNoteRepo(github, reader, mover, first, pause),
-      [GITHUB.access, GITHUB.reader, GITHUB.mover, GITHUB.firstNote, GITHUB.pause],
+        restorer: BranchRestorer,
+      ) => new GitHubNoteRepo(github, reader, mover, first, pause, restorer),
+      [GITHUB.access, GITHUB.reader, GITHUB.mover, GITHUB.firstNote, GITHUB.pause, GITHUB.restorer],
     );
     bind(GITHUB.branchHead).toResolvedValue(
       (github: GitHubAccess, reader: NoteReader) =>
